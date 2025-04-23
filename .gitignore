@@ -1,0 +1,24 @@
+#Root Git Ignore for general colcon build
+
+# ROS2 colcon build folders
+build/
+**/build/
+install/
+**/install/
+log/
+**log/
+
+# Ignorar arquivos de configuração específicos
+*.log
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+
+# IDEs
+.vscode/
+.idea/
+
+# Outros
+*.swp
