@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  ros2_dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    image: edrom_dev:latest
+    container_name: edrom_dev
+    hostname: edrom_dev
+    environment:
+      - ROS_DOMAIN_ID=0
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - USER=devuser
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    volumes:
+      - .:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    network_mode: "host"
+    privileged: true
+    working_dir: /workspace
+    command: ["tail", "-f", "/dev/null"] # Comando leve que não sai
+    stdin_open: true # Manter STDIN aberto para input
+    tty: true        # Alocar TTY (Terminal)
