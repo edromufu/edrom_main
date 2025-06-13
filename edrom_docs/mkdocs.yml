@@ -1,5 +1,5 @@
 site_name: EDROM Docs
-
+theme: readthedocs
 nav:
   - Home: index.md
   - Installation:

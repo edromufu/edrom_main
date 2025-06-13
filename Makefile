@@ -1,5 +1,5 @@
 # Makefile para Instalação do Webots [EDROM-2025]
-# Focado em download e extração, com instruções para configuração manual do PATH.
+# Focado em download, extração e configuração automática do PATH.
 
 # --- Variáveis de Configuração ---
 # Você pode sobrescrever estas variáveis ao chamar o make.
@@ -14,6 +14,8 @@ DOWNLOAD_CHECKSUM ?= c5127fb4206c57a5ae5523f1b7f3da8b670bc8926d9ae08595e139f226f
 # --- Variáveis Internas (Não modifique) ---
 DOWNLOAD_FILE = /tmp/webots-$(WEBOTS_VERSION).tar.bz2
 SUDO = $(shell which sudo)
+BASH_CONFIG = $(HOME)/.bashrc
+ZSH_CONFIG = $(HOME)/.zshrc
 
 # --- Define a lógica de verificação de checksum condicionalmente ---
 # Isso é processado pelo 'make' antes de executar qualquer receita.
@@ -34,7 +36,7 @@ endif
 
 # --- Targets ---
 
-.PHONY: all install dependencies download extract clean help
+.PHONY: all install dependencies download extract configure clean help
 
 # Target padrão: exibe a ajuda.
 all: help
@@ -44,18 +46,18 @@ help:
 	@echo "Uso: make <target>"
 	@echo "--------------------------------------------------------------------------"
 	@echo "  Targets disponíveis:"
-	@echo "    install      - Executa o processo de download e extração."
+	@echo "    install      - Executa todo o processo: dependências, download, extração e configuração."
 	@echo "    dependencies - Instala apenas as dependências do sistema via APT."
 	@echo "    download     - Baixa e verifica o arquivo de instalação do Webots."
 	@echo "    extract      - Extrai o Webots para o diretório de instalação."
+	@echo "    configure    - Adiciona a configuração do Webots ao seu PATH (em .bashrc/.zshrc)."
 	@echo "    clean        - Remove os arquivos temporários de download."
 	@echo "    help         - Exibe esta mensagem de ajuda."
 	@echo ""
-	@echo "  Este Makefile NÃO configura o PATH automaticamente."
-	@echo "  Ele irá exibir as instruções necessárias ao final da instalação."
+	@echo "  Este Makefile configura o PATH automaticamente ao executar 'make install'."
 	@echo ""
 
-install: dependencies download extract
+install: dependencies download extract configure
 	@echo ""
 	@echo "**************************************************************************"
 	@echo "*** ***"
@@ -63,40 +65,56 @@ install: dependencies download extract
 	@echo "*** ***"
 	@echo "**************************************************************************"
 	@echo ""
-	@echo ">>> AÇÃO NECESSÁRIA: Configure seu ambiente manualmente <<<"
+	@echo ">>> AÇÃO NECESSÁRIA: Recarregue seu terminal <<<"
 	@echo ""
-	@echo "O Webots foi instalado em: $(INSTALL_DIR)"
-	@echo "Para que o comando 'webots' funcione, adicione o diretório ao seu PATH."
+	@echo "O PATH foi configurado no seu arquivo .bashrc ou .zshrc."
+	@echo "Para que o comando 'webots' funcione, você precisa ABRIR UM NOVO TERMINAL."
 	@echo ""
-	@echo "1. Para usar o Webots APENAS na sessão atual do terminal, execute:"
-	@echo "   export PATH=\"$(INSTALL_DIR):\$$PATH\""
-	@echo ""
-	@echo "2. Para tornar a mudança PERMANENTE (recomendado), adicione a linha"
-	@echo "   abaixo ao final do seu arquivo de configuração de shell:"
-	@echo "   (Normalmente ~/.bashrc ou ~/.zshrc)"
-	@echo ""
-	@echo "   echo 'export PATH=\"$(INSTALL_DIR):\$$PATH\"' >> \$$HOME/.bashrc"
-	@echo ""
-	@echo "   Depois, recarregue a configuração com 'source \$$HOME/.bashrc' ou abra um novo terminal."
+	@echo "Ou, execute UMA VEZ no seu terminal atual:"
+	@echo "   source \$$HOME/.bashrc   (ou source \$$HOME/.zshrc se você usa Zsh)"
 	@echo ""
 
 dependencies:
-	@echo "--- [1/3] Instalando dependências do sistema (requer sudo)... ---"
+	@echo "--- [1/4] Instalando dependências do sistema (requer sudo)... ---"
 	@$(SUDO) apt-get update -qq || { echo "ERRO: Falha ao atualizar repositórios apt."; exit 1; }
 	@$(SUDO) apt-get install -y -qq wget tar libgl1-mesa-glx libglu1-mesa-dev libfontconfig1 libxkbcommon-x11-0 || { echo "ERRO: Falha ao instalar dependências."; exit 1; }
 	@echo "INFO: Dependências instaladas."
 
 download:
-	@echo "--- [2/3] Baixando Webots $(WEBOTS_VERSION)... ---"
+	@echo "--- [2/4] Baixando Webots $(WEBOTS_VERSION)... ---"
 	@wget --progress=bar:force -O $(DOWNLOAD_FILE) $(DOWNLOAD_URL) 2>&1 | grep --line-buffered "%" || { echo "ERRO: Falha ao baixar Webots."; exit 1; }
 	@$(CHECKSUM_LOGIC)
 
 extract:
-	@echo "--- [3/3] Extraindo Webots para $(INSTALL_DIR) (requer sudo)... ---"
+	@echo "--- [3/4] Extraindo Webots para $(INSTALL_DIR) (requer sudo)... ---"
 	@$(SUDO) mkdir -p $(INSTALL_DIR) || { echo "ERRO: Falha ao criar diretório de instalação."; exit 1; }
 	@echo "INFO: Extraindo, isso pode levar um momento..."
 	@$(SUDO) tar -xjf $(DOWNLOAD_FILE) -C $(INSTALL_DIR) --strip-components=1 || { echo "ERRO: Falha ao extrair o arquivo."; exit 1; }
 	@echo "INFO: Arquivos extraídos."
+
+configure:
+	@echo "--- [4/4] Configurando o ambiente para o Webots... ---"
+	@if [ -f "$(BASH_CONFIG)" ]; then \
+		if ! grep -q 'export PATH="$(INSTALL_DIR)' $(BASH_CONFIG); then \
+			echo "" >> $(BASH_CONFIG); \
+			echo '# Configuração do Webots adicionada pelo Makefile' >> $(BASH_CONFIG); \
+			echo 'export PATH="$(INSTALL_DIR):$$PATH"' >> $(BASH_CONFIG); \
+			echo "INFO: Configuração do Webots adicionada ao $(BASH_CONFIG)"; \
+		else \
+			echo "INFO: Configuração do Webots já existe em $(BASH_CONFIG). Nenhuma alteração feita."; \
+		fi \
+	elif [ -f "$(ZSH_CONFIG)" ]; then \
+		if ! grep -q 'export PATH="$(INSTALL_DIR)' $(ZSH_CONFIG); then \
+			echo "" >> $(ZSH_CONFIG); \
+			echo '# Configuração do Webots adicionada pelo Makefile' >> $(ZSH_CONFIG); \
+			echo 'export PATH="$(INSTALL_DIR):$$PATH"' >> $(ZSH_CONFIG); \
+			echo "INFO: Configuração do Webots adicionada ao $(ZSH_CONFIG)"; \
+		else \
+			echo "INFO: Configuração do Webots já existe em $(ZSH_CONFIG). Nenhuma alteração feita."; \
+		fi \
+	else \
+		echo "AVISO: Não foi possível encontrar ~/.bashrc ou ~/.zshrc para configuração automática."; \
+	fi
 
 clean:
 	@echo "--- Removendo arquivo de download temporário... ---"
