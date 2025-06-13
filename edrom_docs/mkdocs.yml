@@ -1,0 +1,7 @@
+site_name: EDROM Docs
+
+nav:
+  - Home: index.md
+  - Installation:
+    - ROS2 Docker: setting-docker.md
+    - Webots: setting-webots.md
