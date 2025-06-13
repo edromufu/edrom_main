@@ -1,4 +1,8 @@
 ## EDROM Docker Workspace (ROS2 Humble)
+### Pré-requisitos
+Para executar os passos de configuração, é importante ter o Docker instalado no seu Ubuntu 22.04.
+
+Caso não tenha, acesse o [site oficial](https://docs.docker.com/desktop/setup/install/linux/ubuntu/).
 ### Como rodar
 *É importante ressaltar que é necessário ter Docker instalado em sua máquina.*
 
@@ -33,3 +37,4 @@ docker compose down
 cd docker
 docker build --no-cache -t edrom_env .
 ```
+
