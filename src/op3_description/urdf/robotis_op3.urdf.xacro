@@ -1,0 +1,197 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="robotis_op3">
+
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.visuals.xacro" />
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.inertia.xacro" />
+
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.structure.rarm.xacro" />
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.structure.larm.xacro" />
+
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.structure.rleg.xacro" />
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.structure.lleg.xacro" />
+
+  <xacro:include filename="$(find op3_description)/urdf/robotis_op3.structure.head.xacro" />
+
+  <link name="base_link"/>
+  <joint name="world_to_base" type="fixed">
+    <parent link="base_link"/>
+    <child link="body_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+  <link name="body_link"> 
+    <visual> 
+      <xacro:insert_mesh_body_link />
+    </visual>
+  <collision>
+      <origin xyz="-0.016750 0 0.068250" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.11 0.12 0.135"/>
+      </geometry>
+    </collision>
+    <inertial> 
+      <xacro:insert_inertia_body_link />
+    </inertial> 
+  </link>
+
+  <xacro:robotis_op3_r_arm parent="body_link" />
+  <xacro:robotis_op3_l_arm parent="body_link" />
+
+  <xacro:robotis_op3_r_leg parent="body_link" />
+  <xacro:robotis_op3_l_leg parent="body_link" />
+
+  <xacro:robotis_op3_head parent="body_link" />  
+
+  <ros2_control name="RobotisOP3System" type="system">
+    <hardware>
+      <plugin>mock_components/GenericSystem</plugin>
+	  
+    </hardware>
+
+    <joint name="head_pan_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="head_tilt_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="r_sho_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_sho_roll_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_el_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="l_sho_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_sho_roll_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_el_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="r_hip_yaw_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_hip_roll_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_hip_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_ank_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="r_ank_roll_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+
+    <joint name="l_hip_yaw_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_hip_roll_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_hip_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_ank_pitch_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="l_ank_roll_joint">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">0.0</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  </robot>

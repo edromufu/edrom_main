@@ -1,0 +1,6 @@
+geometry_msgs/Pose target_pose
+string leg_id # "direita" ou "esquerda"
+---
+# Response
+bool success
+sensor_msgs/JointState result_joint_state
