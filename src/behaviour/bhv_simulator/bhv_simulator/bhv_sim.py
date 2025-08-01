@@ -4,6 +4,8 @@
 '''
 NOTA: Como a simulação foi desenvolvida com base em uma em ROS1, os comentários são de partes 
 que não foram implementadas, assim ao realizar o ros2 launch, será executado apenas o que estiver funcionando
+
+Por hora apenas é executada a classe RobotSensors().
 '''
 
 import rclpy

@@ -1,32 +1,36 @@
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable, ExecuteProcess
-from launch.substitutions import LaunchConfiguration, EnvironmentVariable
+from launch.actions import SetEnvironmentVariable, ExecuteProcess
+from launch.substitutions import EnvironmentVariable
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
-    # Procura o caminho para o pacote
+    # Encontra o caminho para a pasta 'share' pacote
     pkg_share = get_package_share_directory('bhv_simulator')
     
-    # Caminho completo para o mundo
+    # Caminho completo para o seu arquivo de mundo
     world_file = os.path.join(pkg_share, 'worlds', 'bhv_sim_world.wbt')
 
-    # Configura o ambiente para o Webots encontrar as bibliotecas ROS e controler
+    # Configura as variáveis de ambiente para usar as bibliotecas do Webots
+    # instalado no sistema, garantindo a compatibilidade.
     webots_env = SetEnvironmentVariable(
         'LD_LIBRARY_PATH',
         [
-            EnvironmentVariable('WEBOTS_HOME'), '/lib/controller:',
-            EnvironmentVariable('LD_LIBRARY_PATH')
+            EnvironmentVariable('WEBOTS_HOME', default_value=''), '/lib/controller:',
+            EnvironmentVariable('LD_LIBRARY_PATH', default_value='')
         ]
     )
+    
     python_path = SetEnvironmentVariable(
         'PYTHONPATH',
         [
-            EnvironmentVariable('WEBOTS_HOME'), '/lib/controller/python38'
+            EnvironmentVariable('WEBOTS_HOME', default_value=''), '/lib/controller/python310:',
+             EnvironmentVariable('PYTHONPATH', default_value='')
         ]
     )
 
-    # Inicia o Webots diretamente, passando o arquivo de mundo
+    # Inicia o executável do Webots.
+    # Webots irá abrir e executar o controlador "bhv_sim" definido no .wbt
     webots_process = ExecuteProcess(
         cmd=['webots', world_file],
         output='screen'
