@@ -4,10 +4,24 @@
 
 </center>
 
-<p align='center'>
-<img src='https://raw.githubusercontent.com/cyberbotics/webots_ros2/master/webots_ros2_tiago/docs/images/tiago_moveit2_example.png' width='20%'>
-</p>
-
+<table align="center">
+  <tr>
+    <td align="center" width="50%">
+      <a href="https://www.ros.org/">
+        <img src="https://raw.githubusercontent.com/ros/ros_brand/master/ROS-2-Lockup-Black.png" alt="ROS 2 Logo" width="200"/>
+      </a>
+      <br>
+      <b>ROS 2</b>
+    </td>
+    <td align="center" width="50%">
+      <a href="https://cyberbotics.com/">
+        <img src="https://raw.githubusercontent.com/cyberbotics/webots/master/docs/images/webots.png" alt="Webots Logo" width="200"/>
+      </a>
+      <br>
+      <b>Webots</b>
+    </td>
+  </tr>
+</table>
 
 <center>
 Este guia detalha o processo de instalação do pacote <code>webots_ros2</code> compilando-o a partir do código-fonte. 
