@@ -60,7 +60,7 @@ rosdep install --from-paths src -y --ignore-src
 ```
 
 **Aviso:** Se este passo falhar com um erro de <code>Cannot locate rosdep definition</code>., 
-instale os pacotes mencionados manualmente (<code>ex: sudo apt install ros-iron-tf-transformations</code>) 
+instale os pacotes mencionados manualmente (<code>ex: sudo apt install ros-humble-tf-transformations</code>) 
 e execute rosdep novamente.
 
 Por fim, construa o pacote (essa ação pode levar alguns minutos).
