@@ -1,0 +1,1018 @@
+#VRML_SIM R2025a utf8
+# license: Apache License 2.0
+# license url: http://www.apache.org/licenses/LICENSE-2.0
+# This is a proto file for Webots for the Aurea
+# Extracted from: /home/pedrohperes/Edrom_main/src/aurea_description/urdf/aurea_urdf_pkg.urdf
+
+PROTO Aurea [
+  field  SFVec3f     translation     0 0 0
+  field  SFRotation  rotation        0 0 1 0
+  field  SFString    name            "Aurea"  # Is `Robot.name`.
+  field  SFString    controller      "<extern>"   # Is `Robot.controller`.
+  field  MFString    controllerArgs  []       # Is `Robot.controllerArgs`.
+  field  SFString    customData      ""       # Is `Robot.customData`.
+  field  SFBool      supervisor      FALSE    # Is `Robot.supervisor`.
+  field  SFBool      synchronization TRUE     # Is `Robot.synchronization`.
+  field  SFBool      selfCollision   FALSE    # Is `Robot.selfCollision`.
+]
+{
+  Robot {
+    translation IS translation
+    rotation IS rotation
+    controller IS controller
+    controllerArgs IS controllerArgs
+    customData IS customData
+    supervisor IS supervisor
+    synchronization IS synchronization
+    selfCollision IS selfCollision
+    
+    children [
+      Shape {
+        appearance DEF base_link_material PBRAppearance {
+          baseColor 0.752940 0.752940 0.752940
+          roughness 1.000000
+          metalness 0
+        }
+        geometry DEF base_link Mesh {
+          url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/base_link.STL"
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0.000000 0.000000 1.000000
+          anchor 0.011996 0.000718 0.144400
+        }
+        device [
+          RotationalMotor {
+            name "head_pan"
+            maxTorque 10000
+          }
+          PositionSensor {
+            name "head_pan_sensor"
+          }
+        ]
+        endPoint Solid {
+          translation 0.011996 0.000718 0.144400
+          children [
+            Shape {
+              appearance DEF head_pan_link_material PBRAppearance {
+                baseColor 0.752940 0.752940 0.752940
+                roughness 1.000000
+                metalness 0
+              }
+              geometry DEF head_pan_link Mesh {
+                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_pan_link.STL"
+              }
+            }
+            HingeJoint {
+              jointParameters HingeJointParameters {
+                axis 0.000000 1.000000 0.000000
+                anchor 0.000000 0.000200 0.061040
+              }
+              device [
+                RotationalMotor {
+                  name "head_tilt"
+                  maxTorque 10000
+                }
+                PositionSensor {
+                  name "head_tilt_sensor"
+                }
+              ]
+              endPoint Solid {
+                translation 0.000000 0.000200 0.061040
+                children [
+                  Shape {
+                    appearance DEF head_tilt_link_material PBRAppearance {
+                      baseColor 0.752940 0.752940 0.752940
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF head_tilt_link Mesh {
+                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_tilt_link.STL"
+                    }
+                  }
+                ]
+                name "head_tilt_link"
+                boundingObject Transform{
+                  translation 0.012 0.0 0.026
+                  children [
+                    Box {
+                      size 0.0478 0.105 0.0745
+                    }
+                  ]
+                }
+                physics Physics {
+                  density -1
+                  mass 0.066570
+                  centerOfMass [ 0.018438 0.000447 0.041065 ]
+                  inertiaMatrix [
+                    5.088200e-05 1.426300e-05 4.387600e-05
+                    -2.503000e-07 -1.897700e-06 1.297400e-08
+                  ]
+                }
+              }
+            }
+          ]
+          name "head_pan_link"
+          boundingObject Transform{
+            translation 0.0 0.0 0.047
+            children [
+              Box{
+                size 0.032 0.040 0.052
+              }
+            ]
+          }
+          physics Physics {
+            density -1
+            mass 0.004243
+            centerOfMass [ 0.000000 0.008442 0.042088 ]
+            inertiaMatrix [
+              3.874600e-07 2.101100e-07 4.618700e-07
+              -1.386100e-16 3.379300e-14 3.264200e-12
+            ]
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0.000000 1.000000 0.000000
+          anchor 0.012683 0.068258 0.136600
+        }
+        device [
+          RotationalMotor {
+            name "l_sho_pitch"
+            maxTorque 10000
+          }
+          PositionSensor {
+            name "l_sho_pitch_sensor"
+          }
+        ]
+        endPoint Solid {
+          translation 0.012683 0.068258 0.136600
+          children [
+            Shape {
+              appearance DEF l_sho_pitch_link_material PBRAppearance {
+                baseColor 0.752941 0.752941 0.752941
+                roughness 1.000000
+                metalness 0
+              }
+              geometry DEF l_sho_pitch_link Mesh {
+                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_sho_pitch_link.STL"
+              }
+            }
+            HingeJoint {
+              jointParameters HingeJointParameters {
+                anchor 0.000842 0.049985 -0.032010
+              }
+              device [
+                RotationalMotor {
+                  name "l_sho_roll"
+                  maxTorque 10000
+                }
+                PositionSensor {
+                  name "l_sho_roll_sensor"
+                }
+              ]
+              endPoint Solid {
+                translation 0.000842 0.049985 -0.032010
+                children [
+                  Shape {
+                    appearance DEF l_sho_roll_link_material PBRAppearance {
+                      baseColor 0.752941 0.752941 0.752941
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF l_sho_roll_link Mesh {
+                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_sho_roll_link.STL"
+                    }
+                  }
+                  HingeJoint {
+                    jointParameters HingeJointParameters {
+                      axis 0.000000 0.000000 1.000000
+                      anchor 0.000692 0.101200 0.000000
+                    }
+                    device [
+                      RotationalMotor {
+                        name "l_el"
+                        maxTorque 10000
+                      }
+                      PositionSensor {
+                        name "l_el_sensor"
+                      }
+                    ]
+                    endPoint Solid {
+                      translation 0.000692 0.101200 0.000000
+                      children [
+                        Shape {
+                          appearance DEF l_el_link_material PBRAppearance {
+                            baseColor 0.752941 0.752941 0.752941
+                            roughness 1.000000
+                            metalness 0
+                          }
+                          geometry DEF l_el_link Mesh {
+                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_el_link.STL"
+                          }
+                        }
+                      ]
+                      name "l_el_link"
+                      boundingObject Transform{
+                        translation 0.0 0.1075 0.0
+                        children [
+                          Box{
+                            size 0.055 0.250 0.056
+                          }
+                        ]
+                      }
+                      physics Physics {
+                        density -1
+                        mass 0.074285
+                        centerOfMass [ 0.000003 0.081244 0.016308 ]
+                        inertiaMatrix [
+                          2.572424e-04 2.533499e-05 2.515703e-04
+                          2.401255e-09 7.639975e-09 -2.818629e-05
+                        ]
+                      }
+                    }
+                  }
+                ]
+                name "l_sho_roll_link"
+                boundingObject Transform{
+                     translation 0.0 0.05 0.0
+                     children [
+                        Box{
+                          size 0.053 0.13 0.053
+                        }
+                      ]
+                    }
+                physics Physics {
+                  density -1
+                  mass 0.197012
+                  centerOfMass [ 0.000190 0.050600 -0.000156 ]
+                  inertiaMatrix [
+                    7.723287e-05 5.392999e-05 7.723631e-05
+                    -3.306518e-07 5.348645e-09 1.713242e-07
+                  ]
+                }
+              }
+            }
+          ]
+          name "l_sho_pitch_link"
+          boundingObject Transform{
+            translation 0.0 0.045 -0.015
+            children [
+              Box{
+                size 0.056 0.038 0.061
+              }
+            ]
+          }
+          physics Physics {
+            density -1
+            mass 0.026585
+            centerOfMass [ 0.003521 0.040715 -0.009459 ]
+            inertiaMatrix [
+              7.262124e-06 1.681119e-05 1.654558e-05
+              6.517169e-08 1.069775e-08 1.561166e-06
+            ]
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0.000000 1.000000 0.000000
+          anchor 0.011753 -0.067739 0.136600
+        }
+        device [
+          RotationalMotor {
+            name "r_sho_pitch"
+            maxTorque 10000
+          }
+          PositionSensor {
+            name "r_sho_pitch_sensor"
+          }
+        ]
+        endPoint Solid {
+          translation 0.011753 -0.067739 0.136600
+          children [
+            Shape {
+              appearance DEF r_sho_pitch_link_material PBRAppearance {
+                baseColor 0.752941 0.752941 0.752941
+                roughness 1.000000
+                metalness 0
+              }
+              geometry DEF r_sho_pitch_link Mesh {
+                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_sho_pitch_link.STL"
+              }
+            }
+            HingeJoint {
+              jointParameters HingeJointParameters {
+                anchor 0.000000 -0.049990 -0.032010
+              }
+              device [
+                RotationalMotor {
+                  name "r_sho_roll"
+                  maxTorque 10000
+                }
+                PositionSensor {
+                  name "r_sho_roll_sensor"
+                }
+              ]
+              endPoint Solid {
+                translation 0.000000 -0.049990 -0.032010
+                children [
+                  Shape {
+                    appearance DEF r_sho_roll_link_material PBRAppearance {
+                      baseColor 0.752941 0.752941 0.752941
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF r_sho_roll_link Mesh {
+                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_sho_roll_link.STL"
+                    }
+                  }
+                  HingeJoint {
+                    jointParameters HingeJointParameters {
+                      axis 0.000000 0.000000 1.000000
+                      anchor -0.000692 -0.101200 0.000000
+                    }
+                    device [
+                      RotationalMotor {
+                        name "r_el"
+                        maxTorque 10000
+                      }
+                      PositionSensor {
+                        name "r_el_sensor"
+                      }
+                    ]
+                    endPoint Solid {
+                      translation -0.000692 -0.101200 0.000000
+                      children [
+                        Shape {
+                          appearance DEF r_el_link_material PBRAppearance {
+                            baseColor 0.752941 0.752941 0.752941
+                            roughness 1.000000
+                            metalness 0
+                          }
+                          geometry DEF r_el_link Mesh {
+                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_el_link.STL"
+                          }
+                        }
+                      ]
+                      name "r_el_link"
+                      boundingObject Transform{
+                        translation 0.0 -0.1075 0.0
+                        children [
+                          Box{
+                            size 0.055 0.250 0.056
+                          }
+                        ]
+                      }
+                      physics Physics {
+                        density -1
+                        mass 0.074285
+                        centerOfMass [ 0.000000 -0.081244 0.016308 ]
+                        inertiaMatrix [
+                          2.572424e-04 2.533499e-05 2.515703e-04
+                          1.401294e-08 -7.639975e-09 2.818630e-05
+                        ]
+                      }
+                    }
+                  }
+                ]
+                name "r_sho_roll_link"
+                boundingObject Transform{
+                     translation 0.0 -0.05 0.0
+                     children [
+                        Box{
+                          size 0.053 0.13 0.053
+                        }
+                      ]
+                    }
+                physics Physics {
+                  density -1
+                  mass 0.197012
+                  centerOfMass [ -0.000190 -0.050600 -0.000156 ]
+                  inertiaMatrix [
+                    7.723287e-05 5.392999e-05 7.723630e-05
+                    -3.306543e-07 -5.348630e-09 -1.713217e-07
+                  ]
+                }
+              }
+            }
+          ]
+          name "r_sho_pitch_link"
+          boundingObject Transform{
+            translation 0.0 -0.045 -0.015
+            children [
+              Box{
+                size 0.056 0.038 0.061
+              }
+            ]
+          }
+          physics Physics {
+            density -1
+            mass 0.026585
+            centerOfMass [ -0.003243 -0.040739 -0.009459 ]
+            inertiaMatrix [
+              7.261679e-06 1.681163e-05 1.654558e-05
+              -9.876112e-11 -2.724953e-11 -1.561202e-06
+            ]
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0.000000 0.000000 1.000000
+          anchor 0.000000 -0.042500 0.000000
+        }
+        device [
+          RotationalMotor {
+            name "r_hip_yaw"
+            maxTorque 10000
+          }
+          PositionSensor {
+            name "r_hip_yaw_sensor"
+          }
+        ]
+        endPoint Solid {
+          translation 0.000000 -0.042500 0.000000
+          children [
+            Shape {
+              appearance DEF r_hip_yaw_link_material PBRAppearance {
+                baseColor 0.792157 0.819608 0.933333
+                roughness 1.000000
+                metalness 0
+              }
+              geometry DEF r_hip_yaw_link Mesh {
+                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_yaw_link.STL"
+              }
+            }
+            HingeJoint {
+              jointParameters HingeJointParameters {
+                anchor -0.054000 -0.000500 -0.062000
+              }
+              device [
+                RotationalMotor {
+                  name "r_hip_roll"
+                  maxTorque 10000
+                }
+                PositionSensor {
+                  name "r_hip_roll_sensor"
+                }
+              ]
+              endPoint Solid {
+                translation -0.054000 -0.000500 -0.062000
+                children [
+                  Shape {
+                    appearance DEF r_hip_roll_link_material PBRAppearance {
+                      baseColor 0.752941 0.752941 0.752941
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF r_hip_roll_link Mesh {
+                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_roll_link.STL"
+                    }
+                  }
+                  HingeJoint {
+                    jointParameters HingeJointParameters {
+                      axis 0.000000 1.000000 0.000000
+                      anchor 0.054000 0.000500 0.000000
+                    }
+                    device [
+                      RotationalMotor {
+                        name "r_hip_pitch"
+                        maxTorque 10000
+                      }
+                      PositionSensor {
+                        name "r_hip_pitch_sensor"
+                      }
+                    ]
+                    endPoint Solid {
+                      translation 0.054000 0.000500 0.000000
+                      children [
+                        Shape {
+                          appearance DEF r_hip_pitch_link_material PBRAppearance {
+                            baseColor 0.752941 0.752941 0.752941
+                            roughness 1.000000
+                            metalness 0
+                          }
+                          geometry DEF r_hip_pitch_link Mesh {
+                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_pitch_link.STL"
+                          }
+                        }
+                        HingeJoint {
+                          jointParameters HingeJointParameters {
+                            axis 0.000000 1.000000 0.000000
+                            anchor 0.000000 -0.000430 -0.120000
+                          }
+                          device [
+                            RotationalMotor {
+                              name "r_knee"
+                              maxTorque 10000
+                            }
+                            PositionSensor {
+                              name "r_knee_sensor"
+                            }
+                          ]
+                          endPoint Solid {
+                            translation 0.000000 -0.000430 -0.120000
+                            children [
+                              Shape {
+                                appearance DEF r_knee_link_material PBRAppearance {
+                                  baseColor 0.752941 0.752941 0.752941
+                                  roughness 1.000000
+                                  metalness 0
+                                }
+                                geometry DEF r_knee_link Mesh {
+                                  url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_knee_link.STL"
+                                }
+                              }
+                              HingeJoint {
+                                jointParameters HingeJointParameters {
+                                  axis 0.000000 1.000000 0.000000
+                                  anchor 0.000000 -0.000500 -0.085000
+                                }
+                                device [
+                                  RotationalMotor {
+                                    name "r_ank_pitch"
+                                    maxTorque 10000
+                                  }
+                                  PositionSensor {
+                                    name "r_ank_pitch_sensor"
+                                  }
+                                ]
+                                endPoint Solid {
+                                  translation 0.000000 -0.000500 -0.085000
+                                  children [
+                                    Shape {
+                                      appearance DEF r_ank_pitch_link_material PBRAppearance {
+                                        baseColor 0.752941 0.752941 0.752941
+                                        roughness 1.000000
+                                        metalness 0
+                                      }
+                                      geometry DEF r_ank_pitch_link Mesh {
+                                        url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_ank_pitch_link.STL"
+                                      }
+                                    }
+                                    HingeJoint {
+                                      jointParameters HingeJointParameters {
+                                        anchor -0.054000 0.000000 0.000000
+                                      }
+                                      device [
+                                        RotationalMotor {
+                                          name "r_ank_roll"
+                                          maxTorque 10000
+                                        }
+                                        PositionSensor {
+                                          name "r_ank_roll_sensor"
+                                        }
+                                      ]
+                                      endPoint Solid {
+                                        translation -0.054000 0.000000 0.000000
+                                        children [
+                                          Shape {
+                                            appearance DEF r_ank_roll_link_material PBRAppearance {
+                                              baseColor 0.752941 0.752941 0.752941
+                                              roughness 1.000000
+                                              metalness 0
+                                            }
+                                            geometry DEF r_ank_roll_link Mesh {
+                                              url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_ank_roll_link.STL"
+                                            }
+                                          }
+                                        ]
+                                        name "r_ank_roll_link"
+                                        boundingObject Transform {
+                                          translation 0.054 -0.01475 -0.023
+                                          children [
+                                            Box {
+                                              size 0.14 0.09 0.0515
+                                            }
+                                          ]
+                                        }
+                                        
+                                        physics Physics {
+                                          density -1
+                                          mass 0.087703
+                                          centerOfMass [ 0.054000 -0.011831 -0.035115 ]
+                                          inertiaMatrix [
+                                            4.993647e-05 1.211700e-04 1.661485e-04
+                                            2.182411e-12 -8.103872e-20 -2.733452e-20
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                  name "r_ank_pitch_link"
+                                  boundingObject Transform{
+                                    translation -0.027 0.0 0.018
+                                    children [
+                                      Box {
+                                        size 0.107 0.053 0.065
+                                      }
+                                    ]
+                                  } 
+                                  
+                                  physics Physics {
+                                    density -1
+                                    mass 0.183945
+                                    centerOfMass [ -0.024136 0.000405 0.015199 ]
+                                    inertiaMatrix [
+                                      7.351537e-05 7.214532e-05 4.469007e-05
+                                      -9.680863e-13 1.996527e-07 1.713545e-07
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                            name "r_knee_link"
+                            boundingObject Transform{
+                                    translation 0.0 0.0 -0.0425
+                                    children [
+                                      Box {
+                                        size 0.03 0.056 0.115
+                                      }
+                                    ]
+                                  } 
+                            physics Physics {
+                              density -1
+                              mass 0.037169
+                              centerOfMass [ 0.000000 -0.000250 -0.041900 ]
+                              inertiaMatrix [
+                                3.024874e-05 3.303374e-05 2.814923e-06
+                                2.837958e-21 2.697212e-19 -2.463373e-21
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                      name "r_hip_pitch_link"
+                      boundingObject Transform{
+                        translation 0.0 0.0 -0.06
+                        children [
+                          Box {
+                            size 0.04 0.056 0.149
+                          }
+                        ]
+                      }
+                      physics Physics {
+                        density -1
+                        mass 0.126176
+                        centerOfMass [ 0.000158 0.000106 -0.085482 ]
+                        inertiaMatrix [
+                          6.481409e-05 6.271911e-05 2.691534e-05
+                          2.107405e-09 1.164491e-06 -1.730256e-07
+                        ]
+                      }
+                    }
+                  }
+                ]
+                name "r_hip_roll_link"
+                boundingObject Transform{
+                        translation 0.028 0.0 -0.018
+                        children [
+                          Box {
+                            size 0.107 0.053 0.065
+                          }
+                        ]
+                      }
+                physics Physics {
+                  density -1
+                  mass 0.183945
+                  centerOfMass [ 0.029864 0.000095 -0.015199 ]
+                  inertiaMatrix [
+                    7.351537e-05 7.214532e-05 4.469007e-05
+                    -9.121747e-13 -1.996576e-07 1.713520e-07
+                  ]
+                }
+              }
+            }
+          ]
+          name "r_hip_yaw_link"
+          boundingObject Transform{
+                        translation 0.0 0.0 -0.046
+                        children [
+                          Box {
+                            size 0.056 0.033 0.039
+                          }
+                        ]
+                      }
+          physics Physics {
+            density -1
+            mass 0.006941
+            centerOfMass [ 0.000000 0.000000 -0.035990 ]
+            inertiaMatrix [
+              1.665142e-06 4.149645e-06 4.004217e-06
+              7.611875e-14 1.131065e-21 4.475006e-22
+            ]
+          }
+        }
+      }
+      HingeJoint {
+        jointParameters HingeJointParameters {
+          axis 0.000000 0.000000 1.000000
+          anchor 0.000000 0.042500 0.000000
+        }
+        device [
+          RotationalMotor {
+            name "l_hip_yaw"
+            maxTorque 10000
+          }
+          PositionSensor {
+            name "l_hip_yaw_sensor"
+          }
+        ]
+        endPoint Solid {
+          translation 0.000000 0.042500 0.000000
+          children [
+            Shape {
+              appearance DEF l_hip_yaw_link_material PBRAppearance {
+                baseColor 0.898039 0.917647 0.929412
+                roughness 1.000000
+                metalness 0
+              }
+              geometry DEF l_hip_yaw_link Mesh {
+                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_yaw_link.STL"
+              }
+            }
+            HingeJoint {
+              jointParameters HingeJointParameters {
+                anchor -0.054000 -0.000500 -0.062000
+              }
+              device [
+                RotationalMotor {
+                  name "l_hip_roll"
+                  maxTorque 10000
+                }
+                PositionSensor {
+                  name "l_hip_roll_sensor"
+                }
+              ]
+              endPoint Solid {
+                translation -0.054000 -0.000500 -0.062000
+                children [
+                  Shape {
+                    appearance DEF l_hip_roll_link_material PBRAppearance {
+                      baseColor 0.752941 0.752941 0.752941
+                      roughness 1.000000
+                      metalness 0
+                    }
+                    geometry DEF l_hip_roll_link Mesh {
+                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_roll_link.STL"
+                    }
+                  }
+                  HingeJoint {
+                    jointParameters HingeJointParameters {
+                      axis 0.000000 1.000000 0.000000
+                      anchor 0.054000 0.000500 0.000000
+                    }
+                    device [
+                      RotationalMotor {
+                        name "l_hip_pitch"
+                        maxTorque 10000
+                      }
+                      PositionSensor {
+                        name "l_hip_pitch_sensor"
+                      }
+                    ]
+                    endPoint Solid {
+                      translation 0.054000 0.000500 0.000000
+                      children [
+                        Shape {
+                          appearance DEF l_hip_pitch_link_material PBRAppearance {
+                            baseColor 0.752941 0.752941 0.752941
+                            roughness 1.000000
+                            metalness 0
+                          }
+                          geometry DEF l_hip_pitch_link Mesh {
+                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_pitch_link.STL"
+                          }
+                        }
+                        HingeJoint {
+                          jointParameters HingeJointParameters {
+                            axis 0.000000 1.000000 0.000000
+                            anchor 0.000000 -0.000430 -0.120000
+                          }
+                          device [
+                            RotationalMotor {
+                              name "l_knee"
+                              maxTorque 10000
+                            }
+                            PositionSensor {
+                              name "l_knee_sensor"
+                            }
+                          ]
+                          endPoint Solid {
+                            translation 0.000000 -0.000430 -0.120000
+                            children [
+                              Shape {
+                                appearance DEF l_knee_link_material PBRAppearance {
+                                  baseColor 0.752941 0.752941 0.752941
+                                  roughness 1.000000
+                                  metalness 0
+                                }
+                                geometry DEF l_knee_link Mesh {
+                                  url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_knee_link.STL"
+                                }
+                              }
+                              HingeJoint {
+                                jointParameters HingeJointParameters {
+                                  axis 0.000000 1.000000 0.000000
+                                  anchor 0.000000 -0.000500 -0.085000
+                                }
+                                device [
+                                  RotationalMotor {
+                                    name "l_ank_pitch"
+                                    maxTorque 10000
+                                  }
+                                  PositionSensor {
+                                    name "l_ank_pitch_sensor"
+                                  }
+                                ]
+                                endPoint Solid {
+                                  translation 0.000000 -0.000500 -0.085000
+                                  children [
+                                    Shape {
+                                      appearance DEF l_ank_pitch_link_material PBRAppearance {
+                                        baseColor 0.752941 0.752941 0.752941
+                                        roughness 1.000000
+                                        metalness 0
+                                      }
+                                      geometry DEF l_ank_pitch_link Mesh {
+                                        url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_ank_pitch_link.STL"
+                                      }
+                                    }
+                                    HingeJoint {
+                                      jointParameters HingeJointParameters {
+                                        anchor -0.054000 0.000500 0.000000
+                                      }
+                                      device [
+                                        RotationalMotor {
+                                          name "l_ank_roll"
+                                          maxTorque 10000
+                                        }
+                                        PositionSensor {
+                                          name "l_ank_roll_sensor"
+                                        }
+                                      ]
+                                      endPoint Solid {
+                                        translation -0.054000 0.000500 0.000000
+                                        children [
+                                          Shape {
+                                            appearance DEF l_ank_roll_link_material PBRAppearance {
+                                              baseColor 0.752941 0.752941 0.752941
+                                              roughness 1.000000
+                                              metalness 0
+                                            }
+                                            geometry DEF l_ank_roll_link Mesh {
+                                              url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_ank_roll_link.STL"
+                                            }
+                                          }
+                                        ]
+                                        name "l_ank_roll_link"
+                                        boundingObject Transform{
+                                          translation 0.054 0.01475 -0.023
+                                          children[
+                                            Box{
+                                              size 0.14 0.09 0.0515
+                                            }
+                                          ]
+                                        }
+                                        
+                                        physics Physics {
+                                          density -1
+                                          mass 0.087703
+                                          centerOfMass [ 0.054000 0.011331 -0.035115 ]
+                                          inertiaMatrix [
+                                            4.993647e-05 1.211700e-04 1.661485e-04
+                                            -1.810001e-20 -2.314027e-20 -8.689048e-23
+                                          ]
+                                        }
+                                      }
+                                    }
+                                  ]
+                                  name "l_ank_pitch_link"
+                                  boundingObject Transform {
+                                    translation -0.027 0.0 0.018
+                                    children [
+                                      Box{
+                                        size 0.107 0.0528 0.065
+                                      }
+                                    ]
+                                  } 
+                                  
+                                  physics Physics {
+                                    density -1
+                                    mass 0.183945
+                                    centerOfMass [ -0.024136 0.000405 0.015199 ]
+                                    inertiaMatrix [
+                                      7.351538e-05 7.214532e-05 4.469007e-05
+                                      -4.966089e-14 1.996539e-07 1.713508e-07
+                                    ]
+                                  }
+                                }
+                              }
+                            ]
+                            name "l_knee_link"
+                            boundingObject Transform{
+                                    translation 0.0 0.0 -0.0425
+                                    children [
+                                      Box {
+                                        size 0.03 0.056 0.115
+                                      }
+                                    ]
+                                  } 
+                            physics Physics {
+                              density -1
+                              mass 0.037169
+                              centerOfMass [ -0.000000 -0.000250 -0.041900 ]
+                              inertiaMatrix [
+                                3.024874e-05 3.303374e-05 2.814923e-06
+                                -4.128879e-21 1.066466e-21 -8.465962e-21
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                      name "l_hip_pitch_link"
+                      boundingObject Transform{
+                        translation 0.0 0.0 -0.06
+                        children [
+                          Box {
+                            size 0.04 0.056 0.149
+                          }
+                        ]
+                      }
+                      physics Physics {
+                        density -1
+                        mass 0.126176
+                        centerOfMass [ 0.000158 0.000106 -0.085482 ]
+                        inertiaMatrix [
+                          6.481408e-05 6.271911e-05 2.691534e-05
+                          2.106551e-09 1.164493e-06 -1.730292e-07
+                        ]
+                      }
+                    }
+                  }
+                ]
+                name "l_hip_roll_link"
+                boundingObject Transform{
+                        translation 0.028 0.0 -0.018
+                        children [
+                          Box {
+                            size 0.107 0.053 0.065
+                          }
+                        ]
+                      }
+                physics Physics {
+                  density -1
+                  mass 0.183945
+                  centerOfMass [ 0.029864 0.000095 -0.015199 ]
+                  inertiaMatrix [
+                    7.351538e-05 7.214532e-05 4.469007e-05
+                    4.822561e-14 -1.996539e-07 1.713508e-07
+                  ]
+                }
+              }
+            }
+          ]
+          name "l_hip_yaw_link"
+          boundingObject Transform{
+                        translation 0.0 0.0 -0.046
+                        children [
+                          Box {
+                            size 0.056 0.033 0.039
+                          }
+                        ]
+                      }
+          physics Physics {
+            density -1
+            mass 0.018740
+            centerOfMass [ 0.000000 -0.000000 -0.035990 ]
+            inertiaMatrix [
+              4.495883e-06 1.120404e-05 1.081139e-05
+              1.640706e-21 2.904081e-21 2.729942e-21
+            ]
+          }
+        }
+      }
+    ]
+    name IS name
+    boundingObject Transform{
+      translation 0.0 0.0 0.07
+      children [
+        Box{
+          size 0.125 0.193 0.193
+        }
+      ]
+    }
+    physics Physics {
+      density -1
+      mass 1.438300
+      centerOfMass [ -0.005439 -0.001346 0.071435 ]
+      inertiaMatrix [
+        2.822000e-03 1.147700e-03 3.502800e-03
+        1.839400e-05 7.337300e-06 1.190800e-06
+      ]
+    }
+  }
+}

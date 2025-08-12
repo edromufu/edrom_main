@@ -4,8 +4,8 @@
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
   name="Aurea">
-  <webots>
-        <plugin type="aurea_webots_sim.aurea_controller2.ArmPositionController" />
+	 <webots>
+        <plugin type="aurea_webots.aurea_driver.AureaJointController" />
     </webots>
   <link
     name="base_link">
