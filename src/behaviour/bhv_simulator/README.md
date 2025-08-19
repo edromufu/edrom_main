@@ -72,7 +72,7 @@ colcon build
 
 Entre no diretório em questão.
 ```
-cd cd edrom_main/src/behaviour/bhv_simulator/
+cd edrom_main/src/behaviour/bhv_simulator/
 ```
 
 E por fim, execute
