@@ -1,0 +1,11 @@
+walking_engine_node:
+  ros__parameters:
+    step_period: 1.0
+    com_height: 0.18
+    step_height: 0.02
+    double_support_ratio: 0.3
+    feet_separation: 0.05
+    ik_service_name: "/solve_ik"
+    joint_command_topic: "/goal_joint_states"
+    cmd_vel_topic: "/cmd_vel"
+    update_frequency: 100.0

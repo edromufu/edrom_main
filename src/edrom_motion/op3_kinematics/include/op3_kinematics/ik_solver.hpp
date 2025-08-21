@@ -4,7 +4,6 @@
 #include <string>
 #include <Eigen/Dense>
 
-// O namespace agora usa o nome correto do pacote
 namespace op3_kinematics
 {
 
@@ -22,7 +21,7 @@ private:
   const double L_COXA = 0.11;
   const double L_TIBIA = 0.08;
   const double D_QUADRIL_OFFSET = 0.05;
-  const double D_TORNOZELO_SOLA = 0.03;
+  const double D_TORNOZELO_SOLA = 0.025;
 };
 
 } // namespace op3_kinematics
