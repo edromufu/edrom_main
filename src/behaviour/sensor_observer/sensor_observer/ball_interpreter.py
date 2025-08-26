@@ -7,7 +7,8 @@ Recebe parametros da visao(posição da bola)
 Retorna infos booleanos sobre a bola 
 '''
 
-import rospy, os, sys
+import rclpy
+from rclpy.node import Node
 from vision_msgs.msg import Webotsmsg
 
 edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
@@ -28,7 +29,7 @@ class BallInterpreter():
 
         #Variaveis do ROS
         rospy.Subscriber(self.parameters.vision2BhvTopic, Webotsmsg, self.callback_vision)
-
+        
         #Variaveis de código
         self.ballRelativePosition = 'none'
         self.ballClose = False

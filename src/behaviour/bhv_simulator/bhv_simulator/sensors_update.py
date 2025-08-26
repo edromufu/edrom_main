@@ -12,6 +12,8 @@ from controller import Supervisor
 from geometry_msgs.msg import Vector3 
 from sensor_msgs.msg import Image as visionSimImage
 from sensor_msgs.msg import JointState
+from behaviour_parameters import BehaviourParameters
+
 
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 
@@ -101,7 +103,7 @@ class RobotSensors():
             history=HistoryPolicy.KEEP_LAST,
             depth=100
         )
-        self.accel_publisher = self.node.create_publisher(Vector3, '/webots_natasha/behaviour_controller', qos_profile)
+        self.accel_publisher = self.node.create_publisher(Vector3, self.parameters.imuAccelTopic, 10)
         self.accel_msg = Vector3()
     
     #Função chamada pelo construtor para habilitação de todos recursos da câmera
@@ -125,7 +127,7 @@ class RobotSensors():
             history=HistoryPolicy.KEEP_LAST,
             depth=33 
         )
-        self.pubImage = self.node.create_publisher(visionSimImage, '/webots_natasha/vision_controller', qos_profile)
+        self.pubImage = self.node.create_publisher(visionSimImage, self.parameters.visionImageTopic, 10)
 
         self.image_msg = visionSimImage()
         self.image_msg.encoding = 'bgra8'
