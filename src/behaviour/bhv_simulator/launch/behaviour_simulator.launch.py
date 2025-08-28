@@ -13,14 +13,7 @@ def generate_launch_description():
 
     # Configura as variáveis de ambiente para usar as bibliotecas do Webots
     # instalado no sistema, garantindo a compatibilidade.
-    webots_env = SetEnvironmentVariable(
-        'LD_LIBRARY_PATH',
-        [
-            EnvironmentVariable('WEBOTS_HOME', default_value=''), '/lib/controller:',
-            EnvironmentVariable('LD_LIBRARY_PATH', default_value='')
-        ]
-    )
-    
+ 
     python_path = SetEnvironmentVariable(
         'PYTHONPATH',
         [
@@ -37,7 +30,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        webots_env,
         python_path,
         webots_process
     ])
