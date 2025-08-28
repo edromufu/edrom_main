@@ -37,6 +37,14 @@ PROTO Aurea [
           url "../../../../../src/aurea_description/meshes/base_link.STL"
         }
       }
+      Accelerometer {
+        name "imu_accel"
+        resolution 0.01
+        lookupTable []
+      }   
+      Gyro {
+      name "imu_gyro"
+      }
       HingeJoint {
         jointParameters HingeJointParameters {
           axis 0.000000 0.000000 1.000000
