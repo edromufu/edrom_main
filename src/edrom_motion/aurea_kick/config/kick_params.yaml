@@ -1,0 +1,13 @@
+kick_node:
+  ros__parameters:
+    phase_a_time: 1.2  # Tempo para deslocar o ZMP (aumentado para mais estabilidade)
+    phase_b_time: 0.5  # Tempo para o recuo do pé
+    phase_c_time: 0.25 # Tempo do chute em si
+    phase_d_time: 0.5  # Tempo para o retorno do pé
+    phase_e_time: 1.2  # Tempo para centralizar o ZMP (aumentado)
+    x_amplitude: 0.08  # Distância do recuo/avanço do pé em X
+    z_height: 0.04     # Altura máxima que o pé atinge no chute
+
+    # Parâmetros de equilíbrio
+    com_height: 0.18
+    feet_separation: 0.05

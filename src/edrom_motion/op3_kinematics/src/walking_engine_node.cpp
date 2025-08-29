@@ -18,22 +18,33 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 1.0);
+  this->declare_parameter<double>("step_period", 0.8);
   this->declare_parameter<double>("com_height", 0.18);
   this->declare_parameter<double>("step_height", 0.02);
-  this->declare_parameter<double>("double_support_ratio", 0.3);
+  this->declare_parameter<double>("double_support_ratio", 0.2);
   this->declare_parameter<double>("feet_separation", 0.05);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
   this->declare_parameter<double>("update_frequency", 100.0);
-
+  this->declare_parameter<double>("arm_swing_amplitude", 0.4);
+  this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
+  this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
+  this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
+  
   T_ = this->get_parameter("step_period").as_double();
   z_com_ = this->get_parameter("com_height").as_double();
   z_step_ = this->get_parameter("step_height").as_double();
   ds_ratio_ = this->get_parameter("double_support_ratio").as_double();
   y_sep_ = this->get_parameter("feet_separation").as_double();
   update_period_ = 1.0 / this->get_parameter("update_frequency").as_double();
+  y_sep_ = this->get_parameter("feet_separation").as_double();
+  update_period_ = 1.0 / this->get_parameter("update_frequency").as_double();
+  arm_swing_amplitude_ = this->get_parameter("arm_swing_amplitude").as_double(); // <-- LEIA O NOVO PARÂMETRO
+  idle_shoulder_pitch_ = this->get_parameter("idle_arm_pose.shoulder_pitch").as_double();
+  idle_shoulder_roll_ = this->get_parameter("idle_arm_pose.shoulder_roll").as_double();
+  idle_elbow_ = this->get_parameter("idle_arm_pose.elbow").as_double();
+
 
   // Configuração inicial do estado
   left_foot_.is_left = true;
@@ -53,6 +64,7 @@ WalkingEngineNode::WalkingEngineNode()
     }
     RCLCPP_INFO(this->get_logger(), "Serviço de IK '%s' não disponível, aguardando...", ik_service_name.c_str());
   }
+
 
   // Publisher e Subscriber
   auto joint_cmd_topic = this->get_parameter("joint_command_topic").as_string();
@@ -107,6 +119,7 @@ void WalkingEngineNode::start_new_step()
   RCLCPP_INFO(this->get_logger(), "Iniciando novo passo. Estado: %d, Apoio: %s", current_state_, support_foot_->is_left ? "Esquerdo" : "Direito");
 }
 
+
 void WalkingEngineNode::main_loop()
 {
   geometry_msgs::msg::Twist current_cmd;
@@ -120,13 +133,16 @@ void WalkingEngineNode::main_loop()
 
   // Atualiza o estado da máquina de estados com base no comando
   WalkingState previous_state = current_state_;
-  if (should_walk) {
-    current_state_ = WALKING;
-  } else {
-    if (current_state_ == WALKING || current_state_ == IDLE_MARCH) {
-      current_state_ = IDLE_MARCH;
+
+  if (current_state_ == IDLE) {
+    if (should_walk) {
+      current_state_ = WALKING;
+    }
+  } else if (current_state_ == WALKING || current_state_ == IDLE_MARCH) {
+    if (should_walk) {
+      current_state_ = WALKING;
     } else {
-      current_state_ = IDLE;
+      current_state_ = IDLE_MARCH;
     }
   }
 
@@ -134,10 +150,26 @@ void WalkingEngineNode::main_loop()
   if (previous_state == IDLE && (current_state_ == WALKING || current_state_ == IDLE_MARCH)) {
       start_new_step();
   }
-
   // Se não estiver fazendo nada (nem andando, nem marchando), sai do loop
   if (current_state_ == IDLE) {
-    return;
+    sensor_msgs::msg::JointState idle_arm_msg;
+    idle_arm_msg.header.stamp = this->get_clock()->now();
+    
+    // Nomes das juntas dos braços (verifique se correspondem ao seu robô)
+    idle_arm_msg.name = {
+      "l_sho_pitch", "r_sho_pitch",
+      "l_sho_roll", "r_sho_roll",
+      "l_el", "r_el"
+    };
+    // Posições de repouso (simétricas) lidas dos parâmetros
+    idle_arm_msg.position = {
+      idle_shoulder_pitch_,  idle_shoulder_pitch_,
+      idle_shoulder_roll_,  -idle_shoulder_roll_, // Roll é simétrico
+      idle_elbow_,           -idle_elbow_
+    };
+    
+    joint_pub_->publish(idle_arm_msg);
+    return; // Sai do loop
   }
 
   // Prepara para receber novas respostas da IK
@@ -148,7 +180,6 @@ void WalkingEngineNode::main_loop()
     combined_joint_state_.position.clear();
   }
 
-  // A lógica de execução do passo é a mesma para WALKING e IDLE_MARCH
   t_step_ += update_period_;
 
   { // Bloco de lógica da caminhada/marcha
@@ -227,6 +258,37 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
   }
 
   if (ik_responses_received_ >= 2) {
+      double phi = t_step_ / T_; // Fase do passo atual (de 0.0 a 1.0)
+    // Usamos sin(PI * phi) para criar um movimento suave de ida
+      double base_angle = arm_swing_amplitude_ * std::sin(M_PI * phi);
+
+      double l_sho_pitch = 0.0;
+      double r_sho_pitch = 0.0;
+    
+    // O braço se move em oposição à perna de APOIO
+      if (support_foot_->is_left) {
+        l_sho_pitch = -base_angle;
+        r_sho_pitch = base_angle;
+      } else {
+        l_sho_pitch = base_angle;
+        r_sho_pitch = -base_angle;
+      }
+    
+      combined_joint_state_.name.push_back("l_sho_pitch");
+      combined_joint_state_.position.push_back(l_sho_pitch);
+    
+      combined_joint_state_.name.push_back("r_sho_pitch");
+      combined_joint_state_.position.push_back(r_sho_pitch);
+    
+    
+
+    //combined_joint_state_.name.push_back("l_el");
+    //combined_joint_state_.position.push_back(std::abs(l_sho_pitch) * 0.5); // Dobra metade do ombro
+    //combined_joint_state_.name.push_back("r_el");
+    //combined_joint_state_.position.push_back(std::abs(r_sho_pitch) * 0.5); // Dobra metade do ombro
+
+    // =================================================================
+    
     combined_joint_state_.header.stamp = this->get_clock()->now();
     joint_pub_->publish(combined_joint_state_);
   }

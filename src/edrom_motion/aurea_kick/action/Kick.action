@@ -1,0 +1,7 @@
+string leg_id       # "esquerda" ou "direita"
+---
+# Resultado (Result): O resultado final da ação
+bool success
+---
+# Feedback: Informações durante a execução do chute
+string current_phase

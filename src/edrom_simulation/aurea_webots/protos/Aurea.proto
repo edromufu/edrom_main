@@ -77,6 +77,7 @@ PROTO Aurea [
                 PositionSensor {
                   name "head_tilt_sensor"
                 }
+                
               ]
               endPoint Solid {
                 translation 0.000000 0.000200 0.061040
@@ -90,6 +91,18 @@ PROTO Aurea [
                     geometry DEF head_tilt_link Mesh {
                       url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_tilt_link.STL"
                     }
+                  }
+                  Transform{
+                    translation 0.1 0.0 0.0
+                    rotation 0 1 0 -1.5708
+                    children[
+                      Camera{
+                        name "camera"
+                        fieldOfView 1.3613
+                        width 600
+                        height 400
+                      }
+                    ]
                   }
                 ]
                 name "head_tilt_link"

@@ -9,3 +9,17 @@ walking_engine_node:
     joint_command_topic: "/goal_joint_states"
     cmd_vel_topic: "/cmd_vel"
     update_frequency: 100.0
+    arm_swing_amplitude: 0.4
+
+    idle_arm_pose:
+      shoulder_pitch: 0.0   # Braços retos para baixo
+      shoulder_roll: -1.4   # Braços levemente para frente/para o lado (evita colisão)
+      elbow: -1.2   
+
+    kick_phase_a_time: 0.8  # Tempo para deslocar o ZMP
+    kick_phase_b_time: 0.4  # Tempo para o recuo do pé
+    kick_phase_c_time: 0.2  # Tempo do chute em si (rápido)
+    kick_phase_d_time: 0.4  # Tempo para o retorno do pé
+    kick_phase_e_time: 0.8  # Tempo para centralizar o ZMP
+    kick_x_amplitude: 0.08  # Distância do recuo/avanço do pé em X
+    kick_z_height: 0.04     # Altura máxima que o pé atinge no chute

@@ -9,8 +9,9 @@
 
 #include "op3_kinematics/srv/solve_ik.hpp" 
 #include "op3_kinematics/trajectory_generator.hpp"
+#include "op3_kinematics/srv/trigger_kick.hpp" // ADICIONADO
 
-using SolveIK = op3_kinematics::srv::SolveIK;
+using SolveIK = op3_kinematics::srv::SolveIK; 
 
 class WalkingEngineNode : public rclcpp::Node
 {
@@ -18,7 +19,8 @@ public:
   enum WalkingState {
     IDLE,
     WALKING,
-    IDLE_MARCH
+    IDLE_MARCH,
+
   };
 
   WalkingEngineNode();
@@ -33,6 +35,10 @@ private:
 
   // Parâmetros
   double T_, z_com_, z_step_, ds_ratio_, y_sep_;
+  double arm_swing_amplitude_;
+  double idle_shoulder_pitch_;
+  double idle_shoulder_roll_;
+  double idle_elbow_;
   double update_period_;
 
   // Estado da caminhada

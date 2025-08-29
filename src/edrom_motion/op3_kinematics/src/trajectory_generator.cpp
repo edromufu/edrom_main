@@ -120,17 +120,23 @@ void select_next_poses(
   double dy = v_cmd.linear.y * T;
   double d_yaw = v_cmd.angular.z * T;
 
-  out_next_torso.position = current_torso.position + Eigen::Vector2d(dx, dy);
+  Eigen::Rotation2Dd rot(current_torso.yaw);
+  Eigen::Vector2d world_displacement = rot * Eigen::Vector2d(dx, dy);
+
+  out_next_torso.position = current_torso.position + world_displacement;
+
   out_next_torso.yaw = current_torso.yaw + d_yaw;
 
   double foot_offset_y = swing_foot.is_left ? y_sep : -y_sep;
-
-  Eigen::Rotation2Dd rot(out_next_torso.yaw);
+  
+  Eigen::Rotation2Dd next_rot(out_next_torso.yaw);
   Eigen::Vector2d foot_offset_in_torso_frame(v_cmd.linear.x * T / 2.0, foot_offset_y);
-  Eigen::Vector2d world_offset = rot * foot_offset_in_torso_frame;
-
-  out_next_swing.position = out_next_torso.position + world_offset;
+  Eigen::Vector2d world_foot_offset = next_rot * foot_offset_in_torso_frame;
+  
+  out_next_swing.position = out_next_torso.position + world_foot_offset;
   out_next_swing.yaw = out_next_torso.yaw;
 }
+
+
 
 }  // namespace op3_kinematics

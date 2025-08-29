@@ -37,7 +37,8 @@ class AureaJointController:
                 self.__motors[name] = motor
                 self.__node.get_logger().info(f"Motor '{name}' encontrado com sucesso.")
 
-
+        mCamera = self.__robot.getDevice("camera")
+        mCamera.enable(self.__timestep)
         self.__node.create_subscription(
             JointState,
             '/goal_joint_states',
