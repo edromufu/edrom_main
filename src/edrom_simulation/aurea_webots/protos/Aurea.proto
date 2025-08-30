@@ -99,6 +99,17 @@ PROTO Aurea [
                       url "../../../../../src/aurea_description/meshes/head_tilt_link.STL"
                     }
                   }
+                  Transform{
+                    translation 0.1 0.0 0.0
+                    children[
+                      Camera{
+                        name "camera_front"
+                        width 600
+                        height 400 
+                      }
+                    ]
+
+                  }
                 ]
                 name "head_tilt_link"
                 boundingObject Transform{
