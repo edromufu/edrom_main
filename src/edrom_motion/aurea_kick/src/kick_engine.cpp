@@ -9,7 +9,7 @@ KickEngine::KickEngine(const KickParameters & params) : params_(params) {}
 void KickEngine::start(bool is_left_kick, const Eigen::Vector2d & initial_torso_pos, double initial_torso_yaw)
 {
   is_left_kick_ = is_left_kick;
-  current_phase_ = Phase::SHIFT_TO_SUPPORT; // CORRIGIDO
+  current_phase_ = Phase::SHIFT_TO_SUPPORT;
   phase_time_ = 0.0;
   
   torso_start_pos_ = initial_torso_pos;
@@ -28,7 +28,7 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
 
   switch(current_phase_)
   {
-    case Phase::SHIFT_TO_SUPPORT: // CORRIGIDO
+    case Phase::SHIFT_TO_SUPPORT:
       {
         Eigen::Vector2d com_target = support_foot_start_pos_;
         com_target.x() = torso_start_pos_.x();
@@ -39,12 +39,12 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
         
         if (phase_time_ >= params_.tA) {
           phase_time_ = 0;
-          current_phase_ = Phase::EXECUTE_KICK; // CORRIGIDO
+          current_phase_ = Phase::EXECUTE_KICK;
         }
       }
       break;
     
-    case Phase::EXECUTE_KICK: // CORRIGIDO
+    case Phase::EXECUTE_KICK:
       {
         Eigen::Vector2d com_target = support_foot_start_pos_;
         com_target.x() = torso_start_pos_.x();
@@ -77,12 +77,12 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
 
         if (phase_time_ >= params_.tB + params_.tC + params_.tD) {
           phase_time_ = 0;
-          current_phase_ = Phase::RETURN_TO_CENTER; // CORRIGIDO
+          current_phase_ = Phase::RETURN_TO_CENTER;
         }
       }
       break;
 
-    case Phase::RETURN_TO_CENTER: // CORRIGIDO
+    case Phase::RETURN_TO_CENTER:
       {
         Eigen::Vector2d com_target = support_foot_start_pos_;
         com_target.x() = torso_start_pos_.x();
@@ -93,13 +93,13 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
 
         if (phase_time_ >= params_.tE) {
           phase_time_ = 0;
-          current_phase_ = Phase::DONE; // CORRIGIDO
+          current_phase_ = Phase::DONE;
         }
       }
       break;
 
-    case Phase::DONE: // CORRIGIDO
-    case Phase::IDLE: // CORRIGIDO
+    case Phase::DONE:
+    case Phase::IDLE:
       return false;
   }
   return true;
@@ -108,11 +108,11 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
 std::string KickEngine::get_phase_name() const
 {
   switch(current_phase_) {
-    case Phase::SHIFT_TO_SUPPORT: return "SHIFTING_WEIGHT"; // CORRIGIDO
-    case Phase::EXECUTE_KICK: return "KICKING"; // CORRIGIDO
-    case Phase::RETURN_TO_CENTER: return "RETURNING_TO_CENTER"; // CORRIGIDO
-    case Phase::DONE: return "DONE"; // CORRIGIDO
-    case Phase::IDLE: return "IDLE"; // CORRIGIDO
+    case Phase::SHIFT_TO_SUPPORT: return "SHIFTING_WEIGHT";
+    case Phase::EXECUTE_KICK: return "KICKING";
+    case Phase::RETURN_TO_CENTER: return "RETURNING_TO_CENTER";
+    case Phase::DONE: return "DONE";
+    case Phase::IDLE: return "IDLE";
     default: return "UNKNOWN";
   }
 }

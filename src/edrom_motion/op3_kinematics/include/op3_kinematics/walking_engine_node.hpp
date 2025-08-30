@@ -6,7 +6,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <mutex>
 #include <string>
-
+#include "std_msgs/msg/empty.hpp" // Adicione este include
 #include "op3_kinematics/srv/solve_ik.hpp" 
 #include "op3_kinematics/trajectory_generator.hpp"
 #include "op3_kinematics/srv/trigger_kick.hpp" // ADICIONADO
@@ -20,7 +20,7 @@ public:
     IDLE,
     WALKING,
     IDLE_MARCH,
-
+    STOPPING
   };
 
   WalkingEngineNode();
@@ -29,10 +29,10 @@ private:
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void main_loop();
   void ik_response_callback(rclcpp::Client<SolveIK>::SharedFuture future);
-  
+  void go_homing();
   void start_new_step();
   void start_homing_motion();
-
+  void stop_command_callback(const std_msgs::msg::Empty::SharedPtr msg);
   // Parâmetros
   double T_, z_com_, z_step_, ds_ratio_, y_sep_;
   double arm_swing_amplitude_;
@@ -40,6 +40,10 @@ private:
   double idle_shoulder_roll_;
   double idle_elbow_;
   double update_period_;
+
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr stop_sub_;
+  bool stop_requested_ = false;
+  std::mutex stop_mutex_;
 
   // Estado da caminhada
   geometry_msgs::msg::Twist v_cmd_;

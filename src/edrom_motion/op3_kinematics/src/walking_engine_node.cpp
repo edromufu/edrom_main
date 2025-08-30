@@ -44,7 +44,7 @@ WalkingEngineNode::WalkingEngineNode()
   idle_shoulder_pitch_ = this->get_parameter("idle_arm_pose.shoulder_pitch").as_double();
   idle_shoulder_roll_ = this->get_parameter("idle_arm_pose.shoulder_roll").as_double();
   idle_elbow_ = this->get_parameter("idle_arm_pose.elbow").as_double();
-
+  stop_sub_ = this->create_subscription<std_msgs::msg::Empty>("/stop_walking", 10, std::bind(&WalkingEngineNode::stop_command_callback, this, std::placeholders::_1));
 
   // Configuração inicial do estado
   left_foot_.is_left = true;
@@ -105,7 +105,7 @@ void WalkingEngineNode::start_new_step()
   if (current_state_ == WALKING) {
     std::lock_guard<std::mutex> lock(cmd_mutex_);
     command_to_use = v_cmd_;
-  } else { // IDLE_MARCH
+  } else { // IDLE_MARCH ou STOPPING
     command_to_use = geometry_msgs::msg::Twist();
   }
 
@@ -119,9 +119,29 @@ void WalkingEngineNode::start_new_step()
   RCLCPP_INFO(this->get_logger(), "Iniciando novo passo. Estado: %d, Apoio: %s", current_state_, support_foot_->is_left ? "Esquerdo" : "Direito");
 }
 
+void WalkingEngineNode::stop_command_callback(const std_msgs::msg::Empty::SharedPtr msg)
+{
+  (void)msg; // Evita warning de variável não utilizada
+  std::lock_guard<std::mutex> lock(stop_mutex_);
+  
+  if (current_state_ == WALKING || current_state_ == IDLE_MARCH) {
+    RCLCPP_INFO(this->get_logger(), "Comando de parada recebido. Finalizando o passo atual...");
+    stop_requested_ = true;
+  }
+}
 
 void WalkingEngineNode::main_loop()
 {
+
+  bool stop_now = false;
+  {
+    std::lock_guard<std::mutex> lock(stop_mutex_);
+    if (stop_requested_) {
+      stop_now = true;
+      stop_requested_ = false; // Reseta a flag
+    }
+  }
+
   geometry_msgs::msg::Twist current_cmd;
   {
     std::lock_guard<std::mutex> lock(cmd_mutex_);
@@ -133,8 +153,10 @@ void WalkingEngineNode::main_loop()
 
   // Atualiza o estado da máquina de estados com base no comando
   WalkingState previous_state = current_state_;
-
-  if (current_state_ == IDLE) {
+  if (stop_now && (current_state_ == WALKING || current_state_ == IDLE_MARCH)) {
+      current_state_ = STOPPING;
+      RCLCPP_INFO(this->get_logger(), "Transição para o estado STOPPING.");
+  }else if (current_state_ == IDLE) {
     if (should_walk) {
       current_state_ = WALKING;
     }
@@ -225,10 +247,21 @@ void WalkingEngineNode::main_loop()
 
   // Ao final do passo, inicia o próximo (seja andando ou marchando)
   if (t_step_ >= T_) {
+    // Atualiza as posições finais do passo
     torso_ = torso_target_;
     swing_foot_->position = swing_target_.position;
     swing_foot_->yaw = swing_target_.yaw;
-    start_new_step(); // Prepara o próximo passo para o ciclo contínuo
+    
+    // DECISÃO PÓS-PASSO
+    if (current_state_ == STOPPING) {
+      // Se estávamos parando, o último passo foi concluído. Agora vamos para IDLE.
+      RCLCPP_INFO(this->get_logger(), "Parada concluída. Entrando em estado IDLE.");
+      current_state_ = IDLE;
+      // NÃO chamamos start_new_step() aqui, pois queremos parar.
+    } else {
+      // Se não, continuamos o ciclo normal de caminhada/marcha.
+      start_new_step(); 
+    }// Prepara o próximo passo para o ciclo contínuo
   }
 }
 
