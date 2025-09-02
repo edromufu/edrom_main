@@ -3,7 +3,7 @@
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
 EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
-EXTERNPROTO "../../../../Edrom_main/install/aurea_webots/share/aurea_webots/protos/Aurea.proto"
+EXTERNPROTO "/home/ivan/edrom_main/src/edrom_simulation/aurea_webots/protos/Aurea.proto"
 
 WorldInfo {
 }
