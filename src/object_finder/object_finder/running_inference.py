@@ -12,7 +12,10 @@ size=320
 
 def set_model_input():
     # Define o caminho absoluto para o seu arquivo de modelo
-    model_path = '/home/ivan/best.pt'
+    
+    package_share_path = get_package_share_directory('object_finder')
+
+    model_path = os.path.join(package_share_path, 'modelo', 'best.pt')
     
     print(f"Tentando carregar o modelo de: {model_path}")
     if not os.path.exists(model_path):
