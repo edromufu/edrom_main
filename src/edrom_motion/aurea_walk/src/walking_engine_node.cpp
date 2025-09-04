@@ -1,4 +1,4 @@
-#include "op3_kinematics/walking_engine_node.hpp"
+#include "aurea_walk/walking_engine_node.hpp"
 #include <cmath> 
 
 using namespace std::chrono_literals;
@@ -109,7 +109,7 @@ void WalkingEngineNode::start_new_step()
     command_to_use = geometry_msgs::msg::Twist();
   }
 
-  op3_kinematics::select_next_poses(
+  aurea_walk::select_next_poses(
     torso_target_, swing_target_, torso_, *swing_foot_,
     command_to_use, T_, y_sep_);
   
@@ -208,13 +208,13 @@ void WalkingEngineNode::main_loop()
     Eigen::Vector2d current_torso_pos_2d;
     double current_torso_yaw;
     const double g = 9.81;
-    op3_kinematics::get_com_pose_at_time(
+    aurea_walk::get_com_pose_at_time(
         current_torso_pos_2d, current_torso_yaw, t_step_, T_, ds_ratio_, z_com_, g,
         torso_start_, torso_target_, *support_foot_);
 
     Eigen::Vector3d current_swing_pos_world;
     double current_swing_yaw_world;
-    op3_kinematics::get_swing_foot_pose_at_time(
+    aurea_walk::get_swing_foot_pose_at_time(
         current_swing_pos_world, current_swing_yaw_world, t_step_, T_, z_step_, ds_ratio_,
         swing_start_, swing_target_);
 

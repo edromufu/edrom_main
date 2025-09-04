@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 import numpy as np
 from geometry_msgs.msg import Pose
-from op3_kinematics.srv import SolveIK 
+from aurea_walk.srv import SolveIK 
 
 class TrajectoryPlannerNode(Node):
     def __init__(self):

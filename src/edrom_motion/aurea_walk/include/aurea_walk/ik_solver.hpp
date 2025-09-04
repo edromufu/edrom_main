@@ -4,7 +4,7 @@
 #include <string>
 #include <Eigen/Dense>
 
-namespace op3_kinematics
+namespace aurea_walk
 {
 
 class IKSolver

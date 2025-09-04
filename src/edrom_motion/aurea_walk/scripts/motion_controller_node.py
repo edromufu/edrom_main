@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import JointState
-from op3_kinematics.srv import SolveIK
+from aurea_walk.srv import SolveIK
 import numpy as np
 
 class MotionControllerNode(Node):

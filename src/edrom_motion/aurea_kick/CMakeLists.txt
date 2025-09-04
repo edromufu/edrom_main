@@ -5,7 +5,7 @@ project(aurea_kick)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
-find_package(op3_kinematics REQUIRED)
+find_package(aurea_walk REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(Eigen3 REQUIRED)
 
@@ -34,7 +34,7 @@ target_include_directories(kick_node PUBLIC
 ament_target_dependencies(kick_node
   rclcpp
   rclcpp_action
-  op3_kinematics
+  aurea_walk
 )
 # Linka com a engine, Eigen e, mais importante, com a Ação gerada
 target_link_libraries(kick_node

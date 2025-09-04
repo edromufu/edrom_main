@@ -1,5 +1,5 @@
-#ifndef OP3_KINEMATICS_WALKING_ENGINE_NODE_HPP_
-#define OP3_KINEMATICS_WALKING_ENGINE_NODE_HPP_
+#ifndef AUREA_WALK_WALKING_ENGINE_NODE_HPP_
+#define AUREA_WALK_WALKING_ENGINE_NODE_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
@@ -7,11 +7,10 @@
 #include <mutex>
 #include <string>
 #include "std_msgs/msg/empty.hpp" // Adicione este include
-#include "op3_kinematics/srv/solve_ik.hpp" 
-#include "op3_kinematics/trajectory_generator.hpp"
-#include "op3_kinematics/srv/trigger_kick.hpp" // ADICIONADO
+#include "aurea_walk/srv/solve_ik.hpp" 
+#include "aurea_walk/trajectory_generator.hpp"// ADICIONADO
 
-using SolveIK = op3_kinematics::srv::SolveIK; 
+using SolveIK = aurea_walk::srv::SolveIK; 
 
 class WalkingEngineNode : public rclcpp::Node
 {
@@ -52,12 +51,12 @@ private:
   WalkingState current_state_{IDLE}; 
   double t_step_{0.0};
 
-  op3_kinematics::PoseData torso_, torso_start_, torso_target_;
-  op3_kinematics::PoseData left_foot_, right_foot_;
-  op3_kinematics::PoseData swing_start_, swing_target_;
-  op3_kinematics::PoseData left_foot_start_homing_, right_foot_start_homing_; 
-  op3_kinematics::PoseData * support_foot_;
-  op3_kinematics::PoseData * swing_foot_;
+  aurea_walk::PoseData torso_, torso_start_, torso_target_;
+  aurea_walk::PoseData left_foot_, right_foot_;
+  aurea_walk::PoseData swing_start_, swing_target_;
+  aurea_walk::PoseData left_foot_start_homing_, right_foot_start_homing_; 
+  aurea_walk::PoseData * support_foot_;
+  aurea_walk::PoseData * swing_foot_;
 
   // Estado para combinar resultados de IK
   std::mutex joint_state_mutex_;
@@ -71,4 +70,4 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
 };
 
-#endif  // OP3_KINEMATICS_WALKING_ENGINE_NODE_HPP_
+#endif  // aurea_walk_WALKING_ENGINE_NODE_HPP_

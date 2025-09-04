@@ -1,6 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
-#include "op3_kinematics/ik_solver.hpp"
-#include "op3_kinematics/srv/solve_ik.hpp"
+#include "aurea_walk/ik_solver.hpp"
+#include "aurea_walk/srv/solve_ik.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include <Eigen/Dense>
 
@@ -9,9 +9,9 @@ class IKServiceNode : public rclcpp::Node
 public:
   IKServiceNode() : Node("ik_service_node")
   {
-    ik_solver_ = std::make_shared<op3_kinematics::IKSolver>();
+    ik_solver_ = std::make_shared<aurea_walk::IKSolver>();
 
-    service_ = this->create_service<op3_kinematics::srv::SolveIK>(
+    service_ = this->create_service<aurea_walk::srv::SolveIK>(
       "solve_ik",
       std::bind(&IKServiceNode::handle_solve_ik, this, std::placeholders::_1, std::placeholders::_2));
 
@@ -22,8 +22,8 @@ public:
 
 private:
   void handle_solve_ik(
-    const std::shared_ptr<op3_kinematics::srv::SolveIK::Request> request,
-    std::shared_ptr<op3_kinematics::srv::SolveIK::Response> response)
+    const std::shared_ptr<aurea_walk::srv::SolveIK::Request> request,
+    std::shared_ptr<aurea_walk::srv::SolveIK::Response> response)
   {
     RCLCPP_INFO(this->get_logger(), "Requisição de IK recebida para a perna %s", request->leg_id.c_str());
 
@@ -89,9 +89,9 @@ private:
     }
   }
 
-  std::shared_ptr<op3_kinematics::IKSolver> ik_solver_;
+  std::shared_ptr<aurea_walk::IKSolver> ik_solver_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
-  rclcpp::Service<op3_kinematics::srv::SolveIK>::SharedPtr service_;
+  rclcpp::Service<aurea_walk::srv::SolveIK>::SharedPtr service_;
 };
 
 int main(int argc, char **argv)

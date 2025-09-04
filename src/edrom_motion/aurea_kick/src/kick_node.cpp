@@ -1,7 +1,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
-#include "op3_kinematics/srv/solve_ik.hpp" // Seu serviço de IK
+#include "aurea_walk/srv/solve_ik.hpp" // Seu serviço de IK
 #include "aurea_kick/action/kick.hpp"
 #include "aurea_kick/kick_engine.hpp"
 #include <Eigen/Dense>
@@ -23,7 +23,7 @@ class KickNode : public rclcpp::Node
 public:
   using Kick = aurea_kick::action::Kick;
   using GoalHandleKick = rclcpp_action::ServerGoalHandle<Kick>;
-  using SolveIK = op3_kinematics::srv::SolveIK;
+  using SolveIK = aurea_walk::srv::SolveIK;
 
   KickNode() : Node("kick_node")
   {

@@ -1,11 +1,11 @@
-#ifndef OP3_KINEMATICS_TRAJECTORY_GENERATOR_HPP_
-#define OP3_KINEMATICS_TRAJECTORY_GENERATOR_HPP_
+#ifndef AUREA_WALK_TRAJECTORY_GENERATOR_HPP_
+#define AUREA_WALK_TRAJECTORY_GENERATOR_HPP_
 
 #include <Eigen/Dense>
 #include <cmath>
 #include <geometry_msgs/msg/twist.hpp>
 
-namespace op3_kinematics
+namespace aurea_walk
 {
 
 // Estrutura para armazenar dados de pose de forma simplificada no frame do mundo
@@ -34,6 +34,6 @@ void select_next_poses(
   const PoseData & current_torso, const PoseData & swing_foot, const geometry_msgs::msg::Twist & v_cmd,
   double T, double y_sep);
 
-}  // namespace op3_kinematics
+}  // namespace aurea_walk
 
-#endif  // OP3_KINEMATICS_TRAJECTORY_GENERATOR_HPP_
+#endif  // aurea_walk_TRAJECTORY_GENERATOR_HPP_

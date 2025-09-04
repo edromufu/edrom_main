@@ -1,8 +1,8 @@
-#include "op3_kinematics/ik_solver.hpp" 
+#include "aurea_walk/ik_solver.hpp" 
 #include <cmath>
 #include <iostream>
 
-namespace op3_kinematics
+namespace aurea_walk
 {
 
 IKSolver::IKSolver() {}

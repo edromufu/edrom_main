@@ -1,7 +1,7 @@
-#include "op3_kinematics/trajectory_generator.hpp"
+#include "aurea_walk/trajectory_generator.hpp"
 #include <cmath>
 
-namespace op3_kinematics
+namespace aurea_walk
 {
 
 // Interpolação suave (cosseno) de 1 a 0 durante a fase de apoio simples
