@@ -1,72 +1,115 @@
 #!/usr/bin/env python3
 #coding=utf-8
 
-'''
-Recebe a posição dos motores da cabeça do movimento
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+import os
+import sys
 
-Verifica constantemente se o motor vertical atingiu o estabelecido como "bom chute"
-'''
+# Importa a mensagem do ROS 2. 
+# Se 'head_motors_data' for uma mensagem personalizada, você precisará gerar o pacote e importá-la corretamente.
+# Exemplo: from your_ros2_pkg.msg import HeadMotorsData
+# Vamos usar o nome da mensagem fornecido na sua pergunta.
+from movement_utils.msg import HeadMotorsData  
 
-import rospy, os, sys
-from movement_utils.msg import head_motors_data  #Mensagem associada ao tópico utilizado para receber info dos motores da cabeça
-
+# A forma de importar módulos deve ser ajustada no setup.py do pacote.
+# Por enquanto, mantemos a lógica, mas a importação 'sys.path.append' não é a abordagem recomendada em ROS 2.
 edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
-
 sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
-from behaviour_parameters import BehaviourParameters
 
-class NeckInterpreter():
+from behaviour.transitions_and_states.src.behaviour_parameters import BehaviourParameters
+
+class NeckInterpreter(Node):
+    """
+    Recebe a posição dos motores da cabeça para verificar se a robô está
+    em uma boa posição para o chute.
+    """
 
     def __init__(self):
-        """
-        Construtor:
-        - Define as variaveis do ROS
-        - Define e inicializa variaveis do código
-        """
-
+        # Construtor do nó ROS 2
+        super().__init__('neck_interpreter')
+        self.get_logger().info("Nó NeckInterpreter inicializado.")
+        
+        # O gerenciamento de parâmetros em ROS 2 é diferente. A classe BehaviourParameters
+        # precisaria ser adaptada para o sistema de parâmetros do ROS 2, por exemplo, 
+        # usando `self.declare_parameter()`. Para esta conversão, mantemos a estrutura original.
         self.parameters = BehaviourParameters()
 
-        #Variaveis do ROS
-        rospy.Subscriber(self.parameters.headPositionsTopic, head_motors_data, self.callback_positions)
+        # Configuração QoS para comunicação
+        # QoS (Quality of Service) é obrigatório em ROS 2 e define como os dados são transmitidos.
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE, # Garante que as mensagens serão entregues.
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        
+        # ROS 2: Criando o subscriber
+        # self.create_subscription(tipo_da_msg, nome_do_topico, callback, qos_profile)
+        self.subscription = self.create_subscription(
+            HeadMotorsData,  # Nome da mensagem, adaptado para ROS 2 (CamelCase)
+            self.parameters.headPositionsTopic,
+            self.callback_positions,
+            qos_profile
+        )
 
-        #Variaveis de código
+        # Variáveis de código
         self.horHeadPosition = 'none'
         self.verAngleAccomplished = False
 
-    #Funcao chamada pelo agrupador ROS quando necessitar saber 
-    #a interpretacao dos motores da cabeça para alguma requisicao
-    def getValues(self):
+        # Variáveis para a posição da cabeça (agora constantes de classe ou definidas em parâmetros)
+        # Em ROS 2, é comum usar o sistema de parâmetros para esses valores
+        # self.lookingLeftRad = 0.5 # Exemplo
+        # self.lookingRightRad = -0.5 # Exemplo
+
+    def get_values(self):
         """
+        Retorna a interpretação da posição dos motores da cabeça.
         -> Output:
             - horHeadPosition: Informa a posição horizontal atual da cabeça
-            - verAngleAccomplished: Informa se a cabeca esta suficientemente rotacionada verticalmente para um bom chute
+            - verAngleAccomplished: Informa se a cabeça está rotacionada verticalmente o suficiente para um bom chute
         """
-
         return self.horHeadPosition, self.verAngleAccomplished
     
-    #Callback do tópico de infos dos motores da cabeça do ROS
     def callback_positions(self, msg):
         """
-        -> Funcao:
-        Repassar os valores dos motores da cabeça da robô para as variáveis de código 
-        acessando os valores recebidos no tópico e verificar dinamicamente se o motor
-        vertical atingiu o estabelecido como "bom chute"
+        Callback para processar os dados de posição dos motores da cabeça.
         -> Input:
-            - msg: Variavel associada a mensagem recebida no topico do ROS, contem as
-            informacoes dos motores horizontal e vertical da cabeça   
+            - msg: Mensagem recebida do tópico de posições dos motores da cabeça.
         """
+        hor_motor_value = msg.pos_vector[0]
+        ver_motor_value = msg.pos_vector[1]
 
-        horMotorValue = msg.pos_vector[0]
-        verMotorValue = msg.pos_vector[1]
-
-        if (horMotorValue < self.parameters.lookingLeftRad) and (horMotorValue > self.parameters.lookingRightRad):
-            self.horHeadPosition = self.center
-        elif horMotorValue > self.parameters.lookingLeftRad:
-            self.horHeadPosition = self.left
+        # Lógica de interpretação dos valores
+        if (hor_motor_value < self.parameters.lookingLeftRad) and (hor_motor_value > self.parameters.lookingRightRad):
+            self.horHeadPosition = 'center'
+        elif hor_motor_value > self.parameters.lookingLeftRad:
+            self.horHeadPosition = 'left'
         else:
-            self.horHeadPosition = self.right
+            self.horHeadPosition = 'right'
 
-        if verMotorValue < self.parameters.minVerRad2Kick:
+        if ver_motor_value < self.parameters.minVerRad2Kick:
             self.verAngleAccomplished = True
+        else:
+            self.verAngleAccomplished = False
 
+def main(args=None):
+    # Inicializa a biblioteca rclpy
+    rclpy.init(args=args)
+    
+    # Cria a instância do nó
+    neck_interpreter = NeckInterpreter()
+    
+    # Faz o nó "girar" (spin) para processar os callbacks.
+    # Esta função bloqueia a execução até que o nó seja interrompido.
+    try:
+        rclpy.spin(neck_interpreter)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Destrói o nó e desliga a biblioteca rclpy
+        neck_interpreter.destroy_node()
+        rclpy.shutdown()
 
+if __name__ == '__main__':
+    main()

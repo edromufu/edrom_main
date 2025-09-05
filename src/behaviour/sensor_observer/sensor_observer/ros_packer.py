@@ -1,103 +1,138 @@
 #!/usr/bin/env python3
 #coding=utf-8
 
-'''
-Inicia e utiliza as três classes de intérpretes (bola, queda, pescoço).
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+import os
+import sys
 
-A cada 10 Hz, coleta a decisão de cada um deles.
+#movimento
+import fall_interpreter_ros2 as fall_interpreter
+import ball_interpreter_ros2 as ball_interpreter
+import neck_interpreter_ros2 as neck_interpreter
 
-Empacota todas os dadods em uma única mensagem e a publica no tópico /sensor_observer/state
-para serem usados pela máquina de estados.
-'''
+# Importação da mensagem do ROS 2
+# Presumimos que a mensagem foi gerada no pacote ROS 2
+from modularized_bhv_msgs.msg import StateMachineMsg 
 
-import rospy, sys, os
-import fall_interpreter, ball_interpreter, neck_interpreter
+# A importação 'sys.path.append' não é a abordagem padrão do ROS 2. 
+# A forma correta é gerenciar as dependências e o PYTHONPATH via setup.py do pacote.
+edrom_dir = '/home/' + os.getlogin() + '/edromufu/src/'
+sys.path.append(edrom_dir + 'behaviour/transitions_and_states/src')
 
-#Importacao para os topicos ROS
-#Mensagem associada ao topico utilizado para receber info dos estados da robo
-from modularized_bhv_msgs.msg import stateMachineMsg 
+from behaviour.transitions_and_states.src.behaviour_parameters import BehaviourParameters
 
-edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
-
-sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
-from behaviour_parameters import BehaviourParameters
-NUM_CONNECTIONS = 2
-
-class RosPacker():
+class ROSPacker(Node):
+    """
+    Inicia e utiliza as classes de intérpretes. A cada 10 Hz, 
+    coleta os dados, os empacota e os publica em um tópico.
+    """
 
     def __init__(self):
-        """
-        Construtor:
-        - Inicializa os objeto dos interpretadores
-        """
+        # Inicializa o nó ROS 2
+        super().__init__('ros_packer_node')
+        self.get_logger().info('Nó ROSPacker iniciado.')
 
+        # Inicialização da classe de parâmetros
         self.parameters = BehaviourParameters()
 
-        #Inicialização dos interpretadores em variaveis deste objeto
+        # Configuração QoS para a publicação
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
+        # Inicialização dos intérpretes. 
+        # A melhor prática em ROS 2 é gerenciar os nós separadamente ou como componentes.
+        # Aqui, criamos instâncias dos nós interpretadores.
         self.iBall = ball_interpreter.BallInterpreter() 
         self.iFall = fall_interpreter.FallInterpreter() 
         self.iNeck = neck_interpreter.NeckInterpreter() 
 
-        #Inicialização das variáveis do ROS
-        self.pub2StateMachine = rospy.Publisher(self.parameters.stateMachineTopic, stateMachineMsg, queue_size=1) #Envia as mensagens para o stateMachineMsg
-        self.stateMachineVars = stateMachineMsg()
+        # ROS 2: Criando o publisher
+        self.pub_to_state_machine = self.create_publisher(
+            StateMachineMsg,
+            self.parameters.stateMachineTopic,
+            qos_profile
+        )
 
-        #Variáveis de interpretação para facilitação do fluxo
-        [self.pBallPosition, self.pBallClose, self.pBallFound] = self.iBall.getValues()
-        self.pFallState = self.iFall.getValues()
-        [self.pHorMotorOutOfCenter, self.pHeadKickCheck] = self.iNeck.getValues() 
+        # Inicialização da mensagem
+        self.state_machine_vars = StateMachineMsg()
 
-        self.smVarsLastValue = [self.pBallPosition, self.pBallClose, self.pBallFound,
-                                self.pFallState,
-                                self.pHorMotorOutOfCenter, self.pHeadKickCheck]
-        
-        while self.pub2StateMachine.get_num_connections() != NUM_CONNECTIONS:pass
+        # Variáveis de interpretação
+        self.p_ball_position, self.p_ball_close, self.p_ball_found = self.iBall.get_values()
+        self.p_fall_state = self.iFall.get_values()
+        self.p_hor_motor_out_of_center, self.p_head_kick_check = self.iNeck.get_values() 
 
-        self.publish2StateMachine()
+        self.sm_vars_last_value = [
+            self.p_ball_position, self.p_ball_close, self.p_ball_found,
+            self.p_fall_state,
+            self.p_hor_motor_out_of_center, self.p_head_kick_check
+        ]
+
+        # ROS 2: Cria um timer que chama o callback `run_loop_callback` a 10 Hz
+        self.timer = self.create_timer(0.1, self.run_loop_callback)
+        self.get_logger().info('ROS_packer_node rodando a 10 Hz.')
+
+    def run_loop_callback(self):
+        """
+        Callback do timer para atualizar e publicar os dados.
+        """
+        self.run_values_update()
+        self.state_machine_flagger([
+            self.p_ball_position, self.p_ball_close, self.p_ball_found,
+            self.p_fall_state,
+            self.p_hor_motor_out_of_center, self.p_head_kick_check
+        ])
+
+    def run_values_update(self):
+        self.p_ball_position, self.p_ball_close, self.p_ball_found = self.iBall.get_values()
+        self.p_fall_state = self.iFall.get_values()
+        self.p_hor_motor_out_of_center, self.p_head_kick_check = self.iNeck.get_values()         
+
+    def state_machine_flagger(self, sm_vars_current_value):
+        if not sm_vars_current_value == self.sm_vars_last_value:
+            self.sm_vars_last_value = sm_vars_current_value
+            self.run_prints()
+            self.publish_to_state_machine()
+
+    def publish_to_state_machine(self):
+        self.state_machine_vars.ball_position = self.p_ball_position
+        self.state_machine_vars.ball_close = self.p_ball_close
+        self.state_machine_vars.ball_found = self.p_ball_found
+        self.state_machine_vars.fall_state = self.p_fall_state
+        self.state_machine_vars.hor_motor_out_of_center = self.p_hor_motor_out_of_center
+        self.state_machine_vars.head_kick_check = self.p_head_kick_check
+
+        self.pub_to_state_machine.publish(self.state_machine_vars)
     
-    #Loopa capturando as novas interpretações para o código
-    def run(self):
+    def run_prints(self):
+        print("----------------------------")
+        print("Posicao da bola: ", self.p_ball_position)
+        print("Encontrada: ", self.p_ball_found, "   | Bola proxima: ", self.p_ball_close)
+        print("Posicao de robo (queda): ", self.p_fall_state)
+        print("Posição horizontal da cabeça: ", self.p_hor_motor_out_of_center)
+        print("Cabeca confirma o chute: ", self.p_head_kick_check)
+        print("----------------------------")
 
-        while not rospy.is_shutdown():
-            self.runValuesUpdate()
-            self.stateMachineFlagger([self.pBallPosition, self.pBallClose, self.pBallFound,
-                                  self.pFallState,
-                                  self.pHorMotorOutOfCenter, self.pHeadKickCheck])
-
-    def runValuesUpdate(self):
-        [self.pBallPosition, self.pBallClose, self.pBallFound] = self.iBall.getValues()
-        self.pFallState = self.iFall.getValues()
-        [self.pHorMotorOutOfCenter, self.pHeadKickCheck] = self.iNeck.getValues()         
-
-    def stateMachineFlagger(self,smVarsCurrentValue):
-        if not smVarsCurrentValue == self.smVarsLastValue: #Se os valores forem diferentes do anterior, roda o runPrints
-            self.smVarsLastValue = smVarsCurrentValue
-            self.runPrints()
-            self.publish2StateMachine()
-
-    def publish2StateMachine(self):
-        self.stateMachineVars.ballPosition = self.pBallPosition
-        self.stateMachineVars.ballClose = self.pBallClose
-        self.stateMachineVars.ballFound = self.pBallFound
-        self.stateMachineVars.fallState = self.pFallState
-        self.stateMachineVars.horMotorOutOfCenter = self.pHorMotorOutOfCenter
-        self.stateMachineVars.headKickCheck = self.pHeadKickCheck
-
-        self.pub2StateMachine.publish(self.stateMachineVars)
+def main(args=None):
+    # Inicializa a biblioteca rclpy
+    rclpy.init(args=args)
     
-    def runPrints(self):
-        print("----------------------------")
-        print("Posicao da bola: ", self.pBallPosition)
-        print("Encontrada: ", self.pBallFound, "   | Bola proxima: ", self.pBallClose)
-        print("Posicao de robo (queda): ", self.pFallState)
-        print("Posição horizontal da cabeça: ", self.pHorMotorOutOfCenter)
-        print("Cabeca confirma o chute: ", self.pHeadKickCheck)
-        print("----------------------------")
+    # Cria a instância do nó
+    ros_packer = ROSPacker()
+    
+    # Faz o nó "girar" (spin) para processar os callbacks.
+    try:
+        rclpy.spin(ros_packer)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # Destrói o nó e desliga a biblioteca rclpy
+        ros_packer.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
-    rospy.init_node('ROS_packer_node', anonymous=False)
-
-    packer = RosPacker() #Inicia o agrupador
-    packer.run()  #Inicia o loop do agrupador
-
-    rospy.spin()
+    main()

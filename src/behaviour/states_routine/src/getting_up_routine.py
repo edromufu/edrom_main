@@ -42,13 +42,13 @@ class GettingUpRoutine(Node):
         
         # ROS 2: Subscribers
         self.create_subscription(
-            StateMachineMsg,  # Mude para o nome correto da mensagem
+            StateMachineMsg,  
             self.parameters.stateMachineTopic,
             self.fallStatusUpdate,
             qos_profile
         )
         self.create_subscription(
-            CurrentStateMsg,  # Mude para o nome correto da mensagem
+            CurrentStateMsg, 
             '/transitions_and_states/state_machine',
             self.flagUpdate,
             qos_profile
