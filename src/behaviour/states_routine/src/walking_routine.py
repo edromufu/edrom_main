@@ -8,48 +8,77 @@ Chama o serviço /movement_central/walking para comandar o robô a começar a an
 '''
 
 
-import rospy, os, sys
-from movement_utils.srv import *
-from movement_utils.msg import *
-from modularized_bhv_msgs.msg import currentStateMsg
+import rclpy
+from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+import os
+import sys
 
-edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
 
-sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
-from behaviour_parameters import BehaviourParameters
+from ament_index_python.packages import get_package_share_directory
 
-class WalkingRoutine():
+from movement_utils.srv import WalkForward
+from std_msgs.msg import String  
+
+
+from transitions_and_states.src.behaviour_parameters  import BehaviourParameters
+
+class WalkingRoutine(Node):
 
     def __init__(self):
+        super().__init__('walking_node')
+
         self.parameters = BehaviourParameters()
-
-        self.move_request = rospy.ServiceProxy('/movement_central/request_walk', walk_forward)
-        rospy.wait_for_service('/movement_central/request_walk')
-
-        rospy.Subscriber('/transitions_and_states/state_machine', currentStateMsg, self.flagUpdate)
+        
+        
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+        
+        
+        self.move_client = self.create_client(WalkForward, '/movement_central/request_walk')
+        while not self.move_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service not available, waiting again...')
+            
+   
+        self.state_sub = self.create_subscription(
+            String,  
+            '/transitions_and_states/state_machine',
+            self.flag_update,
+            qos_profile
+        )
 
         self.supFoot = 1
         self.stepNumber = 6
-
-        self.flag = False
-        rospy.Timer(rospy.Duration(self.parameters.timerWalk), self.runWalk)
-
-    def runWalk(self, event):
-        if self.flag:
-            print('Routine Walk')
-            self.move_request(self.supFoot, self.stepNumber)
+        self.flag = False 
+        
     
-    def flagUpdate(self, msg):
-        message = msg.currentState
+        self.timer = self.create_timer(self.parameters.timer_walk, self.run_walk)
+
+    def run_walk(self):
+        if self.flag:
+            self.get_logger().info('Routine Walk')
+            request = WalkForward.Request()
+            request.sup_foot = self.supFoot  # Populate the service request fields
+            request.step_number = self.stepNumber
+            self.move_client.call_async(request)
+    
+    def flag_update(self, msg):
+        message = msg.data 
 
         if message == 'walking':
             self.flag = True
         else:
             self.flag = False
 
+def main(args=None):
+    rclpy.init(args=args)
+    routine = WalkingRoutine()
+    rclpy.spin(routine)
+    routine.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
-    rospy.init_node('walking_node', anonymous=False)
-
-    routine = WalkingRoutine()
-    rospy.spin()
+    main()
