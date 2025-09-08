@@ -1,0 +1,25 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100 # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    forward_position_controller:
+      type: forward_command_controller/ForwardCommandController
+      joints:
+        - head_pan
+        - head_tilt
+        - r_hip_yaw
+        - r_hip_roll
+        - r_hip_pitch
+        - r_knee
+        - r_ank_pitch
+        - r_ank_roll
+        - l_hip_yaw
+        - l_hip_roll
+        - l_hip_pitch
+        - l_knee
+        - l_ank_pitch
+        - l_ank_roll
+      interface_name: position

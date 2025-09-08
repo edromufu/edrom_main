@@ -5,7 +5,7 @@
 <robot
   name="Aurea">
   <webots>
-        <plugin type="aurea_webots_sim.aurea_controller2.ArmPositionController" />
+        <plugin type="aurea_webots.aurea_driver.AureaJointController" />
     </webots>
   <link
     name="base_link">
@@ -1107,4 +1107,112 @@
     <axis
       xyz="1 0 0" />
   </joint>
+  <ros2_control name="AureaHardware" type="system">
+    <hardware>
+      <plugin>edrom_lowlevel/AureaHardwareInterface</plugin>
+      <param name="usb_port">/dev/ttyUSB0</param>
+      <param name="baud_rate">1000000</param>
+    </hardware>
+
+    <joint name="head_pan">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">1</param>
+      <param name="protocol">1.0</param>
+      <param name="inverted">false</param>
+    </joint>
+    <joint name="head_tilt">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">2</param>
+      <param name="protocol">1.0</param>
+      <param name="inverted">false</param>
+    </joint>
+
+    <joint name="r_hip_yaw">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">10</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">false</param>
+    </joint>
+    <joint name="r_hip_roll">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">12</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="r_hip_pitch">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">14</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="r_knee">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">16</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="r_ank_pitch">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">18</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="r_ank_roll">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">20</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">false</param>
+    </joint>
+
+    <joint name="l_hip_yaw">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">9</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">false</param>
+    </joint>
+    <joint name="l_hip_roll">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">11</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="l_hip_pitch">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">13</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="l_knee">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">15</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">false</param>
+    </joint>
+    <joint name="l_ank_pitch">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">17</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">true</param>
+    </joint>
+    <joint name="l_ank_roll">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <param name="id">19</param>
+      <param name="protocol">2.0</param>
+      <param name="inverted">false</param>
+    </joint>
+    </ros2_control>
 </robot>

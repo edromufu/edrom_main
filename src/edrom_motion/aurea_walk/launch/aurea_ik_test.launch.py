@@ -38,7 +38,7 @@ def generate_launch_description():
         ),
 
         Node(
-            package='op3_kinematics',
+            package='aurea_walk',
             executable='ik_node',
             name='smart_ik_node'
         )

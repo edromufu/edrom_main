@@ -28,6 +28,7 @@ PROTO Aurea [
     
     children [
       Shape {
+        
         appearance DEF base_link_material PBRAppearance {
           baseColor 0.752940 0.752940 0.752940
           roughness 1.000000
@@ -36,6 +37,7 @@ PROTO Aurea [
         geometry DEF base_link Mesh {
           url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/base_link.STL"
         }
+        castShadows FALSE
       }
       HingeJoint {
         jointParameters HingeJointParameters {
@@ -63,6 +65,7 @@ PROTO Aurea [
               geometry DEF head_pan_link Mesh {
                 url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_pan_link.STL"
               }
+              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -91,6 +94,7 @@ PROTO Aurea [
                     geometry DEF head_tilt_link Mesh {
                       url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_tilt_link.STL"
                     }
+                    castShadows FALSE
                   }
                   Transform{
                     translation 0.1 0.0 0.0
@@ -172,6 +176,7 @@ PROTO Aurea [
               geometry DEF l_sho_pitch_link Mesh {
                 url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_sho_pitch_link.STL"
               }
+              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -198,6 +203,7 @@ PROTO Aurea [
                     geometry DEF l_sho_roll_link Mesh {
                       url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_sho_roll_link.STL"
                     }
+                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -225,6 +231,7 @@ PROTO Aurea [
                           geometry DEF l_el_link Mesh {
                             url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_el_link.STL"
                           }
+                          castShadows FALSE
                         }
                       ]
                       name "l_el_link"
@@ -315,6 +322,7 @@ PROTO Aurea [
               geometry DEF r_sho_pitch_link Mesh {
                 url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_sho_pitch_link.STL"
               }
+              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -341,6 +349,7 @@ PROTO Aurea [
                     geometry DEF r_sho_roll_link Mesh {
                       url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_sho_roll_link.STL"
                     }
+                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -368,6 +377,7 @@ PROTO Aurea [
                           geometry DEF r_el_link Mesh {
                             url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_el_link.STL"
                           }
+                          castShadows FALSE
                         }
                       ]
                       name "r_el_link"
@@ -458,6 +468,7 @@ PROTO Aurea [
               geometry DEF r_hip_yaw_link Mesh {
                 url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_yaw_link.STL"
               }
+              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -484,6 +495,7 @@ PROTO Aurea [
                     geometry DEF r_hip_roll_link Mesh {
                       url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_roll_link.STL"
                     }
+                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -511,6 +523,7 @@ PROTO Aurea [
                           geometry DEF r_hip_pitch_link Mesh {
                             url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_pitch_link.STL"
                           }
+                          castShadows FALSE
                         }
                         HingeJoint {
                           jointParameters HingeJointParameters {
@@ -538,6 +551,7 @@ PROTO Aurea [
                                 geometry DEF r_knee_link Mesh {
                                   url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_knee_link.STL"
                                 }
+                                castShadows FALSE
                               }
                               HingeJoint {
                                 jointParameters HingeJointParameters {
@@ -565,6 +579,7 @@ PROTO Aurea [
                                       geometry DEF r_ank_pitch_link Mesh {
                                         url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_ank_pitch_link.STL"
                                       }
+                                      castShadows FALSE
                                     }
                                     HingeJoint {
                                       jointParameters HingeJointParameters {
@@ -591,6 +606,7 @@ PROTO Aurea [
                                             geometry DEF r_ank_roll_link Mesh {
                                               url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_ank_roll_link.STL"
                                             }
+                                            castShadows FALSE
                                           }
                                         ]
                                         name "r_ank_roll_link"
@@ -746,6 +762,7 @@ PROTO Aurea [
               geometry DEF l_hip_yaw_link Mesh {
                 url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_yaw_link.STL"
               }
+              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -772,6 +789,7 @@ PROTO Aurea [
                     geometry DEF l_hip_roll_link Mesh {
                       url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_roll_link.STL"
                     }
+                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -799,6 +817,7 @@ PROTO Aurea [
                           geometry DEF l_hip_pitch_link Mesh {
                             url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_pitch_link.STL"
                           }
+                          castShadows FALSE
                         }
                         HingeJoint {
                           jointParameters HingeJointParameters {
@@ -826,6 +845,7 @@ PROTO Aurea [
                                 geometry DEF l_knee_link Mesh {
                                   url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_knee_link.STL"
                                 }
+                                castShadows FALSE
                               }
                               HingeJoint {
                                 jointParameters HingeJointParameters {
@@ -853,6 +873,7 @@ PROTO Aurea [
                                       geometry DEF l_ank_pitch_link Mesh {
                                         url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_ank_pitch_link.STL"
                                       }
+                                      castShadows FALSE
                                     }
                                     HingeJoint {
                                       jointParameters HingeJointParameters {
@@ -879,6 +900,7 @@ PROTO Aurea [
                                             geometry DEF l_ank_roll_link Mesh {
                                               url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_ank_roll_link.STL"
                                             }
+                                            castShadows FALSE
                                           }
                                         ]
                                         name "l_ank_roll_link"
