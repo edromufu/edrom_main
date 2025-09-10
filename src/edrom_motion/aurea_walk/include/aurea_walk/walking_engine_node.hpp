@@ -12,6 +12,15 @@
 
 using SolveIK = aurea_walk::srv::SolveIK; 
 
+struct Link {
+  std::string name;
+  std::string parent_name;
+  double mass;
+  Eigen::Vector3d com_position; // Posição do CoM relativa à origem do link
+  Eigen::Vector3d joint_axis;   // Eixo de rotação da junta que conecta ao pai
+  Eigen::Vector3d translation_from_parent; // Translação da origem do pai para a origem deste link
+};
+
 class WalkingEngineNode : public rclcpp::Node
 {
 public:
@@ -50,13 +59,25 @@ private:
   
   WalkingState current_state_{IDLE}; 
   double t_step_{0.0};
-
+  
   aurea_walk::PoseData torso_, torso_start_, torso_target_;
   aurea_walk::PoseData left_foot_, right_foot_;
   aurea_walk::PoseData swing_start_, swing_target_;
   aurea_walk::PoseData left_foot_start_homing_, right_foot_start_homing_; 
   aurea_walk::PoseData * support_foot_;
   aurea_walk::PoseData * swing_foot_;
+
+  std::map<std::string, double> calculate_gravity_compensation(
+    const std::map<std::string, double> & base_joint_angles);
+  double backlash_offset_hp_;
+  void initialize_robot_model();
+  void forward_kinematics(const std::map<std::string, double>& joint_angles, const std::string& base_link_name, const Eigen::Affine3d& base_link_pose);
+  void calculate_downstream_properties(const std::string& current_link_name, double& total_mass, Eigen::Vector3d& combined_com);
+
+  std::map<std::string, Link> robot_model_; // Indexado pelo NOME DO LINK
+  std::map<std::string, std::string> joint_to_link_map_; // Mapeia NOME DA JUNTA -> NOME DO LINK que ela move
+  std::map<std::string, Eigen::Affine3d> link_poses_;
+  double Kp_gz_;
 
   // Estado para combinar resultados de IK
   std::mutex joint_state_mutex_;

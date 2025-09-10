@@ -18,7 +18,9 @@ def generate_launch_description():
             package='aurea_walk',
             executable='walking_engine_node',
             name='walking_engine_node',
-            parameters=[config_file],
+            parameters=[config_file, 
+            {'backlash_offset_hp': -0.2}, # Comece com um valor pequeno
+            {'servo_kp_gain': 3.0} ],# Valor de exemplo, sintonize para seu motor],
             output='screen'
         ),
         Node(
