@@ -18,10 +18,10 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 0.8);
+  this->declare_parameter<double>("step_period", 1.5);
   this->declare_parameter<double>("com_height", 0.18);
-  this->declare_parameter<double>("step_height", 0.02);
-  this->declare_parameter<double>("double_support_ratio", 0.2);
+  this->declare_parameter<double>("step_height", 0.04);
+  this->declare_parameter<double>("double_support_ratio", 0.3);
   this->declare_parameter<double>("feet_separation", 0.05);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
