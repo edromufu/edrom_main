@@ -11,6 +11,20 @@
 #include "aurea_walk/trajectory_generator.hpp"// ADICIONADO
 
 using SolveIK = aurea_walk::srv::SolveIK; 
+struct LinkData {
+  std::string name;
+  std::string parent_name;
+  double mass;
+  Eigen::Vector3d com_position_local; // Posição do CoM relativa à origem DO PRÓPRIO LINK
+  Eigen::Vector3d joint_axis_parent;   // Eixo de rotação da junta no frame do PAI
+  Eigen::Vector3d translation_from_parent; // Translação da origem do PAI para a origem DESTE link
+};
+
+struct Foot {
+  bool is_left;
+  Eigen::Vector2d position;
+  double yaw;
+};
 
 class WalkingEngineNode : public rclcpp::Node
 {
@@ -25,6 +39,28 @@ public:
   WalkingEngineNode();
 
 private:
+
+  void initialize_robot_model();
+  void run_forward_kinematics(
+  const std::map<std::string, double>& joint_angles,
+  const std::string& base_link_name,
+  const Eigen::Affine3d& base_link_pose);
+  void calculate_downstream_properties(
+  const std::string& current_link_name,
+  double& total_mass,
+  Eigen::Vector3d& combined_com_world);
+  std::map<std::string, double> calculate_gravity_compensation_for_support_leg(
+  const std::map<std::string, double>& base_joint_angles, bool is_left_support);
+
+  // --- ESTRUTURAS DE DADOS DO MODELO DO ROBÔ ---
+  std::map<std::string, LinkData> robot_model_;
+  std::map<std::string, std::string> joint_to_link_map_;
+  std::map<std::string, Eigen::Affine3d> link_poses_world_;
+
+  // Parâmetros de controle e compensação
+  double backlash_offset_hp_;
+  double servo_kp_gain_; // Ganho para converter torque (Nm) em offset de posição (rad)
+
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void main_loop();
   void ik_response_callback(rclcpp::Client<SolveIK>::SharedFuture future);

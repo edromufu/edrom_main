@@ -18,11 +18,11 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 1.5);
-  this->declare_parameter<double>("com_height", 0.18);
+  this->declare_parameter<double>("step_period", 2.0);
+  this->declare_parameter<double>("com_height", 0.2);
   this->declare_parameter<double>("step_height", 0.04);
-  this->declare_parameter<double>("double_support_ratio", 0.3);
-  this->declare_parameter<double>("feet_separation", 0.05);
+  this->declare_parameter<double>("double_support_ratio", 0.4);
+  this->declare_parameter<double>("feet_separation", 0.045);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
@@ -31,7 +31,9 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  
+  this->declare_parameter<double>("backlash_offset_hp", 0.05);
+  this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
+
   T_ = this->get_parameter("step_period").as_double();
   z_com_ = this->get_parameter("com_height").as_double();
   z_step_ = this->get_parameter("step_height").as_double();
@@ -45,6 +47,10 @@ WalkingEngineNode::WalkingEngineNode()
   idle_shoulder_roll_ = this->get_parameter("idle_arm_pose.shoulder_roll").as_double();
   idle_elbow_ = this->get_parameter("idle_arm_pose.elbow").as_double();
   stop_sub_ = this->create_subscription<std_msgs::msg::Empty>("/stop_walking", 10, std::bind(&WalkingEngineNode::stop_command_callback, this, std::placeholders::_1));
+  backlash_offset_hp_ = this->get_parameter("backlash_offset_hp").as_double();
+  servo_kp_gain_ = this->get_parameter("servo_kp_gain").as_double();
+
+  initialize_robot_model();
 
   // Configuração inicial do estado
   left_foot_.is_left = true;
@@ -117,6 +123,204 @@ void WalkingEngineNode::start_new_step()
   swing_start_ = *swing_foot_;
 
   RCLCPP_INFO(this->get_logger(), "Iniciando novo passo. Estado: %d, Apoio: %s", current_state_, support_foot_->is_left ? "Esquerdo" : "Direito");
+}
+
+void WalkingEngineNode::initialize_robot_model()
+{
+    RCLCPP_INFO(this->get_logger(), "Inicializando modelo do robô para compensação de gravidade a partir do URDF...");
+    // NOTA: As massas e posições do CoM foram extraídas do seu URDF.
+
+    // Link base (torso)
+    robot_model_["base_link"] = {"base_link", "", 1.4383, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
+
+    // --- Perna Direita ---
+    robot_model_["r_hip_yaw_link"]   = {"r_hip_yaw_link",   "base_link",          0.0069, {0, 0, -0.036}, {0, 0, 1}, {0, -0.0425, 0}};
+    robot_model_["r_hip_roll_link"]  = {"r_hip_roll_link",  "r_hip_yaw_link",     0.1839, {0.0298, 0, -0.0152}, {1, 0, 0}, {-0.054, -0.0005, -0.062}};
+    robot_model_["r_hip_pitch_link"] = {"r_hip_pitch_link", "r_hip_roll_link",    0.1261, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
+    robot_model_["r_knee_link"]      = {"r_knee_link",      "r_hip_pitch_link",   0.0371, {0, 0, -0.0419}, {0, 1, 0}, {0, -0.00043, -0.12}};
+    robot_model_["r_ank_pitch_link"] = {"r_ank_pitch_link", "r_knee_link",        0.1839, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
+    robot_model_["r_ank_roll_link"]  = {"r_ank_roll_link",  "r_ank_pitch_link",   0.0877, {0.054, -0.0118, -0.0351}, {1, 0, 0}, {-0.054, 0, 0}};
+    joint_to_link_map_["r_hip_yaw"]   = "r_hip_yaw_link";
+    joint_to_link_map_["r_hip_roll"]  = "r_hip_roll_link";
+    joint_to_link_map_["r_hip_pitch"] = "r_hip_pitch_link";
+    joint_to_link_map_["r_knee"]      = "r_knee_link";
+    joint_to_link_map_["r_ank_pitch"] = "r_ank_pitch_link";
+    joint_to_link_map_["r_ank_roll"]  = "r_ank_roll_link";
+
+    // --- Perna Esquerda ---
+    robot_model_["l_hip_yaw_link"]   = {"l_hip_yaw_link",   "base_link",          0.0187, {0, 0, -0.036}, {0, 0, 1}, {0, 0.0425, 0}};
+    robot_model_["l_hip_roll_link"]  = {"l_hip_roll_link",  "l_hip_yaw_link",     0.1839, {0.0298, 0, -0.0152}, {1, 0, 0}, {-0.054, -0.0005, -0.062}};
+    robot_model_["l_hip_pitch_link"] = {"l_hip_pitch_link", "l_hip_roll_link",    0.1261, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
+    robot_model_["l_knee_link"]      = {"l_knee_link",      "l_hip_pitch_link",   0.0371, {0, 0, -0.0419}, {0, 1, 0}, {0, -0.00043, -0.12}};
+    // LINHAS FALTANTES ADICIONADAS AQUI:
+    robot_model_["l_ank_pitch_link"] = {"l_ank_pitch_link", "l_knee_link",        0.1839, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
+    robot_model_["l_ank_roll_link"]  = {"l_ank_roll_link",  "l_ank_pitch_link",   0.0877, {0.054, 0.0113, -0.0351}, {1, 0, 0}, {-0.054, 0.0005, 0}};
+    joint_to_link_map_["l_hip_yaw"]   = "l_hip_yaw_link";
+    joint_to_link_map_["l_hip_roll"]  = "l_hip_roll_link";
+    joint_to_link_map_["l_hip_pitch"] = "l_hip_pitch_link";
+    joint_to_link_map_["l_knee"]      = "l_knee_link";
+    joint_to_link_map_["l_ank_pitch"] = "l_ank_pitch_link";
+    joint_to_link_map_["l_ank_roll"]  = "l_ank_roll_link";
+
+    // Adicione os links dos braços e cabeça aqui também para um modelo completo
+    // ...
+}
+
+void WalkingEngineNode::run_forward_kinematics(
+  const std::map<std::string, double>& joint_angles,
+  const std::string& base_link_name,
+  const Eigen::Affine3d& base_link_pose)
+{
+    link_poses_world_.clear();
+    link_poses_world_[base_link_name] = base_link_pose;
+
+    // Passo 1: Encontrar o caminho do pé de apoio até o "base_link" (torso)
+    std::vector<std::string> spine_path;
+    std::string current_link = base_link_name;
+    while (current_link != "base_link" && robot_model_.count(current_link) && !robot_model_.at(current_link).parent_name.empty()) {
+        spine_path.push_back(current_link);
+        current_link = robot_model_.at(current_link).parent_name;
+    }
+    spine_path.push_back("base_link");
+    std::reverse(spine_path.begin(), spine_path.end()); // Agora temos o caminho do torso para o pé
+
+    // Passo 2: Calcular as poses "subindo" do pé de apoio para o torso
+    for (size_t i = 0; i < spine_path.size() - 1; ++i) {
+        std::string parent_name = spine_path[i];
+        std::string child_name = spine_path[i+1];
+
+        if (link_poses_world_.count(child_name)) {
+            // Se conhecemos a pose do filho, calculamos a do pai (subindo na árvore)
+            const auto& child_info = robot_model_.at(child_name);
+            auto joint_it = std::find_if(joint_to_link_map_.begin(), joint_to_link_map_.end(), 
+                                        [&](const auto& pair){ return pair.second == child_name; });
+            
+            double angle = 0.0;
+            if (joint_it != joint_to_link_map_.end() && joint_angles.count(joint_it->first)) {
+                angle = joint_angles.at(joint_it->first);
+            }
+
+            Eigen::Affine3d transform_child_to_parent = Eigen::Affine3d::Identity();
+            transform_child_to_parent.rotate(Eigen::AngleAxisd(angle, child_info.joint_axis_parent));
+            transform_child_to_parent.translate(child_info.translation_from_parent);
+
+            link_poses_world_[parent_name] = link_poses_world_.at(child_name) * transform_child_to_parent.inverse();
+        }
+    }
+
+    // Passo 3: Calcular as poses de todas as outras ramificações "descendo" a partir da espinha dorsal
+    std::vector<std::string> links_to_process;
+    for(const auto& pair : robot_model_){
+        // Adiciona todos os links que ainda não foram processados
+        if(link_poses_world_.count(pair.first) == 0){
+            links_to_process.push_back(pair.first);
+        }
+    }
+
+    size_t passes = 0;
+    while(!links_to_process.empty() && passes < robot_model_.size()) {
+        for(auto it = links_to_process.begin(); it != links_to_process.end(); ){
+            const auto& link_info = robot_model_.at(*it);
+            if(link_poses_world_.count(link_info.parent_name)) {
+                auto joint_it = std::find_if(joint_to_link_map_.begin(), joint_to_link_map_.end(), 
+                                            [&](const auto& pair){ return pair.second == link_info.name; });
+                
+                double angle = 0.0;
+                if (joint_it != joint_to_link_map_.end() && joint_angles.count(joint_it->first)) {
+                    angle = joint_angles.at(joint_it->first);
+                }
+
+                Eigen::Affine3d parent_pose = link_poses_world_.at(link_info.parent_name);
+                Eigen::Affine3d transform = Eigen::Affine3d::Identity();
+                transform.translate(link_info.translation_from_parent);
+                transform.rotate(Eigen::AngleAxisd(angle, link_info.joint_axis_parent));
+                
+                link_poses_world_[link_info.name] = parent_pose * transform;
+                
+                it = links_to_process.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        passes++;
+    }
+
+    if(!links_to_process.empty()) {
+        RCLCPP_ERROR(this->get_logger(), "Erro de FK: Loop ou parente faltando no modelo do robô. Links não processados:");
+        for(const auto& name : links_to_process){
+            RCLCPP_ERROR(this->get_logger(), "- %s (pai: %s)", name.c_str(), robot_model_.at(name).parent_name.c_str());
+        }
+    }
+}
+
+void WalkingEngineNode::calculate_downstream_properties(
+  const std::string& current_link_name,
+  double& total_mass,
+  Eigen::Vector3d& combined_com_world)
+{
+  const auto& link_info = robot_model_.at(current_link_name);
+  total_mass = link_info.mass;
+  combined_com_world = (link_poses_world_.at(current_link_name) * link_info.com_position_local) * link_info.mass;
+
+  for (const auto& pair : robot_model_) {
+    if (pair.second.parent_name == current_link_name) {
+      double child_mass;
+      Eigen::Vector3d child_com_moment;
+      calculate_downstream_properties(pair.first, child_mass, child_com_moment);
+      total_mass += child_mass;
+      combined_com_world += child_com_moment;
+    }
+  }
+  
+  if (total_mass > 1e-6) {
+      combined_com_world /= total_mass;
+  }
+}
+
+
+std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_for_support_leg(
+  const std::map<std::string, double>& base_joint_angles, bool is_left_support)
+{
+    std::map<std::string, double> gravity_offsets;
+    
+    std::string support_foot_link_name = is_left_support ? "l_ank_roll_link" : "r_ank_roll_link";
+    run_forward_kinematics(base_joint_angles, support_foot_link_name, Eigen::Affine3d::Identity());
+
+    std::vector<std::string> joints_to_compensate;
+    if (is_left_support) {
+        joints_to_compensate = {"l_hip_roll", "l_hip_pitch", "l_knee"};
+    } else {
+        joints_to_compensate = {"r_hip_roll", "r_hip_pitch", "r_knee"};
+    }
+    
+    Eigen::Vector3d gravity_vector(0, 0, -g);
+
+    for (const auto& joint_name : joints_to_compensate) {
+        if (joint_to_link_map_.count(joint_name) == 0) continue;
+
+        std::string link_name = joint_to_link_map_.at(joint_name);
+        const auto& link_info = robot_model_.at(link_name);
+
+        double downstream_mass = 0.0;
+        Eigen::Vector3d downstream_com_moment_world(0,0,0);
+        calculate_downstream_properties(link_name, downstream_mass, downstream_com_moment_world);
+
+        if(downstream_mass < 1e-6) continue;
+        Eigen::Vector3d downstream_com_world = downstream_com_moment_world / downstream_mass;
+
+        Eigen::Vector3d joint_position_world = link_poses_world_.at(link_info.parent_name) * link_info.translation_from_parent;
+        Eigen::Vector3d joint_axis_world = link_poses_world_.at(link_info.parent_name).rotation() * link_info.joint_axis_parent;
+        
+        Eigen::Vector3d vector_to_com = downstream_com_world - joint_position_world;
+        Eigen::Vector3d gravity_force = downstream_mass * gravity_vector;
+        
+        Eigen::Vector3d torque_vector = vector_to_com.cross(gravity_force);
+        double compensating_torque = -torque_vector.dot(joint_axis_world);
+        
+        gravity_offsets[joint_name] = compensating_torque / servo_kp_gain_;
+    }
+    
+    return gravity_offsets;
 }
 
 void WalkingEngineNode::stop_command_callback(const std_msgs::msg::Empty::SharedPtr msg)
@@ -291,39 +495,71 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
   }
 
   if (ik_responses_received_ >= 2) {
-      double phi = t_step_ / T_; // Fase do passo atual (de 0.0 a 1.0)
-    // Usamos sin(PI * phi) para criar um movimento suave de ida
-      double base_angle = arm_swing_amplitude_ * std::sin(M_PI * phi);
+        std::map<std::string, double> ik_angles;
+        for (size_t i = 0; i < combined_joint_state_.name.size(); ++i) {
+            ik_angles[combined_joint_state_.name[i]] = combined_joint_state_.position[i];
+        }
 
-      double l_sho_pitch = 0.0;
-      double r_sho_pitch = 0.0;
-    
-    // O braço se move em oposição à perna de APOIO
-      if (support_foot_->is_left) {
-        l_sho_pitch = -base_angle;
-        r_sho_pitch = base_angle;
-      } else {
-        l_sho_pitch = base_angle;
-        r_sho_pitch = -base_angle;
-      }
-    
-      combined_joint_state_.name.push_back("l_sho_pitch");
-      combined_joint_state_.position.push_back(l_sho_pitch);
-    
-      combined_joint_state_.name.push_back("r_sho_pitch");
-      combined_joint_state_.position.push_back(r_sho_pitch);
-    
-    
+        // --- INÍCIO DA LÓGICA DE OFFSETS ---
+        std::map<std::string, double> gravity_offsets;
+        
+        double ds_time = ds_ratio_ * T_ / 2.0;
+        if (t_step_ < ds_time) { // Primeira fase de apoio duplo
+            auto offsets_old = calculate_gravity_compensation_for_support_leg(ik_angles, !swing_foot_->is_left);
+            auto offsets_new = calculate_gravity_compensation_for_support_leg(ik_angles, swing_foot_->is_left);
+            double ratio = t_step_ / ds_time;
+            for(auto const& [key, val] : offsets_old) {
+                gravity_offsets[key] = (1.0 - ratio) * val;
+            }
+            for(auto const& [key, val] : offsets_new) {
+                gravity_offsets[key] += ratio * val;
+            }
+        } else if (t_step_ > T_ - ds_time) { // Segunda fase de apoio duplo
+             auto offsets_old = calculate_gravity_compensation_for_support_leg(ik_angles, support_foot_->is_left);
+             auto offsets_new = calculate_gravity_compensation_for_support_leg(ik_angles, !support_foot_->is_left);
+             double ratio = (t_step_ - (T_ - ds_time)) / ds_time;
+             for(auto const& [key, val] : offsets_old) {
+                gravity_offsets[key] = (1.0 - ratio) * val;
+             }
+             for(auto const& [key, val] : offsets_new) {
+                gravity_offsets[key] += ratio * val;
+             }
+        } else { // Apoio único
+            gravity_offsets = calculate_gravity_compensation_for_support_leg(ik_angles, support_foot_->is_left);
+        }
 
-    //combined_joint_state_.name.push_back("l_el");
-    //combined_joint_state_.position.push_back(std::abs(l_sho_pitch) * 0.5); // Dobra metade do ombro
-    //combined_joint_state_.name.push_back("r_el");
-    //combined_joint_state_.position.push_back(std::abs(r_sho_pitch) * 0.5); // Dobra metade do ombro
+        std::map<std::string, double> final_angles = ik_angles;
+        for (const auto & pair : gravity_offsets) {
+            if (final_angles.count(pair.first)) {
+                final_angles[pair.first] += pair.second;
+            }
+        }
+        if (final_angles.count("r_hip_pitch")) final_angles["r_hip_pitch"] += backlash_offset_hp_;
+        if (final_angles.count("l_hip_pitch")) final_angles["l_hip_pitch"] += backlash_offset_hp_;
+        
+        // --- FIM DA LÓGICA DE OFFSETS ---
 
-    // =================================================================
+        combined_joint_state_.name.clear();
+        combined_joint_state_.position.clear();
+        for (const auto & pair : final_angles) {
+            combined_joint_state_.name.push_back(pair.first);
+            combined_joint_state_.position.push_back(pair.second);
+        }
+
+        // Adiciona balanço dos braços
+        double phi = t_step_ / T_;
+        double base_angle = arm_swing_amplitude_ * std::sin(M_PI * phi);
+        double l_sho_pitch = (support_foot_->is_left) ? -base_angle : base_angle;
+        double r_sho_pitch = (support_foot_->is_left) ? base_angle : -base_angle;
+        
+        combined_joint_state_.name.push_back("l_sho_pitch");
+        combined_joint_state_.position.push_back(l_sho_pitch);
+        combined_joint_state_.name.push_back("r_sho_pitch");
+        combined_joint_state_.position.push_back(r_sho_pitch);
+        
+        combined_joint_state_.header.stamp = this->get_clock()->now();
+        joint_pub_->publish(combined_joint_state_);
     
-    combined_joint_state_.header.stamp = this->get_clock()->now();
-    joint_pub_->publish(combined_joint_state_);
   }
 }
 

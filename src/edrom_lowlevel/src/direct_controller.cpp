@@ -3,7 +3,7 @@
 // Construtor: Carrega parâmetros, inicializa os motores e cria o subscriber
 DirectController::DirectController() : Node("direct_controller")
 {
-  this->declare_parameter<std::string>("usb_port", "/dev/ttyUSB1");
+  this->declare_parameter<std::string>("usb_port", "/dev/ttyUSB0");
   this->declare_parameter<int>("baud_rate", 1000000);
   this->declare_parameter<std::vector<std::string>>("joint_names", {});
 
