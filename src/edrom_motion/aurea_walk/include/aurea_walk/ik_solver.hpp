@@ -18,10 +18,10 @@ public:
     std::vector<double> & joint_angles);
 
 private:
-  const double L_COXA = 0.125;
-  const double L_TIBIA = 0.09;
+  const double L_COXA = 0.12;
+  const double L_TIBIA = 0.085;
   const double D_QUADRIL_OFFSET = 0.05;
-  const double D_TORNOZELO_SOLA = 0.05;
+  const double D_TORNOZELO_SOLA = 0.04;
 };
 
 } // namespace op3_kinematics

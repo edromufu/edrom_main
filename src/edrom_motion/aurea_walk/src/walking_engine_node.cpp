@@ -19,7 +19,7 @@ WalkingEngineNode::WalkingEngineNode()
 {
   // Declara e carrega os parâmetros
   this->declare_parameter<double>("step_period", 1.5);
-  this->declare_parameter<double>("com_height", 0.21);
+  this->declare_parameter<double>("com_height", 0.20);
   this->declare_parameter<double>("step_height", 0.040);
   this->declare_parameter<double>("double_support_ratio", 0.3);
   this->declare_parameter<double>("feet_separation", 0.055);
@@ -32,7 +32,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
   this->declare_parameter<double>("backlash_offset_hp", 0.0);
-  this->declare_parameter<double>("servo_kp_gain", 5.0);
+  this->declare_parameter<double>("servo_kp_gain", 10.0);
 
   T_ = this->get_parameter("step_period").as_double();
   z_com_ = this->get_parameter("com_height").as_double();
