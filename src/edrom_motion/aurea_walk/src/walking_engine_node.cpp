@@ -18,10 +18,10 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 2.0);
-  this->declare_parameter<double>("com_height", 0.2);
-  this->declare_parameter<double>("step_height", 0.04);
-  this->declare_parameter<double>("double_support_ratio", 0.4);
+  this->declare_parameter<double>("step_period", 1.5);
+  this->declare_parameter<double>("com_height", 0.18);
+  this->declare_parameter<double>("step_height", 0.03);
+  this->declare_parameter<double>("double_support_ratio", 0.5);
   this->declare_parameter<double>("feet_separation", 0.045);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
@@ -31,8 +31,8 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", 0.05);
-  this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
+  this->declare_parameter<double>("backlash_offset_hp", 0.0);
+  this->declare_parameter<double>("servo_kp_gain", 10.0); // Ganho para converter Nm em rad. Sintonize este valor!
 
   T_ = this->get_parameter("step_period").as_double();
   z_com_ = this->get_parameter("com_height").as_double();
@@ -131,7 +131,29 @@ void WalkingEngineNode::initialize_robot_model()
     // NOTA: As massas e posições do CoM foram extraídas do seu URDF.
 
     // Link base (torso)
-    robot_model_["base_link"] = {"base_link", "", 1.4383, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
+    robot_model_["base_link"] = {"base_link", "", 1.8, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
+
+    // --- Cabeça ---
+    robot_model_["head_pan_link"]  = {"head_pan_link",  "base_link",        0.04, {0, 0.008, 0.042}, {0, 0, 1}, {0.012, 0.0007, 0.1444}};
+    robot_model_["head_tilt_link"] = {"head_tilt_link", "head_pan_link",    0.066, {0.018, 0, 0.041}, {0, 1, 0}, {0, 0.0002, 0.061}};
+    joint_to_link_map_["head_pan"] = "head_pan_link";
+    joint_to_link_map_["head_tilt"] = "head_tilt_link";
+    
+    // --- Braço Esquerdo ---
+    robot_model_["l_sho_pitch_link"] = {"l_sho_pitch_link", "base_link",         0.04, {0.003, 0.04, -0.009}, {0, 1, 0}, {0.0126, 0.0682, 0.1366}};
+    robot_model_["l_sho_roll_link"]  = {"l_sho_roll_link",  "l_sho_pitch_link",  0.2, {0, 0.05, 0}, {1, 0, 0}, {0.0008, 0.05, -0.032}};
+    robot_model_["l_el_link"]        = {"l_el_link",        "l_sho_roll_link",   0.1, {0, 0.08, 0.016}, {0, 0, 1}, {0.0007, 0.1012, 0}};
+    joint_to_link_map_["l_sho_pitch"] = "l_sho_pitch_link";
+    joint_to_link_map_["l_sho_roll"] = "l_sho_roll_link";
+    joint_to_link_map_["l_el"] = "l_el_link";
+
+    // --- Braço Direito ---
+    robot_model_["r_sho_pitch_link"] = {"r_sho_pitch_link", "base_link",         0.026, {-0.003, -0.04, -0.009}, {0, 1, 0}, {0.0117, -0.0677, 0.1366}};
+    robot_model_["r_sho_roll_link"]  = {"r_sho_roll_link",  "r_sho_pitch_link",  0.197, {0, -0.05, 0}, {1, 0, 0}, {0, -0.05, -0.032}};
+    robot_model_["r_el_link"]        = {"r_el_link",        "r_sho_roll_link",   0.1, {0, -0.08, 0.016}, {0, 0, 1}, {-0.0007, -0.1012, 0}};
+    joint_to_link_map_["r_sho_pitch"] = "r_sho_pitch_link";
+    joint_to_link_map_["r_sho_roll"] = "r_sho_roll_link";
+    joint_to_link_map_["r_el"] = "r_el_link";
 
     // --- Perna Direita ---
     robot_model_["r_hip_yaw_link"]   = {"r_hip_yaw_link",   "base_link",          0.0069, {0, 0, -0.036}, {0, 0, 1}, {0, -0.0425, 0}};
@@ -174,56 +196,33 @@ void WalkingEngineNode::run_forward_kinematics(
     link_poses_world_.clear();
     link_poses_world_[base_link_name] = base_link_pose;
 
-    // Passo 1: Encontrar o caminho do pé de apoio até o "base_link" (torso)
-    std::vector<std::string> spine_path;
-    std::string current_link = base_link_name;
-    while (current_link != "base_link" && robot_model_.count(current_link) && !robot_model_.at(current_link).parent_name.empty()) {
-        spine_path.push_back(current_link);
-        current_link = robot_model_.at(current_link).parent_name;
-    }
-    spine_path.push_back("base_link");
-    std::reverse(spine_path.begin(), spine_path.end()); // Agora temos o caminho do torso para o pé
-
-    // Passo 2: Calcular as poses "subindo" do pé de apoio para o torso
-    for (size_t i = 0; i < spine_path.size() - 1; ++i) {
-        std::string parent_name = spine_path[i];
-        std::string child_name = spine_path[i+1];
-
-        if (link_poses_world_.count(child_name)) {
-            // Se conhecemos a pose do filho, calculamos a do pai (subindo na árvore)
-            const auto& child_info = robot_model_.at(child_name);
-            auto joint_it = std::find_if(joint_to_link_map_.begin(), joint_to_link_map_.end(), 
-                                        [&](const auto& pair){ return pair.second == child_name; });
-            
-            double angle = 0.0;
-            if (joint_it != joint_to_link_map_.end() && joint_angles.count(joint_it->first)) {
-                angle = joint_angles.at(joint_it->first);
-            }
-
-            Eigen::Affine3d transform_child_to_parent = Eigen::Affine3d::Identity();
-            transform_child_to_parent.rotate(Eigen::AngleAxisd(angle, child_info.joint_axis_parent));
-            transform_child_to_parent.translate(child_info.translation_from_parent);
-
-            link_poses_world_[parent_name] = link_poses_world_.at(child_name) * transform_child_to_parent.inverse();
+    // Constrói um mapa de filhos para cada pai para facilitar a travessia
+    std::map<std::string, std::vector<std::string>> parent_to_children_map;
+    for (const auto& pair : robot_model_) {
+        if (!pair.second.parent_name.empty()) {
+            parent_to_children_map[pair.second.parent_name].push_back(pair.first);
         }
     }
 
-    // Passo 3: Calcular as poses de todas as outras ramificações "descendo" a partir da espinha dorsal
-    std::vector<std::string> links_to_process;
+    std::vector<std::string> unprocessed_links;
     for(const auto& pair : robot_model_){
-        // Adiciona todos os links que ainda não foram processados
-        if(link_poses_world_.count(pair.first) == 0){
-            links_to_process.push_back(pair.first);
+        if (pair.first != base_link_name) {
+            unprocessed_links.push_back(pair.first);
         }
     }
 
-    size_t passes = 0;
-    while(!links_to_process.empty() && passes < robot_model_.size()) {
-        for(auto it = links_to_process.begin(); it != links_to_process.end(); ){
-            const auto& link_info = robot_model_.at(*it);
-            if(link_poses_world_.count(link_info.parent_name)) {
+    // Itera até que todos os links sejam processados ou não haja mais progresso
+    int passes = 0;
+    while (!unprocessed_links.empty() && passes < robot_model_.size()) {
+        for (auto it = unprocessed_links.begin(); it != unprocessed_links.end(); ) {
+            std::string current_link_name = *it;
+            const auto& link_info = robot_model_.at(current_link_name);
+            bool processed = false;
+
+            // Tenta processar "para baixo" (do pai para o filho)
+            if (link_poses_world_.count(link_info.parent_name)) {
                 auto joint_it = std::find_if(joint_to_link_map_.begin(), joint_to_link_map_.end(), 
-                                            [&](const auto& pair){ return pair.second == link_info.name; });
+                                            [&](const auto& p){ return p.second == link_info.name; });
                 
                 double angle = 0.0;
                 if (joint_it != joint_to_link_map_.end() && joint_angles.count(joint_it->first)) {
@@ -235,9 +234,35 @@ void WalkingEngineNode::run_forward_kinematics(
                 transform.translate(link_info.translation_from_parent);
                 transform.rotate(Eigen::AngleAxisd(angle, link_info.joint_axis_parent));
                 
-                link_poses_world_[link_info.name] = parent_pose * transform;
-                
-                it = links_to_process.erase(it);
+                link_poses_world_[current_link_name] = parent_pose * transform;
+                processed = true;
+            }
+            // Tenta processar "para cima" (do filho para o pai)
+            else if (parent_to_children_map.count(current_link_name) > 0) {
+                 for (const std::string& child_name : parent_to_children_map.at(current_link_name)) {
+                    if (link_poses_world_.count(child_name)) {
+                        const auto& child_info = robot_model_.at(child_name);
+                        auto joint_it = std::find_if(joint_to_link_map_.begin(), joint_to_link_map_.end(), 
+                                                    [&](const auto& p){ return p.second == child_name; });
+
+                        double angle = 0.0;
+                        if (joint_it != joint_to_link_map_.end() && joint_angles.count(joint_it->first)) {
+                            angle = joint_angles.at(joint_it->first);
+                        }
+
+                        Eigen::Affine3d transform_child_to_parent = Eigen::Affine3d::Identity();
+                        transform_child_to_parent.translate(child_info.translation_from_parent);
+                        transform_child_to_parent.rotate(Eigen::AngleAxisd(angle, child_info.joint_axis_parent));
+
+                        link_poses_world_[current_link_name] = link_poses_world_.at(child_name) * transform_child_to_parent.inverse();
+                        processed = true;
+                        break; // Encontrou um filho processado, pode calcular o pai
+                    }
+                }
+            }
+
+            if (processed) {
+                it = unprocessed_links.erase(it);
             } else {
                 ++it;
             }
@@ -245,39 +270,44 @@ void WalkingEngineNode::run_forward_kinematics(
         passes++;
     }
 
-    if(!links_to_process.empty()) {
+    if(!unprocessed_links.empty()) {
         RCLCPP_ERROR(this->get_logger(), "Erro de FK: Loop ou parente faltando no modelo do robô. Links não processados:");
-        for(const auto& name : links_to_process){
+        for(const auto& name : unprocessed_links){
             RCLCPP_ERROR(this->get_logger(), "- %s (pai: %s)", name.c_str(), robot_model_.at(name).parent_name.c_str());
         }
     }
 }
 
+
 void WalkingEngineNode::calculate_downstream_properties(
   const std::string& current_link_name,
   double& total_mass,
-  Eigen::Vector3d& combined_com_world)
+  Eigen::Vector3d& combined_com_moment_world) // Renomeado para maior clareza
 {
-  const auto& link_info = robot_model_.at(current_link_name);
-  total_mass = link_info.mass;
-  combined_com_world = (link_poses_world_.at(current_link_name) * link_info.com_position_local) * link_info.mass;
-
-  for (const auto& pair : robot_model_) {
-    if (pair.second.parent_name == current_link_name) {
-      double child_mass;
-      Eigen::Vector3d child_com_moment;
-      calculate_downstream_properties(pair.first, child_mass, child_com_moment);
-      total_mass += child_mass;
-      combined_com_world += child_com_moment;
+    if (robot_model_.count(current_link_name) == 0 || link_poses_world_.count(current_link_name) == 0) {
+        total_mass = 0.0;
+        combined_com_moment_world = Eigen::Vector3d::Zero();
+        return;
     }
-  }
-  
-  if (total_mass > 1e-6) {
-      combined_com_world /= total_mass;
-  }
+
+    const auto& link_info = robot_model_.at(current_link_name);
+    total_mass = link_info.mass;
+    combined_com_moment_world = (link_poses_world_.at(current_link_name) * link_info.com_position_local) * link_info.mass;
+
+    for (const auto& pair : robot_model_) {
+        if (pair.second.parent_name == current_link_name) {
+            double child_mass;
+            Eigen::Vector3d child_com_moment;
+            calculate_downstream_properties(pair.first, child_mass, child_com_moment);
+            total_mass += child_mass;
+            combined_com_moment_world += child_com_moment;
+        }
+    }
 }
 
 
+// VERSÃO CORRIGIDA
+// Esta função agora faz a divisão pela massa total
 std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_for_support_leg(
   const std::map<std::string, double>& base_joint_angles, bool is_left_support)
 {
@@ -303,9 +333,13 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
 
         double downstream_mass = 0.0;
         Eigen::Vector3d downstream_com_moment_world(0,0,0);
+        
+        // A função auxiliar agora retorna o momento de massa total
         calculate_downstream_properties(link_name, downstream_mass, downstream_com_moment_world);
 
         if(downstream_mass < 1e-6) continue;
+
+        // A DIVISÃO ACONTECE AQUI, UMA ÚNICA VEZ
         Eigen::Vector3d downstream_com_world = downstream_com_moment_world / downstream_mass;
 
         Eigen::Vector3d joint_position_world = link_poses_world_.at(link_info.parent_name) * link_info.translation_from_parent;
@@ -539,6 +573,25 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         
         // --- FIM DA LÓGICA DE OFFSETS ---
 
+        RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Detalhes da Compensação de Gravidade (Passo t=%.2f) ---", t_step_);
+
+// Itera sobre o mapa de offsets para mostrar os resultados de todas as juntas compensadas
+for (const auto& pair : gravity_offsets) {
+    std::string joint_name = pair.first;
+    double grav_offset = pair.second;
+
+    if (ik_angles.count(joint_name) && final_angles.count(joint_name)) {
+        RCLCPP_INFO(this->get_logger(),
+            "  -> Joint[%s]: IK=%.4f, GravOffset=%.4f, FINAL=%.4f",
+            joint_name.c_str(),
+            ik_angles.at(joint_name),
+            grav_offset,
+            final_angles.at(joint_name)
+        );
+    }
+}
+RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Fim do Relatório ---");
+
         combined_joint_state_.name.clear();
         combined_joint_state_.position.clear();
         for (const auto & pair : final_angles) {
@@ -557,7 +610,10 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         combined_joint_state_.name.push_back("r_sho_pitch");
         combined_joint_state_.position.push_back(r_sho_pitch);
         
-        combined_joint_state_.header.stamp = this->get_clock()->now();
+        combined_joint_state_.header.stamp = this->get_clock()->now();    
+
+        std::string support_hip_roll = support_foot_->is_left ? "l_hip_roll" : "r_hip_roll";
+
         joint_pub_->publish(combined_joint_state_);
     
   }

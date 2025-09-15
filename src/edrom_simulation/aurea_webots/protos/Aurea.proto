@@ -47,7 +47,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "head_pan"
-            maxTorque 10000
+            maxTorque 3.5
           }
           PositionSensor {
             name "head_pan_sensor"
@@ -75,7 +75,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "head_tilt"
-                  maxTorque 10000
+                  maxTorque 3.5
                 }
                 PositionSensor {
                   name "head_tilt_sensor"
@@ -158,7 +158,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "l_sho_pitch"
-            maxTorque 10000
+            maxTorque 3.5
           }
           PositionSensor {
             name "l_sho_pitch_sensor"
@@ -185,7 +185,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "l_sho_roll"
-                  maxTorque 10000
+                  maxTorque 3.5
                 }
                 PositionSensor {
                   name "l_sho_roll_sensor"
@@ -213,7 +213,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "l_el"
-                        maxTorque 10000
+                        maxTorque 3.5
                       }
                       PositionSensor {
                         name "l_el_sensor"
@@ -304,7 +304,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "r_sho_pitch"
-            maxTorque 10000
+            maxTorque 3.5
           }
           PositionSensor {
             name "r_sho_pitch_sensor"
@@ -331,7 +331,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "r_sho_roll"
-                  maxTorque 10000
+                  maxTorque 3.5
                 }
                 PositionSensor {
                   name "r_sho_roll_sensor"
@@ -359,7 +359,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "r_el"
-                        maxTorque 10000
+                        maxTorque 3.5
                       }
                       PositionSensor {
                         name "r_el_sensor"
@@ -450,7 +450,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "r_hip_yaw"
-            maxTorque 10000
+            maxTorque 3.5
           }
           PositionSensor {
             name "r_hip_yaw_sensor"
@@ -477,7 +477,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "r_hip_roll"
-                  maxTorque 10000
+                  maxTorque 3.5
                 }
                 PositionSensor {
                   name "r_hip_roll_sensor"
@@ -505,7 +505,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "r_hip_pitch"
-                        maxTorque 10000
+                        maxTorque 3.5
                       }
                       PositionSensor {
                         name "r_hip_pitch_sensor"
@@ -533,7 +533,7 @@ PROTO Aurea [
                           device [
                             RotationalMotor {
                               name "r_knee"
-                              maxTorque 10000
+                              maxTorque 3.5
                             }
                             PositionSensor {
                               name "r_knee_sensor"
@@ -561,7 +561,7 @@ PROTO Aurea [
                                 device [
                                   RotationalMotor {
                                     name "r_ank_pitch"
-                                    maxTorque 10000
+                                    maxTorque 3.5
                                   }
                                   PositionSensor {
                                     name "r_ank_pitch_sensor"
@@ -588,7 +588,7 @@ PROTO Aurea [
                                       device [
                                         RotationalMotor {
                                           name "r_ank_roll"
-                                          maxTorque 10000
+                                          maxTorque 3.5
                                         }
                                         PositionSensor {
                                           name "r_ank_roll_sensor"
@@ -744,7 +744,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "l_hip_yaw"
-            maxTorque 10000
+            maxTorque 3.5
           }
           PositionSensor {
             name "l_hip_yaw_sensor"
@@ -771,7 +771,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "l_hip_roll"
-                  maxTorque 10000
+                  maxTorque 3.5
                 }
                 PositionSensor {
                   name "l_hip_roll_sensor"
@@ -799,7 +799,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "l_hip_pitch"
-                        maxTorque 10000
+                        maxTorque 3.5
                       }
                       PositionSensor {
                         name "l_hip_pitch_sensor"
@@ -827,7 +827,7 @@ PROTO Aurea [
                           device [
                             RotationalMotor {
                               name "l_knee"
-                              maxTorque 10000
+                              maxTorque 3.5
                             }
                             PositionSensor {
                               name "l_knee_sensor"
@@ -855,7 +855,7 @@ PROTO Aurea [
                                 device [
                                   RotationalMotor {
                                     name "l_ank_pitch"
-                                    maxTorque 10000
+                                    maxTorque 3.5
                                   }
                                   PositionSensor {
                                     name "l_ank_pitch_sensor"
@@ -882,7 +882,7 @@ PROTO Aurea [
                                       device [
                                         RotationalMotor {
                                           name "l_ank_roll"
-                                          maxTorque 10000
+                                          maxTorque 3.5
                                         }
                                         PositionSensor {
                                           name "l_ank_roll_sensor"
@@ -1042,7 +1042,7 @@ PROTO Aurea [
     }
     physics Physics {
       density -1
-      mass 1.438300
+      mass 1.8
       centerOfMass [ -0.005439 -0.001346 0.071435 ]
       inertiaMatrix [
         2.822000e-03 1.147700e-03 3.502800e-03
