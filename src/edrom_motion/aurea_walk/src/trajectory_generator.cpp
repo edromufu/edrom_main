@@ -68,29 +68,14 @@ void get_com_pose_at_time(
   Eigen::Vector2d c2 = (k_d1 * e_lambda_T - k_d2) / denominator;
 
   if (t < tb) {
-      // MODIFICADO: Usa interpolação suave (cosseno) em vez de linear
-      double ds_normalized_time = t / tb;
-      double h = 0.5 * (1.0 - cos(M_PI * ds_normalized_time));
-      Eigen::Vector2d zmp_ref = (1.0 - h) * p_start.position + h * p_support.position;
-      
-      // ANTIGO: Eigen::Vector2d zmp_ref = p_start.position + m_d1 * t;
-
+      Eigen::Vector2d zmp_ref = p_start.position + m_d1 * t;
       Eigen::Vector2d sinh_term = (1.0 / lambda_val) * m_d1 * std::sinh(lambda_val * (t - tb));
       out_com_pos = zmp_ref + c1 * std::exp(lambda_val * t) + c2 * std::exp(-lambda_val * t) - sinh_term;
-  
   } else if (t >= te) {
-      // MODIFICADO: Usa interpolação suave (cosseno) em vez de linear
-      double ds_normalized_time = (t - te) / (T - te);
-      double h = 0.5 * (1.0 - cos(M_PI * ds_normalized_time));
-      Eigen::Vector2d zmp_ref = (1.0 - h) * p_support.position + h * p_end.position;
-
-      // ANTIGO: Eigen::Vector2d zmp_ref = p_support.position + m_d2 * (t - te);
-
+      Eigen::Vector2d zmp_ref = p_support.position + m_d2 * (t - te);
       Eigen::Vector2d sinh_term = (1.0 / lambda_val) * m_d2 * std::sinh(lambda_val * (t - te));
       out_com_pos = zmp_ref + c1 * std::exp(lambda_val * t) + c2 * std::exp(-lambda_val * t) - sinh_term;
-  
   } else {
-      // Fase de apoio único, ZMP permanece no centro do pé de apoio
       Eigen::Vector2d zmp_ref = p_support.position;
       out_com_pos = zmp_ref + c1 * std::exp(lambda_val * t) + c2 * std::exp(-lambda_val * t);
   }

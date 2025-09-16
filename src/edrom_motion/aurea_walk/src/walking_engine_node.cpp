@@ -18,10 +18,10 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 1.5);
-  this->declare_parameter<double>("com_height", 0.18);
+  this->declare_parameter<double>("step_period", 1.2);
+  this->declare_parameter<double>("com_height", 0.19);
   this->declare_parameter<double>("step_height", 0.03);
-  this->declare_parameter<double>("double_support_ratio", 0.5);
+  this->declare_parameter<double>("double_support_ratio", 0.65);
   this->declare_parameter<double>("feet_separation", 0.045);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
@@ -31,8 +31,11 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", 0.0);
-  this->declare_parameter<double>("servo_kp_gain", 10.0); // Ganho para converter Nm em rad. Sintonize este valor!
+  this->declare_parameter<double>("backlash_offset_hp", -0.15);
+  //this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
+  this->declare_parameter<double>("kp_gain_hip_roll", 2.5);
+  this->declare_parameter<double>("kp_gain_hip_pitch", 2.5);
+  this->declare_parameter<double>("kp_gain_knee", 2.5);
 
   T_ = this->get_parameter("step_period").as_double();
   z_com_ = this->get_parameter("com_height").as_double();
@@ -48,8 +51,10 @@ WalkingEngineNode::WalkingEngineNode()
   idle_elbow_ = this->get_parameter("idle_arm_pose.elbow").as_double();
   stop_sub_ = this->create_subscription<std_msgs::msg::Empty>("/stop_walking", 10, std::bind(&WalkingEngineNode::stop_command_callback, this, std::placeholders::_1));
   backlash_offset_hp_ = this->get_parameter("backlash_offset_hp").as_double();
-  servo_kp_gain_ = this->get_parameter("servo_kp_gain").as_double();
-
+//  servo_kp_gain_ = this->get_parameter("servo_kp_gain").as_double();
+  kp_gain_hip_pitch_ = this->get_parameter("kp_gain_hip_pitch").as_double();
+  kp_gain_hip_roll_ = this->get_parameter("kp_gain_hip_roll").as_double();
+  kp_gain_knee_ = this->get_parameter("kp_gain_knee").as_double();
   initialize_robot_model();
 
   // Configuração inicial do estado
@@ -131,7 +136,7 @@ void WalkingEngineNode::initialize_robot_model()
     // NOTA: As massas e posições do CoM foram extraídas do seu URDF.
 
     // Link base (torso)
-    robot_model_["base_link"] = {"base_link", "", 1.8, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
+    robot_model_["base_link"] = {"base_link", "", 1.4, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
 
     // --- Cabeça ---
     robot_model_["head_pan_link"]  = {"head_pan_link",  "base_link",        0.04, {0, 0.008, 0.042}, {0, 0, 1}, {0.012, 0.0007, 0.1444}};
@@ -140,27 +145,27 @@ void WalkingEngineNode::initialize_robot_model()
     joint_to_link_map_["head_tilt"] = "head_tilt_link";
     
     // --- Braço Esquerdo ---
-    robot_model_["l_sho_pitch_link"] = {"l_sho_pitch_link", "base_link",         0.04, {0.003, 0.04, -0.009}, {0, 1, 0}, {0.0126, 0.0682, 0.1366}};
-    robot_model_["l_sho_roll_link"]  = {"l_sho_roll_link",  "l_sho_pitch_link",  0.2, {0, 0.05, 0}, {1, 0, 0}, {0.0008, 0.05, -0.032}};
-    robot_model_["l_el_link"]        = {"l_el_link",        "l_sho_roll_link",   0.1, {0, 0.08, 0.016}, {0, 0, 1}, {0.0007, 0.1012, 0}};
+    robot_model_["l_sho_pitch_link"] = {"l_sho_pitch_link", "base_link",         0.03, {0.003, 0.04, -0.009}, {0, 1, 0}, {0.0126, 0.0682, 0.1366}};
+    robot_model_["l_sho_roll_link"]  = {"l_sho_roll_link",  "l_sho_pitch_link",  0.4, {0, 0.05, 0}, {1, 0, 0}, {0.0008, 0.05, -0.032}};
+    robot_model_["l_el_link"]        = {"l_el_link",        "l_sho_roll_link",   0.075, {0, 0.08, 0.016}, {0, 0, 1}, {0.0007, 0.1012, 0}};
     joint_to_link_map_["l_sho_pitch"] = "l_sho_pitch_link";
     joint_to_link_map_["l_sho_roll"] = "l_sho_roll_link";
     joint_to_link_map_["l_el"] = "l_el_link";
 
     // --- Braço Direito ---
-    robot_model_["r_sho_pitch_link"] = {"r_sho_pitch_link", "base_link",         0.026, {-0.003, -0.04, -0.009}, {0, 1, 0}, {0.0117, -0.0677, 0.1366}};
-    robot_model_["r_sho_roll_link"]  = {"r_sho_roll_link",  "r_sho_pitch_link",  0.197, {0, -0.05, 0}, {1, 0, 0}, {0, -0.05, -0.032}};
-    robot_model_["r_el_link"]        = {"r_el_link",        "r_sho_roll_link",   0.1, {0, -0.08, 0.016}, {0, 0, 1}, {-0.0007, -0.1012, 0}};
+    robot_model_["r_sho_pitch_link"] = {"r_sho_pitch_link", "base_link",         0.03, {-0.003, -0.04, -0.009}, {0, 1, 0}, {0.0117, -0.0677, 0.1366}};
+    robot_model_["r_sho_roll_link"]  = {"r_sho_roll_link",  "r_sho_pitch_link",  0.4, {0, -0.05, 0}, {1, 0, 0}, {0, -0.05, -0.032}};
+    robot_model_["r_el_link"]        = {"r_el_link",        "r_sho_roll_link",   0.075, {0, -0.08, 0.016}, {0, 0, 1}, {-0.0007, -0.1012, 0}};
     joint_to_link_map_["r_sho_pitch"] = "r_sho_pitch_link";
     joint_to_link_map_["r_sho_roll"] = "r_sho_roll_link";
     joint_to_link_map_["r_el"] = "r_el_link";
 
     // --- Perna Direita ---
     robot_model_["r_hip_yaw_link"]   = {"r_hip_yaw_link",   "base_link",          0.0069, {0, 0, -0.036}, {0, 0, 1}, {0, -0.0425, 0}};
-    robot_model_["r_hip_roll_link"]  = {"r_hip_roll_link",  "r_hip_yaw_link",     0.1839, {0.0298, 0, -0.0152}, {1, 0, 0}, {-0.054, -0.0005, -0.062}};
-    robot_model_["r_hip_pitch_link"] = {"r_hip_pitch_link", "r_hip_roll_link",    0.1261, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
+    robot_model_["r_hip_roll_link"]  = {"r_hip_roll_link",  "r_hip_yaw_link",     0.32, {0.0298, 0, -0.0152}, {-1, 0, 0}, {-0.054, -0.0005, -0.062}};
+    robot_model_["r_hip_pitch_link"] = {"r_hip_pitch_link", "r_hip_roll_link",    0.193, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
     robot_model_["r_knee_link"]      = {"r_knee_link",      "r_hip_pitch_link",   0.0371, {0, 0, -0.0419}, {0, 1, 0}, {0, -0.00043, -0.12}};
-    robot_model_["r_ank_pitch_link"] = {"r_ank_pitch_link", "r_knee_link",        0.1839, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
+    robot_model_["r_ank_pitch_link"] = {"r_ank_pitch_link", "r_knee_link",        0.32, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
     robot_model_["r_ank_roll_link"]  = {"r_ank_roll_link",  "r_ank_pitch_link",   0.0877, {0.054, -0.0118, -0.0351}, {1, 0, 0}, {-0.054, 0, 0}};
     joint_to_link_map_["r_hip_yaw"]   = "r_hip_yaw_link";
     joint_to_link_map_["r_hip_roll"]  = "r_hip_roll_link";
@@ -170,12 +175,12 @@ void WalkingEngineNode::initialize_robot_model()
     joint_to_link_map_["r_ank_roll"]  = "r_ank_roll_link";
 
     // --- Perna Esquerda ---
-    robot_model_["l_hip_yaw_link"]   = {"l_hip_yaw_link",   "base_link",          0.0187, {0, 0, -0.036}, {0, 0, 1}, {0, 0.0425, 0}};
-    robot_model_["l_hip_roll_link"]  = {"l_hip_roll_link",  "l_hip_yaw_link",     0.1839, {0.0298, 0, -0.0152}, {1, 0, 0}, {-0.054, -0.0005, -0.062}};
-    robot_model_["l_hip_pitch_link"] = {"l_hip_pitch_link", "l_hip_roll_link",    0.1261, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
+    robot_model_["l_hip_yaw_link"]   = {"l_hip_yaw_link",   "base_link",          0.007, {0, 0, -0.036}, {0, 0, 1}, {0, 0.0425, 0}};
+    robot_model_["l_hip_roll_link"]  = {"l_hip_roll_link",  "l_hip_yaw_link",     0.32, {0.0298, 0, -0.0152}, {-1, 0, 0}, {-0.054, -0.0005, -0.062}};
+    robot_model_["l_hip_pitch_link"] = {"l_hip_pitch_link", "l_hip_roll_link",    0.193, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
     robot_model_["l_knee_link"]      = {"l_knee_link",      "l_hip_pitch_link",   0.0371, {0, 0, -0.0419}, {0, 1, 0}, {0, -0.00043, -0.12}};
     // LINHAS FALTANTES ADICIONADAS AQUI:
-    robot_model_["l_ank_pitch_link"] = {"l_ank_pitch_link", "l_knee_link",        0.1839, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
+    robot_model_["l_ank_pitch_link"] = {"l_ank_pitch_link", "l_knee_link",        0.32, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
     robot_model_["l_ank_roll_link"]  = {"l_ank_roll_link",  "l_ank_pitch_link",   0.0877, {0.054, 0.0113, -0.0351}, {1, 0, 0}, {-0.054, 0.0005, 0}};
     joint_to_link_map_["l_hip_yaw"]   = "l_hip_yaw_link";
     joint_to_link_map_["l_hip_roll"]  = "l_hip_roll_link";
@@ -350,8 +355,17 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
         
         Eigen::Vector3d torque_vector = vector_to_com.cross(gravity_force);
         double compensating_torque = -torque_vector.dot(joint_axis_world);
-        
-        gravity_offsets[joint_name] = compensating_torque / servo_kp_gain_;
+        double current_kp_gain = 0.0; // Valor padrão
+        if (joint_name.find("hip_roll") != std::string::npos) {
+          current_kp_gain = kp_gain_hip_roll_;
+        } else if (joint_name.find("hip_pitch") != std::string::npos) {
+          current_kp_gain = kp_gain_hip_pitch_;
+        } else if (joint_name.find("knee") != std::string::npos) {
+          current_kp_gain = kp_gain_knee_;
+        }
+
+        gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
+        //gravity_offsets[joint_name] = compensating_torque / servo_kp_gain_;
     }
     
     return gravity_offsets;

@@ -59,7 +59,10 @@ private:
 
   // Parâmetros de controle e compensação
   double backlash_offset_hp_;
-  double servo_kp_gain_; // Ganho para converter torque (Nm) em offset de posição (rad)
+  //double servo_kp_gain_; // Ganho para converter torque (Nm) em offset de posição (rad)
+  double kp_gain_hip_roll_;
+  double kp_gain_hip_pitch_;
+  double kp_gain_knee_;
 
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void main_loop();
