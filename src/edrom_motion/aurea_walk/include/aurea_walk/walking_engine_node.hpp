@@ -56,13 +56,15 @@ private:
   std::map<std::string, LinkData> robot_model_;
   std::map<std::string, std::string> joint_to_link_map_;
   std::map<std::string, Eigen::Affine3d> link_poses_world_;
-
   // Parâmetros de controle e compensação
   double backlash_offset_hp_;
   //double servo_kp_gain_; // Ganho para converter torque (Nm) em offset de posição (rad)
   double kp_gain_hip_roll_;
   double kp_gain_hip_pitch_;
   double kp_gain_knee_;
+   //std::map<std::string, double> last_filtered_gravity_offsets_;
+  //double filter_alpha_; // Parâmetro do filtro de suavização
+
 
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void main_loop();
