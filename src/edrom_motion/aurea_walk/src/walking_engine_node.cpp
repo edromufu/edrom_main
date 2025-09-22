@@ -19,7 +19,7 @@ WalkingEngineNode::WalkingEngineNode()
 {
   // Declara e carrega os parâmetros
   this->declare_parameter<double>("step_period", 1.2);
-  this->declare_parameter<double>("com_height", 0.22);
+  this->declare_parameter<double>("com_height", 0.21);
   this->declare_parameter<double>("step_height", 0.033);
   this->declare_parameter<double>("double_support_ratio", 0.75);
   this->declare_parameter<double>("feet_separation", 0.045);
@@ -31,7 +31,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-this->declare_parameter<double>("backlash_offset_hp", -0.18);
+this->declare_parameter<double>("backlash_offset_hp", -0.22);
   //this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
   this->declare_parameter<double>("kp_gain_hip_roll", 6.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -1.5);
@@ -365,9 +365,9 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
         } else if (joint_name.find("knee") != std::string::npos) {
           current_kp_gain = kp_gain_knee_;
         } else if(joint_name.find("ank_roll") != std::string::npos){
-          current_kp_gain = 1500.0;
+          current_kp_gain = 1500000.0;
         }else if(joint_name.find("ank_pitch") != std::string::npos){
-          current_kp_gain = 1500.0;
+          current_kp_gain = 1500000.0;
         }
 
         gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
