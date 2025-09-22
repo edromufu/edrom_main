@@ -28,15 +28,15 @@ public:
   KickNode() : Node("kick_node")
   {
     auto params = aurea_kick::KickParameters();
-    this->declare_parameter("phase_a_time", 1.2);
-    this->declare_parameter("phase_b_time", 0.5);
-    this->declare_parameter("phase_c_time", 0.25);
-    this->declare_parameter("phase_d_time", 0.5);
-    this->declare_parameter("phase_e_time", 1.2);
+    this->declare_parameter("phase_a_time", 1.5);
+    this->declare_parameter("phase_b_time", 0.8);
+    this->declare_parameter("phase_c_time", 0.5);
+    this->declare_parameter("phase_d_time", 0.8);
+    this->declare_parameter("phase_e_time", 1.5);
     this->declare_parameter("x_amplitude", 0.1);
-    this->declare_parameter("z_height", 0.04);
-    this->declare_parameter("com_height", 0.18);
-    this->declare_parameter("feet_separation", 0.05);
+    this->declare_parameter("z_height", 0.06);
+    this->declare_parameter("com_height", 0.20);
+    this->declare_parameter("feet_separation", 0.04);
 
     params.tA = this->get_parameter("phase_a_time").as_double();
     params.tB = this->get_parameter("phase_b_time").as_double();

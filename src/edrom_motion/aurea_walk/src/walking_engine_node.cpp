@@ -18,11 +18,11 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 1.5);
-  this->declare_parameter<double>("com_height", 0.2);
-  this->declare_parameter<double>("step_height", 0.04);
+  this->declare_parameter<double>("step_period", 1.2);
+  this->declare_parameter<double>("com_height", 0.22);
+  this->declare_parameter<double>("step_height", 0.033);
   this->declare_parameter<double>("double_support_ratio", 0.75);
-  this->declare_parameter<double>("feet_separation", 0.0425);
+  this->declare_parameter<double>("feet_separation", 0.045);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
@@ -31,11 +31,11 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.23);
+this->declare_parameter<double>("backlash_offset_hp", -0.18);
   //this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
-  this->declare_parameter<double>("kp_gain_hip_roll", 2.5);
-  this->declare_parameter<double>("kp_gain_hip_pitch", 2.5);
-  this->declare_parameter<double>("kp_gain_knee", 2.5);
+  this->declare_parameter<double>("kp_gain_hip_roll", 6.0);
+  this->declare_parameter<double>("kp_gain_hip_pitch", -1.5);
+  this->declare_parameter<double>("kp_gain_knee", 5.0);
   //this->declare_parameter<double>("filter_alpha", 0.2);
 
   T_ = this->get_parameter("step_period").as_double();
@@ -138,7 +138,7 @@ void WalkingEngineNode::initialize_robot_model()
     // NOTA: As massas e posições do CoM foram extraídas do seu URDF.
 
     // Link base (torso)
-    robot_model_["base_link"] = {"base_link", "", 1.4, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
+    robot_model_["base_link"] = {"base_link", "", 1.65, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
 
     // --- Cabeça ---
     robot_model_["head_pan_link"]  = {"head_pan_link",  "base_link",        0.04, {0, 0.008, 0.042}, {0, 0, 1}, {0.012, 0.0007, 0.1444}};
@@ -325,9 +325,9 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
 
     std::vector<std::string> joints_to_compensate;
     if (is_left_support) {
-        joints_to_compensate = {"l_hip_roll", "l_hip_pitch", "l_knee"};
+        joints_to_compensate = {"l_hip_roll", "l_hip_pitch", "l_knee", "l_ank_pitch", "l_ank_roll"};
     } else {
-        joints_to_compensate = {"r_hip_roll", "r_hip_pitch", "r_knee"};
+        joints_to_compensate = {"r_hip_roll", "r_hip_pitch", "r_knee", "r_ank_pitch", "r_ank_roll"};
     }
     
     Eigen::Vector3d gravity_vector(0, 0, -g);
@@ -364,6 +364,10 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
           current_kp_gain = kp_gain_hip_pitch_;
         } else if (joint_name.find("knee") != std::string::npos) {
           current_kp_gain = kp_gain_knee_;
+        } else if(joint_name.find("ank_roll") != std::string::npos){
+          current_kp_gain = 1500.0;
+        }else if(joint_name.find("ank_pitch") != std::string::npos){
+          current_kp_gain = 1500.0;
         }
 
         gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
@@ -549,38 +553,46 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         for (size_t i = 0; i < combined_joint_state_.name.size(); ++i) {
             ik_angles[combined_joint_state_.name[i]] = combined_joint_state_.position[i];
         }
-// --- INÍCIO DA NOVA LÓGICA DE INTERPOLAÇÃO SUAVE ---
+// --- INÍCIO DA LÓGICA DE INTERPOLAÇÃO LINEAR ---
         
         std::map<std::string, double> gravity_offsets;
         double ds_time = ds_ratio_ * T_ / 2.0;
 
-        if (t_step_ < ds_time) { // Primeira fase de apoio duplo (transição para apoio único)
-            // A compensação deve ir de 0 para o valor total do novo pé de apoio.
-            auto offsets_target = calculate_gravity_compensation_for_support_leg(ik_angles, support_foot_->is_left);
-            
-            // Fator de interpolação suave (0.0 -> 1.0)
+        // Calcula os offsets para ambas as pernas como se estivessem em apoio
+        auto offsets_left_support = calculate_gravity_compensation_for_support_leg(ik_angles, true);
+        auto offsets_right_support = calculate_gravity_compensation_for_support_leg(ik_angles, false);
+
+        if (t_step_ < ds_time) { // Primeira fase de apoio duplo
+            auto& offsets_old = support_foot_->is_left ? offsets_right_support : offsets_left_support;
+            auto& offsets_new = support_foot_->is_left ? offsets_left_support : offsets_right_support;
+
+            // FATOR DE INTERPOLAÇÃO LINEAR (0.0 -> 1.0)
             double ratio = t_step_ / ds_time;
-            double h = 0.5 * (1.0 - cos(M_PI * ratio));
             
-            for(auto const& [key, val] : offsets_target) {
-                gravity_offsets[key] = h * val;
+            for(auto const& [key, val] : offsets_old) {
+                gravity_offsets[key] = (1.0 - ratio) * val;
+            }
+            for(auto const& [key, val] : offsets_new) {
+                gravity_offsets[key] += ratio * val;
             }
 
-        } else if (t_step_ > T_ - ds_time) { // Segunda fase de apoio duplo (transição de volta do apoio único)
-            // A compensação deve ir do valor total do pé de apoio antigo para 0.
-            auto offsets_initial = calculate_gravity_compensation_for_support_leg(ik_angles, support_foot_->is_left);
+        } else if (t_step_ > T_ - ds_time) { // Segunda fase de apoio duplo
+            auto& offsets_current = support_foot_->is_left ? offsets_left_support : offsets_right_support;
+            auto& offsets_next = support_foot_->is_left ? offsets_right_support : offsets_left_support;
             
-            // Fator de interpolação suave (1.0 -> 0.0)
+            // FATOR DE INTERPOLAÇÃO LINEAR (0.0 -> 1.0)
             double ratio = (t_step_ - (T_ - ds_time)) / ds_time;
-            double h = 0.5 * (1.0 - cos(M_PI * ratio));
 
-            for(auto const& [key, val] : offsets_initial) {
-                gravity_offsets[key] = (1.0 - h) * val;
+            for(auto const& [key, val] : offsets_current) {
+                gravity_offsets[key] = (1.0 - ratio) * val;
+            }
+            for(auto const& [key, val] : offsets_next) {
+                gravity_offsets[key] += ratio * val;
             }
 
         } else { // Apoio único
             // A compensação está em 100% na perna de apoio.
-            gravity_offsets = calculate_gravity_compensation_for_support_leg(ik_angles, support_foot_->is_left);
+            gravity_offsets = support_foot_->is_left ? offsets_left_support : offsets_right_support;
         }
 
         // Aplica os offsets já interpolados e os estáticos
@@ -593,7 +605,7 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         if (final_angles.count("r_hip_pitch")) final_angles["r_hip_pitch"] += backlash_offset_hp_;
         if (final_angles.count("l_hip_pitch")) final_angles["l_hip_pitch"] += backlash_offset_hp_;
         
-        // --- FIM DA NOVA LÓGICA ---
+        // --- FIM DA LÓGICA DE INTERPOLAÇÃO ---
 
       RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Detalhes da Compensação (t=%.2f) ---", t_step_);
       for (const auto& pair : gravity_offsets) { // Usa a variável correta
