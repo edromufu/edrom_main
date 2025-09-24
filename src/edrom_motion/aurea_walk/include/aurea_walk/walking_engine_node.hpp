@@ -33,7 +33,8 @@ public:
     IDLE,
     WALKING,
     IDLE_MARCH,
-    STOPPING
+    STOPPING,
+    HOMING
   };
 
   WalkingEngineNode();
@@ -51,7 +52,7 @@ private:
   Eigen::Vector3d& combined_com_world);
   std::map<std::string, double> calculate_gravity_compensation_for_support_leg(
   const std::map<std::string, double>& base_joint_angles, bool is_left_support);
-
+  void homing_loop();
   // --- ESTRUTURAS DE DADOS DO MODELO DO ROBÔ ---
   std::map<std::string, LinkData> robot_model_;
   std::map<std::string, std::string> joint_to_link_map_;
@@ -80,6 +81,12 @@ private:
   double idle_shoulder_roll_;
   double idle_elbow_;
   double update_period_;
+
+  double homing_duration_;
+  double t_homing_{0.0};
+  aurea_walk::PoseData torso_homing_start_;
+  aurea_walk::PoseData left_foot_homing_start_;
+  aurea_walk::PoseData right_foot_homing_start_;
 
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr stop_sub_;
   bool stop_requested_ = false;

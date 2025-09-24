@@ -10,6 +10,7 @@ walking_engine_node:
     cmd_vel_topic: "/cmd_vel"
     update_frequency: 100.0
     arm_swing_amplitude: 0.4
+    homing_duration: 2.0
 
     idle_arm_pose:
       shoulder_pitch: 0.0   # Braços retos para baixo

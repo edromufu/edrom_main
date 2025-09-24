@@ -18,11 +18,11 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 1.2);
-  this->declare_parameter<double>("com_height", 0.21);
-  this->declare_parameter<double>("step_height", 0.033);
-  this->declare_parameter<double>("double_support_ratio", 0.75);
-  this->declare_parameter<double>("feet_separation", 0.045);
+  this->declare_parameter<double>("step_period", 0.3);
+  this->declare_parameter<double>("com_height", 0.22);
+  this->declare_parameter<double>("step_height", 0.03);
+  this->declare_parameter<double>("double_support_ratio", 0.1);
+  this->declare_parameter<double>("feet_separation", 0.0465);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
@@ -31,12 +31,13 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-this->declare_parameter<double>("backlash_offset_hp", -0.22);
+  this->declare_parameter<double>("backlash_offset_hp", -0.25);
   //this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
-  this->declare_parameter<double>("kp_gain_hip_roll", 6.0);
-  this->declare_parameter<double>("kp_gain_hip_pitch", -1.5);
+  this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
+  this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);
   this->declare_parameter<double>("kp_gain_knee", 5.0);
   //this->declare_parameter<double>("filter_alpha", 0.2);
+  this->declare_parameter<double>("homing_duration", 2.0);
 
   T_ = this->get_parameter("step_period").as_double();
   z_com_ = this->get_parameter("com_height").as_double();
@@ -57,6 +58,7 @@ this->declare_parameter<double>("backlash_offset_hp", -0.22);
   kp_gain_hip_roll_ = this->get_parameter("kp_gain_hip_roll").as_double();
   kp_gain_knee_ = this->get_parameter("kp_gain_knee").as_double();
   //filter_alpha_ = this->get_parameter("filter_alpha").as_double();
+  homing_duration_ = this->get_parameter("homing_duration").as_double();
   initialize_robot_model();
 
   // Configuração inicial do estado
@@ -411,7 +413,22 @@ void WalkingEngineNode::main_loop()
 
   // Atualiza o estado da máquina de estados com base no comando
   WalkingState previous_state = current_state_;
-  if (stop_now && (current_state_ == WALKING || current_state_ == IDLE_MARCH)) {
+  if (current_state_ == HOMING) {
+    homing_loop();
+    return;
+  }else if (current_state_ == STOPPING){
+    // Se estávamos a parar, o último passo foi concluído.
+      // Em vez de ir para IDLE, agora vamos para HOMING.
+      RCLCPP_INFO(this->get_logger(), "Parada concluída. Iniciando movimento para a pose inicial (Homing).");
+      current_state_ = HOMING;
+      
+      // Guarda as posições atuais para iniciar a interpolação do homing
+      t_homing_ = 0.0;
+      torso_homing_start_ = torso_;
+      left_foot_homing_start_ = left_foot_;
+      right_foot_homing_start_ = right_foot_;
+
+  }else if (stop_now) {
       current_state_ = STOPPING;
       RCLCPP_INFO(this->get_logger(), "Transição para o estado STOPPING.");
   }else if (current_state_ == IDLE) {
@@ -520,6 +537,77 @@ void WalkingEngineNode::main_loop()
       // Se não, continuamos o ciclo normal de caminhada/marcha.
       start_new_step(); 
     }// Prepara o próximo passo para o ciclo contínuo
+  }
+}
+
+void WalkingEngineNode::homing_loop()
+{
+  t_homing_ += update_period_;
+  
+  // Define a pose final de Homing (torso no centro, pés alinhados)
+  aurea_walk::PoseData torso_home_target;
+  torso_home_target.position = {0.0, 0.0};
+  torso_home_target.yaw = 0.0;
+  
+  aurea_walk::PoseData left_foot_home_target;
+  left_foot_home_target.is_left = true;
+  left_foot_home_target.position = {0.0, y_sep_};
+  
+  aurea_walk::PoseData right_foot_home_target;
+  right_foot_home_target.is_left = false;
+  right_foot_home_target.position = {0.0, -y_sep_};
+  
+  // Fator de interpolação suave de 0 a 1
+  double ratio = std::min(1.0, t_homing_ / homing_duration_);
+  double h = 0.5 * (1.0 - cos(M_PI * ratio));
+
+  // Interpola a pose do torso e dos pés da posição atual para a final
+  Eigen::Vector2d current_torso_pos_2d = (1.0 - h) * torso_homing_start_.position + h * torso_home_target.position;
+  double current_torso_yaw = (1.0 - h) * torso_homing_start_.yaw + h * torso_home_target.yaw;
+  Eigen::Vector2d current_left_foot_pos = (1.0 - h) * left_foot_homing_start_.position + h * left_foot_home_target.position;
+  Eigen::Vector2d current_right_foot_pos = (1.0 - h) * right_foot_homing_start_.position + h * right_foot_home_target.position;
+
+  // Prepara para receber novas respostas da IK
+  {
+    std::lock_guard<std::mutex> lock(joint_state_mutex_);
+    ik_responses_received_ = 0;
+    combined_joint_state_.name.clear();
+    combined_joint_state_.position.clear();
+  }
+
+  // Calcula as poses relativas dos pés e envia para a IK (pés no chão)
+  Eigen::Rotation2Dd world_to_torso_rot(-current_torso_yaw);
+  
+  Eigen::Vector2d left_pos_in_torso_2d = world_to_torso_rot * (current_left_foot_pos - current_torso_pos_2d);
+  geometry_msgs::msg::Pose left_pose_msg;
+  left_pose_msg.position.x = left_pos_in_torso_2d.x();
+  left_pose_msg.position.y = left_pos_in_torso_2d.y();
+  left_pose_msg.position.z = 0.0; // Pé no chão
+  left_pose_msg.orientation = yaw_to_quaternion(left_foot_home_target.yaw - current_torso_yaw);
+  auto req_left = std::make_shared<SolveIK::Request>();
+  req_left->leg_id = "esquerda";
+  req_left->target_pose = left_pose_msg;
+  ik_client_->async_send_request(req_left, std::bind(&WalkingEngineNode::ik_response_callback, this, std::placeholders::_1));
+
+  Eigen::Vector2d right_pos_in_torso_2d = world_to_torso_rot * (current_right_foot_pos - current_torso_pos_2d);
+  geometry_msgs::msg::Pose right_pose_msg;
+  right_pose_msg.position.x = right_pos_in_torso_2d.x();
+  right_pose_msg.position.y = right_pos_in_torso_2d.y();
+  right_pose_msg.position.z = 0.0; // Pé no chão
+  right_pose_msg.orientation = yaw_to_quaternion(right_foot_home_target.yaw - current_torso_yaw);
+  auto req_right = std::make_shared<SolveIK::Request>();
+  req_right->leg_id = "direita";
+  req_right->target_pose = right_pose_msg;
+  ik_client_->async_send_request(req_right, std::bind(&WalkingEngineNode::ik_response_callback, this, std::placeholders::_1));
+
+  // Ao final do movimento, transita para o estado IDLE
+  if (t_homing_ >= homing_duration_) {
+    RCLCPP_INFO(this->get_logger(), "Pose inicial alcançada. Entrando em estado IDLE.");
+    current_state_ = IDLE;
+    // Zera as poses para garantir consistência
+    torso_ = torso_home_target;
+    left_foot_ = left_foot_home_target;
+    right_foot_ = right_foot_home_target;
   }
 }
 

@@ -27,7 +27,7 @@ private:
   {
     RCLCPP_INFO(this->get_logger(), "Requisição de IK recebida para a perna %s", request->leg_id.c_str());
 
-    Eigen::Vector3d p_body = {0.0, 0.0, 0.21};
+    Eigen::Vector3d p_body = {0.0, 0.0, 0.22};
     Eigen::Quaterniond R_body = Eigen::Quaterniond::Identity();
     Eigen::Vector3d p_foot_target = {
       request->target_pose.position.x, request->target_pose.position.y, request->target_pose.position.z
