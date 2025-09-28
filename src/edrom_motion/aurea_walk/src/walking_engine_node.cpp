@@ -32,7 +32,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
   this->declare_parameter<double>("backlash_offset_hp", -0.25);
-  //this->declare_parameter<double>("servo_kp_gain", 5.0); // Ganho para converter Nm em rad. Sintonize este valor!
+  //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);
   this->declare_parameter<double>("kp_gain_knee", 5.0);
@@ -137,8 +137,6 @@ void WalkingEngineNode::start_new_step()
 void WalkingEngineNode::initialize_robot_model()
 {
     RCLCPP_INFO(this->get_logger(), "Inicializando modelo do robô para compensação de gravidade a partir do URDF...");
-    // NOTA: As massas e posições do CoM foram extraídas do seu URDF.
-
     // Link base (torso)
     robot_model_["base_link"] = {"base_link", "", 1.65, {-0.0054, -0.0013, 0.0714}, {0,0,0}, {0,0,0}};
 
@@ -183,7 +181,7 @@ void WalkingEngineNode::initialize_robot_model()
     robot_model_["l_hip_roll_link"]  = {"l_hip_roll_link",  "l_hip_yaw_link",     0.32, {0.0298, 0, -0.0152}, {-1, 0, 0}, {-0.054, -0.0005, -0.062}};
     robot_model_["l_hip_pitch_link"] = {"l_hip_pitch_link", "l_hip_roll_link",    0.193, {0, 0, -0.0855}, {0, 1, 0}, {0.054, 0.0005, 0}};
     robot_model_["l_knee_link"]      = {"l_knee_link",      "l_hip_pitch_link",   0.0371, {0, 0, -0.0419}, {0, 1, 0}, {0, -0.00043, -0.12}};
-    // LINHAS FALTANTES ADICIONADAS AQUI:
+
     robot_model_["l_ank_pitch_link"] = {"l_ank_pitch_link", "l_knee_link",        0.32, {-0.0241, 0, 0.0152}, {0, 1, 0}, {0, -0.0005, -0.085}};
     robot_model_["l_ank_roll_link"]  = {"l_ank_roll_link",  "l_ank_pitch_link",   0.0877, {0.054, 0.0113, -0.0351}, {1, 0, 0}, {-0.054, 0.0005, 0}};
     joint_to_link_map_["l_hip_yaw"]   = "l_hip_yaw_link";
@@ -192,9 +190,6 @@ void WalkingEngineNode::initialize_robot_model()
     joint_to_link_map_["l_knee"]      = "l_knee_link";
     joint_to_link_map_["l_ank_pitch"] = "l_ank_pitch_link";
     joint_to_link_map_["l_ank_roll"]  = "l_ank_roll_link";
-
-    // Adicione os links dos braços e cabeça aqui também para um modelo completo
-    // ...
 }
 
 void WalkingEngineNode::run_forward_kinematics(
@@ -641,7 +636,6 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         for (size_t i = 0; i < combined_joint_state_.name.size(); ++i) {
             ik_angles[combined_joint_state_.name[i]] = combined_joint_state_.position[i];
         }
-// --- INÍCIO DA LÓGICA DE INTERPOLAÇÃO LINEAR ---
         
         std::map<std::string, double> gravity_offsets;
         double ds_time = ds_ratio_ * T_ / 2.0;
@@ -692,8 +686,6 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         }
         if (final_angles.count("r_hip_pitch")) final_angles["r_hip_pitch"] += backlash_offset_hp_;
         if (final_angles.count("l_hip_pitch")) final_angles["l_hip_pitch"] += backlash_offset_hp_;
-        
-        // --- FIM DA LÓGICA DE INTERPOLAÇÃO ---
 
       RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Detalhes da Compensação (t=%.2f) ---", t_step_);
       for (const auto& pair : gravity_offsets) { // Usa a variável correta

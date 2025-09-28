@@ -6,9 +6,9 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <mutex>
 #include <string>
-#include "std_msgs/msg/empty.hpp" // Adicione este include
+#include "std_msgs/msg/empty.hpp" 
 #include "aurea_walk/srv/solve_ik.hpp" 
-#include "aurea_walk/trajectory_generator.hpp"// ADICIONADO
+#include "aurea_walk/trajectory_generator.hpp"
 
 using SolveIK = aurea_walk::srv::SolveIK; 
 struct LinkData {
