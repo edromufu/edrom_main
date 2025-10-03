@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'imu_read = imu_ros_arduino.imu_read:main',
         ],
     },
 )

@@ -8,9 +8,9 @@ import os
 import sys
 
 #movimento
-import fall_interpreter_ros2 as fall_interpreter
-import ball_interpreter_ros2 as ball_interpreter
-import neck_interpreter_ros2 as neck_interpreter
+from .fall_interpreter import FallInterpreter
+from .ball_interpreter import BallInterpreter
+from .neck_interpreter import NeckInterpreter
 
 # Importação da mensagem do ROS 2
 # Presumimos que a mensagem foi gerada no pacote ROS 2
@@ -21,7 +21,7 @@ from modularized_bhv_msgs.msg import StateMachineMsg
 edrom_dir = '/home/' + os.getlogin() + '/edromufu/src/'
 sys.path.append(edrom_dir + 'behaviour/transitions_and_states/src')
 
-from behaviour.transitions_and_states.src.behaviour_parameters import BehaviourParameters
+from behaviour_parameters import BehaviourParameters
 
 class ROSPacker(Node):
     """
@@ -47,10 +47,9 @@ class ROSPacker(Node):
         # Inicialização dos intérpretes. 
         # A melhor prática em ROS 2 é gerenciar os nós separadamente ou como componentes.
         # Aqui, criamos instâncias dos nós interpretadores.
-        self.iBall = ball_interpreter.BallInterpreter() 
-        self.iFall = fall_interpreter.FallInterpreter() 
-        self.iNeck = neck_interpreter.NeckInterpreter() 
-
+        self.iBall = BallInterpreter() 
+        self.iFall = FallInterpreter() 
+        self.iNeck = NeckInterpreter() 
         # ROS 2: Criando o publisher
         self.pub_to_state_machine = self.create_publisher(
             StateMachineMsg,

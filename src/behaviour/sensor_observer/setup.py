@@ -22,6 +22,10 @@ setup(
         'console_scripts': [
             # 'nome_do_executavel = nome_do_pacote.nome_do_arquivo:main'
             'fall_interpreter = sensor_observer.fall_interpreter:main',
+            'neck_interpreter = sensor_observer.neck_interpreter:main',
+            'ball_interpreter = sensor_observer.ball_interpreter:main',
+            'ros_packer = sensor_observer.ros_packer:main',
+
         ],
     },
 )

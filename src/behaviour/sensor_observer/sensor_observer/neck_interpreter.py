@@ -7,18 +7,12 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import os
 import sys
 
-# Importa a mensagem do ROS 2. 
-# Se 'head_motors_data' for uma mensagem personalizada, você precisará gerar o pacote e importá-la corretamente.
-# Exemplo: from your_ros2_pkg.msg import HeadMotorsData
-# Vamos usar o nome da mensagem fornecido na sua pergunta.
-from movement_utils.msg import HeadMotorsData  
+from movement_utils.msg import HeadMotorsData # Verificar nova mensagem
 
-# A forma de importar módulos deve ser ajustada no setup.py do pacote.
-# Por enquanto, mantemos a lógica, mas a importação 'sys.path.append' não é a abordagem recomendada em ROS 2.
 edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
 sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
 
-from behaviour.transitions_and_states.src.behaviour_parameters import BehaviourParameters
+from behaviour_parameters import BehaviourParameters
 
 class NeckInterpreter(Node):
     """
@@ -31,23 +25,17 @@ class NeckInterpreter(Node):
         super().__init__('neck_interpreter')
         self.get_logger().info("Nó NeckInterpreter inicializado.")
         
-        # O gerenciamento de parâmetros em ROS 2 é diferente. A classe BehaviourParameters
-        # precisaria ser adaptada para o sistema de parâmetros do ROS 2, por exemplo, 
-        # usando `self.declare_parameter()`. Para esta conversão, mantemos a estrutura original.
         self.parameters = BehaviourParameters()
-
-        # Configuração QoS para comunicação
-        # QoS (Quality of Service) é obrigatório em ROS 2 e define como os dados são transmitidos.
+        # Define QoS profile for reliable communication
         qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE, # Garante que as mensagens serão entregues.
+            reliability=ReliabilityPolicy.RELIABLE, 
             history=HistoryPolicy.KEEP_LAST,
             depth=1
         )
         
         # ROS 2: Criando o subscriber
-        # self.create_subscription(tipo_da_msg, nome_do_topico, callback, qos_profile)
         self.subscription = self.create_subscription(
-            HeadMotorsData,  # Nome da mensagem, adaptado para ROS 2 (CamelCase)
+            HeadMotorsData, 
             self.parameters.headPositionsTopic,
             self.callback_positions,
             qos_profile
@@ -57,10 +45,6 @@ class NeckInterpreter(Node):
         self.horHeadPosition = 'none'
         self.verAngleAccomplished = False
 
-        # Variáveis para a posição da cabeça (agora constantes de classe ou definidas em parâmetros)
-        # Em ROS 2, é comum usar o sistema de parâmetros para esses valores
-        # self.lookingLeftRad = 0.5 # Exemplo
-        # self.lookingRightRad = -0.5 # Exemplo
 
     def get_values(self):
         """

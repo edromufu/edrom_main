@@ -9,14 +9,12 @@ e interpreta esses dados para determinar o estado de queda do robô (em pé, ca�
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Vector3, PoseStamped
-
-# O sys.path e a importação de behaviour_parameters continuam iguais.
 import os
 import sys
 
 edrom_dir = '/home/' + os.getlogin() + '/edromufu/src/'
 sys.path.append(edrom_dir + 'behaviour/transitions_and_states/src')
-from behaviour.transitions_and_states.src.behaviour_parameters import BehaviourParameters
+from behaviour_parameters import BehaviourParameters
 
 class FallInterpreter(Node):
 
@@ -55,7 +53,7 @@ class FallInterpreter(Node):
         # 3. Cria o publisher para o estado de queda
         self.fall_pub = self.create_publisher(PoseStamped, self.parameters.fallStateTopic, 10)
 
-        # Variáveis de estado do sistema de detecção de queda (sem alteração)
+        # Variáveis de estado do sistema de detecção de queda
         self.fallState = self.parameters.up
         self.countFalled = 0
         self.accel_data = Vector3()
@@ -110,7 +108,7 @@ class FallInterpreter(Node):
         fall_msg.header.stamp = self.get_clock().now().to_msg()
         fall_msg.header.frame_id = "base_link" # Boa prática adicionar um frame_id
 
-        # Atribui os dados à mensagem (sem alteração na lógica)
+        # Atribui os dados à mensagem 
         fall_msg.pose.position.x = self.accel_data.x
         fall_msg.pose.position.y = self.accel_data.y
         fall_msg.pose.position.z = self.accel_data.z

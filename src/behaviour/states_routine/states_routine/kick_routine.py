@@ -10,8 +10,8 @@ Chama o serviço /movement_central/kick para comandar o robô a executar um chut
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from std_msgs.msg import String # Assuming this is the equivalent message type for currentStateMsg
-from movement_utils.srv import Page  # Assuming the service is called Page and the request/response are in a class
+from modularized_bhv_msgs.msg import CurrentStateMsg # Assuming this is the equivalent message type for currentStateMsg
+from modularized_bhv_msgs.srv import MoveRequest as Page
 
 class KickRoutine(Node):
 
@@ -34,7 +34,7 @@ class KickRoutine(Node):
 
         # ROS 2 subscriber
         self.state_sub = self.create_subscription(
-            String,
+            CurrentStateMsg,
             '/transitions_and_states/state_machine',
             self.flag_update,
             qos_profile
@@ -48,7 +48,7 @@ class KickRoutine(Node):
         self.timer = self.create_timer(0.1, self.main_loop_callback)
     
     def flag_update(self, msg):
-        message = msg.data # Assuming the message data is in the 'data' field
+        message =  msg.current_state
 
         if message == 'kick':
             self.flag = True
