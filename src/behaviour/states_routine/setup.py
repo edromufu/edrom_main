@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'pub_test = states_routine.pub_test:main',
+            'aligning_body_routine = states_routine.aligning_body_routine:main',
             'walking_routine = states_routine.walking_routine:main',
             'kick_routine = states_routine.kick_routine:main',
             'stand_still_routine = states_routine.stand_still_routine:main',

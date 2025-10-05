@@ -24,6 +24,8 @@ class StateMachineReceiver(Node):
         self.parameters = BehaviourParameters()
         self.state_machine = StateMachine()
 
+        # Se inscrever no topico de retorno do KICK
+
         self.state_publisher = self.create_publisher(
             CurrentStateMsg,
             '/transitions_and_states/state_machine',

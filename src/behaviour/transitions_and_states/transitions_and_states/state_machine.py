@@ -28,7 +28,6 @@ class StateMachine:
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_walking', 'source': 'stand_still', 'dest': 'walking',
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
-
         ]
         
         go_to_stand_still_transitions = [
@@ -37,7 +36,7 @@ class StateMachine:
             { 'trigger': 'go_to_stand_still', 'source': 'getting_up', 'dest': 'stand_still',
              'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_stand_still', 'source': 'kicking', 'dest': 'stand_still',
-             'unless': 'getting_up_condition'},
+             'conditions': 'kick_done_condition', 'unless': 'getting_up_condition'},
         ]
 
         go_to_getting_up_transitions = [
@@ -139,6 +138,9 @@ class StateMachine:
     
     def kick_condition(self):
         return self._kick_condition
+    
+    def kick_done_condition(self):
+        return self._kick_done_condition    
     
     def impossible_condition(self): 
         return self._impossible_condition
