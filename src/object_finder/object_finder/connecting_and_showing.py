@@ -90,7 +90,6 @@ class Visao(Node):
             cv2.imshow("Visao EDROM", self.inference_frame)
             cv2.waitKey(1)
 
-    ### CORREÇÃO 1: Lógica de publish_results preenchida ###
     def publish_results(self):
         """Publica a mensagem VisionData. Usado apenas no modo REAL."""
         objects_msg = VisionData()
@@ -144,7 +143,6 @@ class Visao(Node):
         [obj.found, obj.x, obj.y, obj.roi_width, obj.roi_height, _] = obj_data
         return obj
 
-    ### CORREÇÃO 2: Lógica de create_multi_objects ajustada para DetectionArray ###
     def create_multi_objects(self, detection_list):
         multi_objects_msg = DetectionArray()
         multi_objects_msg.found = True
@@ -159,7 +157,6 @@ class Visao(Node):
         multi_objects_msg.detections = detections
         return multi_objects_msg
 
-    ### CORREÇÃO 3: Adicionando a função ajuste_camera de volta ###
     def ajuste_camera(self):
         """Permite o ajuste manual de brilho da câmera no modo real."""
         print("Ajuste de Brilho: '=' para aumentar, '-' para diminuir. 'w' para continuar.")
