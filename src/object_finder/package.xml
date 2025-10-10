@@ -3,14 +3,14 @@
 <package format="3">
   <name>object_finder</name>
   <version>0.0.1</version>
-  <description>Ball and object detection package for Webots using YOLOv8</description>
+  <description>Pacote de detecção de objetos para a EDROM usando YOLOv8, unificado para simulação e robô real.</description>
   <maintainer email="edromufu@gmail.com">EDROM</maintainer>
   <license>MIT</license>
 
   <depend>rclpy</depend>
   <depend>cv_bridge</depend>
   <depend>sensor_msgs</depend>
-  <depend>vision_msgs</depend>
+  <depend>edrom_msgs</depend>
 
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
