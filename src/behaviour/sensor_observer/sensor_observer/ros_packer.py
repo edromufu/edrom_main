@@ -44,9 +44,7 @@ class ROSPacker(Node):
             depth=1
         )
 
-        # Inicialização dos intérpretes. 
-        # A melhor prática em ROS 2 é gerenciar os nós separadamente ou como componentes.
-        # Aqui, criamos instâncias dos nós interpretadores.
+        # Instanciação dos intérpretes
         self.iBall = BallInterpreter() 
         self.iFall = FallInterpreter() 
         self.iNeck = NeckInterpreter() 

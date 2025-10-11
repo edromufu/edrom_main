@@ -20,7 +20,7 @@ setup(
     maintainer_email='victorvasconcelos676@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
-    tests_require=['pytest'],
+    #tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'state_machine_receiver = transitions_and_states.state_machine_receiver:main',

@@ -21,13 +21,11 @@ class WalkingRoutine(Node):
         self.parameters = BehaviourParameters()            
    
         self.state_sub = self.create_subscription(
-            CurrentStateMsg, '/transitions_and_states/state_machine', self.flag_update, 10
+            CurrentStateMsg, self.parameters.currentStateTopic, self.flag_update, 10
         )
 
         self.walk_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
-        self.flag = False
-        self.linear_speed = 0.2  # Velocidade linear para frente
         self.current_state = None
         self.last_state = None
 
@@ -35,7 +33,7 @@ class WalkingRoutine(Node):
         twist = Twist()
 
         if self.current_state == 'walking':
-            twist.linear.x = self.linear_speed
+            twist.linear.x = self.parameters.maxSpeedLinearX
         else:
             twist.linear.x = 0.0
             

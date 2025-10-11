@@ -10,9 +10,8 @@ Chama o serviço /movement_central/stand_still para comandar o robô a parar e f
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from std_msgs.msg import String 
-from movement_utils.srv import Page 
-from movement_utils.msg import AureaFirstPose 
+from modularized_bhv_msgs.msg import CurrentStateMsg
+from geometry_msgs.msg import Twist
 
 from ament_index_python.packages import get_package_share_directory
 import os
@@ -22,7 +21,7 @@ from transitions_and_states.behaviour_parameters import BehaviourParameters
 class StandStillRoutine(Node):
 
     def __init__(self):
-        super().__init__('stand_still_node')
+        super().__init__('idle_march_node')
 
         self.parameters = BehaviourParameters()
         
@@ -32,36 +31,32 @@ class StandStillRoutine(Node):
             history=HistoryPolicy.KEEP_LAST,
             depth=1
         )
-        
-      
-        self.move_client = self.create_client(Page, '/movement_central/request_page')
-        while not self.move_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('Service not available, waiting again...')
-            
-       
+        # Subscriber para o estado atual da máquina de estados
         self.state_sub = self.create_subscription(
-            String,
-            '/transitions_and_states/state_machine',
-            self.flag_update,
-            qos_profile
-        )
-
-        self.flag = False 
+            CurrentStateMsg, self.parameters.currentStateTopic, self.flag_update, qos_profile)
         
-       
+        # Publisher para rotação
+        self.idle_march_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+
+        self.flag = False
         self.timer = self.create_timer(self.parameters.timer_first_pose, self.run_stand_still)
 
     def run_stand_still(self):
         if self.flag:
-            self.get_logger().info('Routine Stand Still')
-            request = Page.Request()
-            request.page_name = 'aurea_first_pose' 
-            self.move_client.call_async(request)
-    
-    def flag_update(self, msg):
-        message = msg.data 
+            twist = Twist()
+            twist.linear.x = 0.0
+            twist.linear.y = 0.0
+            twist.linear.z = 0.0
+            twist.angular.x = 0.0
+            twist.angular.y = 0.0
+            twist.angular.z = 0.0
+            self.get_logger().info("Comando de idle march enviado.")
+            self.idle_march_pub.publish(twist)
 
-        if message == 'stand_still':
+    def flag_update(self, msg):
+        message = msg.current_state 
+
+        if message == 'idle_march':
             self.flag = True
         else:
             self.flag = False

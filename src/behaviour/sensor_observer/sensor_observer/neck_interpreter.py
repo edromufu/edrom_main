@@ -66,11 +66,11 @@ class NeckInterpreter(Node):
 
         # Lógica de interpretação dos valores
         if (hor_motor_value < self.parameters.lookingLeftRad) and (hor_motor_value > self.parameters.lookingRightRad):
-            self.horHeadPosition = 'center'
+            self.horHeadPosition = 'Center'
         elif hor_motor_value > self.parameters.lookingLeftRad:
-            self.horHeadPosition = 'left'
+            self.horHeadPosition = 'Left'
         else:
-            self.horHeadPosition = 'right'
+            self.horHeadPosition = 'Right'
 
         if ver_motor_value < self.parameters.minVerRad2Kick:
             self.verAngleAccomplished = True

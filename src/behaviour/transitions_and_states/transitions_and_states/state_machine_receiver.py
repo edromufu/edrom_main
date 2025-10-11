@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 #coding=utf-8
 '''
-Verificar o funcionamento e integração com o restante do ambiente ROS2
+Node que recebe variáveis da máquina de estados e sinal de término de chute,
+atualiza a StateMachine e publica o estado atual no tópico correspondente.
 '''
 
 import rclpy
-from .state_machine import StateMachine
 from rclpy.node import Node
 from modularized_bhv_msgs.msg import StateMachineMsg, CurrentStateMsg
+from std_msgs.msg import Bool
+from .state_machine import StateMachine
 from .behaviour_parameters import BehaviourParameters
+
 
 class StateMachineReceiver(Node):
 
@@ -16,53 +19,73 @@ class StateMachineReceiver(Node):
         """
         Construtor:
         - Inicializa o objeto responsável pelas transições
-        - Construção do subscriber do ROS responsável pelo recebimento das variáveis
-        - Construção do publisher do ROS responsável por enviar o estado atual
+        - Cria subscribers para as variáveis de comportamento e para o status do chute
+        - Publica o estado atual da máquina
         """
         super().__init__('state_machine_receiver')
 
         self.parameters = BehaviourParameters()
         self.state_machine = StateMachine()
 
-        # Se inscrever no topico de retorno do KICK
+        # Inicializa variáveis internas
+        self.last_state_machine_msg = None
+        self.kick_done = False
 
+        # Publisher do estado atual
         self.state_publisher = self.create_publisher(
-            CurrentStateMsg,
-            '/transitions_and_states/state_machine',
-            10
+            CurrentStateMsg, '/transitions_and_states/state_machine', 10
+        )
+
+        # Subscribers
+        self.create_subscription(
+            StateMachineMsg, self.parameters.stateMachineTopic, self.state_machine_callback, 10
         )
 
         self.create_subscription(
-            StateMachineMsg,
-            self.parameters.stateMachineTopic,
-            self.call_state_machine_update,
-            10
+            Bool, "/kick_done", self.kick_done_callback, 10
         )
 
-    # Atualiza o estado da máquina chamando o método request_state_machine_update
-    # e passando as variáveis da mensagem StateMachineMsg recebida
-    def call_state_machine_update(self, stateMachineVars):
+        self.get_logger().info("StateMachineReceiver iniciado e aguardando mensagens...")
+        # Timer para tentar atualizar o estado periodicamente
+
+
+
+    # Recebe mensagem principal da máquina (com variáveis de percepção e estado)
+    def state_machine_callback(self, msg):
+        self.last_state_machine_msg = msg
+        self.update_state()
+
+    # Recebe flag indicando se o chute terminou
+    def kick_done_callback(self, msg):
+        self.kick_done = msg.data
+
+    def update_state(self):
+        # Só processa se já recebeu a mensagem principal
+        if self.last_state_machine_msg is None:
+            return
+
+        stateMachineVars = self.last_state_machine_msg
+
+        # Atualiza a máquina de estados com todos os dados
         state_msg = self.state_machine.request_state_machine_update(
             stateMachineVars.ball_position,
             stateMachineVars.ball_close,
             stateMachineVars.ball_found,
             stateMachineVars.fall_state,
             stateMachineVars.hor_motor_out_of_center,
-            stateMachineVars.head_kick_check
+            stateMachineVars.head_kick_check,
+            self.kick_done
         )
 
+        # Publica o estado atual
         self.state_publisher.publish(state_msg)
+        self.get_logger().debug(f"Estado publicado: {state_msg.current_state}")
 
 
 def main(args=None):
     rclpy.init(args=args)
-    
-    # Cria a instância do receptor da StateMachine
     receiver = StateMachineReceiver()
-
-    # Mantém o node ativo
     rclpy.spin(receiver)
-
     receiver.destroy_node()
     rclpy.shutdown()
 

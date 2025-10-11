@@ -17,13 +17,13 @@ setup(
     maintainer_email='victorvasconcelos676@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
-    tests_require=['pytest'],
+    #tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'aligning_body_routine = states_routine.aligning_body_routine:main',
             'walking_routine = states_routine.walking_routine:main',
             'kick_routine = states_routine.kick_routine:main',
-            'stand_still_routine = states_routine.stand_still_routine:main',
+            'idle_march = states_routine.idle_march:main',
             'getting_up_routine = states_routine.getting_up_routine:main',
         ],
     },

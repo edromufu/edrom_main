@@ -17,12 +17,14 @@ class BehaviourParameters:
         self.lookingRightRad = -0.35
         self.minVerRad2Kick = -1.22
 
+        self.maxSpeedLinearX = 0.05
+        self.maxSpeedAngularZ = 0.05
+
     def behaviourwiseParameters(self):
         # Relacionado à número de vezes que uma variável deve extrapolar certo valor para resetar
         self.timerCountLimit = 3
-        self.timerPage = 60  # s
-        self.timerFirstPose = 5  # s
-        self.timerWalk = 15  # s
+
+        self.idle_duration = 1.0  # Duração mínima em segundos para o estado idle_march
 
         # Tópicos do ROS IMU
         self.imuAccelTopic = '/behaviour/imu_accel'
@@ -52,6 +54,9 @@ class BehaviourParameters:
 
         # Tópico de conversa entre ros_packer e state_machine_receiver
         self.stateMachineTopic = '/sensor_observer/state_machine_vars'
+
+        # Tópico do estado atual da máquina de estados
+        self.currentStateTopic = '/transitions_and_states/state_machine'
 
         # Tópico para publicação do estado de queda
         self.fallStateTopic = '/behaviour/fall_state'  # Novo tópico para o estado de queda

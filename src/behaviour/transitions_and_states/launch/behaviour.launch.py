@@ -62,7 +62,39 @@ def generate_launch_description():
         Node(
             package="sensor_observer",
             executable="ros_packer",
-            name="ros_packer",
+            name="fall_interpreter",
+            output="screen"
+        ),
+
+        Node(
+            package="states_routine",
+            executable="aligning_body_routine",
+            name="aligning_body_routine",
+            output="screen"
+        ),
+        Node(
+            package="states_routine",
+            executable="walking_routine",
+            name="walking_routine",
+            output="screen"
+        ),
+
+        Node(
+            package="states_routine",
+            executable="kick_routine",
+            name="kick_routine",
+            output="screen"
+        ),
+        Node(
+            package="states_routine",
+            executable="idle_march",
+            name="idle_march",
+            output="screen"
+        ),
+        Node(
+            package="states_routine",
+            executable="getting_up_routine",
+            name="getting_up_routine",
             output="screen"
         ),
 

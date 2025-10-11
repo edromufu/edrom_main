@@ -16,7 +16,7 @@ class BodyAligner(Node):
 
         # Subscriber para o estado atual da máquina de estados
         self.create_subscription(
-            CurrentStateMsg, '/transitions_and_states/state_machine', self.flag_update, 10
+            CurrentStateMsg, self.parameters.currentStateTopic, self.flag_update, 10
         )
 
         # Subscriber para ângulo da cabeça (posição relativa)
@@ -29,7 +29,6 @@ class BodyAligner(Node):
 
         # Flags e variáveis internas
         self.flag = False
-        self.rotation_speed = 0.5 # Verificar o valor da velocidade angular
         self.headRelativePos = 'Center'
 
         self.get_logger().info("BodyAligner iniciado e aguardando comandos.")
@@ -49,13 +48,13 @@ class BodyAligner(Node):
         self.update_alignment()
 
     def update_alignment(self):
-        """Decide se precisa girar corpo para alinhar."""
         twist = Twist()
 
-        if self.headRelativePos == 'Left':
-            twist.angular.z = self.rotation_speed
-        elif self.headRelativePos == 'Right':
-            twist.angular.z = -self.rotation_speed
+        # Decide para qual lado girar o corpo com base na posição da cabeça
+        if self.headRelativePos == 'left':
+            twist.angular.z = self.parameters.maxSpeedAngularZ
+        elif self.headRelativePos == 'right':
+            twist.angular.z = -self.parameters.maxSpeedAngularZ
         else:  # Center
             twist.angular.z = 0.0
 
