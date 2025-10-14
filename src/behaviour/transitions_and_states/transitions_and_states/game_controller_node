@@ -1,0 +1,78 @@
+# gc_receiver_node.py
+import json, socket, threading
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String, UInt8, Int32, Int16
+from robocup_game_control_data import (
+    GAMECONTROLLER_DATA_PORT, RoboCupGameControlData
+)
+
+class GCReceiver(Node):
+    def __init__(self):
+        super().__init__('gc_receiver')
+        # Publicadores principais
+        self.pub_raw = self.create_publisher(String, '/gc/raw', 10)
+        self.pub_state = self.create_publisher(UInt8, '/gc/state', 10)
+        self.pub_phase = self.create_publisher(UInt8, '/gc/game_phase', 10)
+        self.pub_secs_remaining = self.create_publisher(Int16, '/gc/secs_remaining', 10)
+        self.pub_team0_score = self.create_publisher(Int32, '/gc/team0/score', 10)
+        self.pub_team1_score = self.create_publisher(Int32, '/gc/team1/score', 10)
+
+        # Socket UDP broadcast 3838
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # compatível com TCM rodando
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.sock.bind(('', GAMECONTROLLER_DATA_PORT))
+
+        self.get_logger().info('GCReceiver escutando UDP 3838...')
+        self.thread = threading.Thread(target=self._loop, daemon=True)
+        self.thread.start()
+
+    def _loop(self):
+        while rclpy.ok():
+            try:
+                data, addr = self.sock.recvfrom(2048)
+                parsed = RoboCupGameControlData.parse(data)
+
+                # JSON fácil de debugar
+                msg = {
+                    'from': addr[0],
+                    'state': int(parsed.state),
+                    'gamePhase': int(parsed.gamePhase),
+                    'setPlay': int(parsed.setPlay),
+                    'firstHalf': int(parsed.firstHalf),
+                    'kickingTeam': int(parsed.kickingTeam),
+                    'secsRemaining': int(parsed.secsRemaining),
+                    'secondaryTime': int(parsed.secondaryTime),
+                    'teams': []
+                }
+                for ti in range(2):
+                    team = parsed.teams[ti]
+                    msg['teams'].append({
+                        'teamNumber': int(team.teamNumber),
+                        'score': int(team.score),
+                        'goalkeeper': int(team.goalkeeper),
+                        'messageBudget': int(team.messageBudget)
+                    })
+
+                self.pub_raw.publish(String(data=json.dumps(msg)))
+                self.pub_state.publish(UInt8(data=int(parsed.state)))
+                self.pub_phase.publish(UInt8(data=int(parsed.gamePhase)))
+                self.pub_secs_remaining.publish(Int16(data=int(parsed.secsRemaining)))
+                self.pub_team0_score.publish(Int32(data=int(parsed.teams[0].score)))
+                self.pub_team1_score.publish(Int32(data=int(parsed.teams[1].score)))
+            except Exception as e:
+                self.get_logger().warn(f'Erro recebendo/parsing GC: {e}')
+
+def main():
+    rclpy.init()
+    node = GCReceiver()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
