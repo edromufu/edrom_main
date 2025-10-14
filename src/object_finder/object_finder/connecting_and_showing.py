@@ -12,9 +12,10 @@ import numpy as np
 
 import object_finder.running_inference as ri
 
-# Importa tanto as mensagens customizadas quanto a de imagem padrão do ROS
-from edrom_msgs.msg import VisionData, Detection, DetectionArray
+# --- MODIFICAÇÃO: Importa as novas mensagens e o Header ---
+from edrom_msgs.msg import VisionData, Detection, DetectionArray, Landmark, LandmarkArray
 from sensor_msgs.msg import Image as ROS_Image
+from std_msgs.msg import Header
 
 sys.setrecursionlimit(100000)
 
@@ -42,13 +43,27 @@ class Visao(Node):
             )
         else:
             self.get_logger().info('>> RODANDO EM MODO REAL (Publicando Mensagens de Dados) <<')
+            # --- LÓGICA EXISTENTE (INTACTA) ---
+            # Publisher antigo para o Behavior, permanece igual
             self.publisher = self.create_publisher(VisionData, 'self_parameters_vision2BhvTopic', 100)
-
+            
             self.camera_idx = self.declare_parameter('vision.camera_idx', 0).get_parameter_value().integer_value
             self.ajuste = self.declare_parameter('vision.ajuste', False).get_parameter_value().bool_value
             self.bright = self.declare_parameter('vision.brilho', 4).get_parameter_value().integer_value
 
             self.initialize_webcam_and_loop()
+
+        # --- ADIÇÃO PARA LOCALIZAÇÃO (NÃO INTERFERE COM O RESTO) ---
+        # Novo publisher dedicado para a localização
+        self.localization_publisher = self.create_publisher(LandmarkArray, 'vision/landmarks', 10)
+        self.H = None # Inicializa a matriz de homografia
+        homography_path = "homography_matrix.npy" # Garanta que este arquivo esteja acessível
+        try:
+            self.H = np.load(homography_path)
+            self.get_logger().info(f"Matriz de Homografia '{homography_path}' carregada com sucesso para a Localização!")
+        except FileNotFoundError:
+            self.get_logger().warn(f"ARQUIVO DE HOMOGRAFIA NÃO ENCONTRADO. O tópico de localização não publicará dados.")
+
 
     def image_callback(self, ros_image_msg):
         try:
@@ -63,7 +78,7 @@ class Visao(Node):
             self.get_logger().error(f"Não foi possível abrir a câmera no índice {self.camera_idx}"); rclpy.shutdown(); return
 
         self.cap.set(cv2.CAP_PROP_BRIGHTNESS, self.bright)
-        if self.ajuste: self.ajuste_camera()  # A chamada está aqui
+        if self.ajuste: self.ajuste_camera()
 
         while rclpy.ok():
             ret, frame = self.cap.read()
@@ -84,11 +99,57 @@ class Visao(Node):
             except Exception as e:
                 self.get_logger().error(f'Falha ao publicar imagem processada: {e}')
         else:
-            self.publish_results()
+            # --- MODIFICAÇÃO: FLUXO DUPLO DE PUBLICAÇÃO ---
+            # 1. Publica os dados antigos para as outras áreas (nada mudou aqui)
+            self.publish_results() 
+            
+            # 2. Publica os novos dados para a localização (nova função)
+            self.publish_localization_data()
 
         if self.output_img:
             cv2.imshow("Visao EDROM", self.inference_frame)
             cv2.waitKey(1)
+
+    # --- FUNÇÃO ADICIONADA: Converte pixel em coordenadas do mundo real ---
+    def transform_pixel_to_world(self, bounding_box):
+        if self.H is None:
+            return None, None
+
+        x, y, w, h = bounding_box
+        anchor_pixel = (x + w / 2, y + h)
+        pixel_coords = np.array([[anchor_pixel]], dtype=np.float32)
+        world_coords = cv2.perspectiveTransform(pixel_coords, self.H)
+        
+        real_x = world_coords[0][0][0]
+        real_y = world_coords[0][0][1]
+        
+        distance = np.sqrt(real_x**2 + real_y**2)
+        angle_rad = np.arctan2(real_y, real_x)
+        
+        return distance, angle_rad
+
+    # --- FUNÇÃO ADICIONADA: Publica os dados formatados para a localização ---
+    def publish_localization_data(self):
+        if self.H is None or not hasattr(self, 'boxes') or not self.boxes:
+            return
+
+        landmarks_msg = LandmarkArray()
+        landmarks_msg.header = Header(stamp=self.get_clock().now().to_msg())
+        
+        detected_landmarks = []
+        for i in range(len(self.boxes)):
+            box = self.boxes[i]
+            distance_cm, angle_rad = self.transform_pixel_to_world(box)
+            
+            if distance_cm is not None:
+                landmark = Landmark()
+                landmark.id = self.classes[i]
+                landmark.distance_m = distance_cm / 100.0  # Converte para metros
+                landmark.angle_rad = angle_rad
+                detected_landmarks.append(landmark)
+
+        landmarks_msg.landmarks = detected_landmarks
+        self.localization_publisher.publish(landmarks_msg)
 
     def publish_results(self):
         """Publica a mensagem VisionData. Usado apenas no modo REAL."""
@@ -100,14 +161,10 @@ class Visao(Node):
         ball_objects, robot_objects, right_goal_objects, left_goal_objects = [], [], [], []
         x_intersection_objects, l_intersection_objects, t_intersection_objects, center_objects = [], [], [], []
 
-        # Itera sobre todas as detecções encontradas pelo modelo
         if hasattr(self, 'boxes') and self.boxes:
             for i in range(len(self.boxes)):
-                # Cria uma lista com os dados da detecção atual
                 results = [True, int(self.boxes[i][0]), int(self.boxes[i][1]), int(self.boxes[i][2]), int(self.boxes[i][3]), self.scores[i]]
                 class_id = self.classes[i]
-
-                # Adiciona a detecção na lista da sua respectiva classe
                 if class_id == 0: ball_objects.append(results)
                 elif class_id == 1: robot_objects.append(results)
                 elif class_id == 2: right_goal_objects.append(results)
@@ -117,19 +174,16 @@ class Visao(Node):
                 elif class_id == 6: x_intersection_objects.append(results)
                 elif class_id == 7: center_objects.append(results)
 
-        # Ordena as listas para pegar os objetos mais relevantes
-        ball_objects.sort(key=lambda obj: obj[5], reverse=True)  # Maior confiança primeiro
+        ball_objects.sort(key=lambda obj: obj[5], reverse=True)
         robot_objects.sort(key=lambda obj: obj[5], reverse=True)
-        right_goal_objects.sort(key=lambda obj: obj[1])  # Menor X (mais à esquerda) primeiro
+        right_goal_objects.sort(key=lambda obj: obj[1])
         left_goal_objects.sort(key=lambda obj: obj[1])
 
-        # Preenche a mensagem com os objetos selecionados
         if ball_objects: objects_msg.ball = self.setup_object(ball_objects[0])
         if robot_objects: objects_msg.robot = self.setup_object(robot_objects[0])
-        if right_goal_objects: objects_msg.rightgoal = self.setup_object(right_goal_objects[-1])  # Pega o mais à direita
-        if left_goal_objects: objects_msg.leftgoal = self.setup_object(left_goal_objects[0])  # Pega o mais à esquerda
+        if right_goal_objects: objects_msg.rightgoal = self.setup_object(right_goal_objects[-1])
+        if left_goal_objects: objects_msg.leftgoal = self.setup_object(left_goal_objects[0])
 
-        # Preenche as listas de intersecções
         if x_intersection_objects: objects_msg.x_intersection = self.create_multi_objects(x_intersection_objects)
         if l_intersection_objects: objects_msg.l_intersection = self.create_multi_objects(l_intersection_objects)
         if t_intersection_objects: objects_msg.t_intersection = self.create_multi_objects(t_intersection_objects)
@@ -139,21 +193,16 @@ class Visao(Node):
 
     def setup_object(self, obj_data):
         obj = Detection()
-        # A detecção contém [found, x, y, w, h, score]
         [obj.found, obj.x, obj.y, obj.roi_width, obj.roi_height, _] = obj_data
         return obj
 
     def create_multi_objects(self, detection_list):
         multi_objects_msg = DetectionArray()
         multi_objects_msg.found = True
-
         detections = []
         for det_data in detection_list:
-            # Cria um objeto Detection para cada item na lista
             det_obj = self.setup_object(det_data)
             detections.append(det_obj)
-
-        # Atribui a lista de detecções ao campo 'detections' da mensagem
         multi_objects_msg.detections = detections
         return multi_objects_msg
 
@@ -162,25 +211,18 @@ class Visao(Node):
         print("Ajuste de Brilho: '=' para aumentar, '-' para diminuir. 'w' para continuar.")
         while rclpy.ok():
             key = cv2.waitKey(1)
-            if key == ord('w'):
-                break
-
-            # Atualiza o frame para visualização
+            if key == ord('w'): break
             ret, frame = self.cap.read()
             if not ret: continue
-
             if key == ord('='):
                 self.bright += 10
                 self.cap.set(cv2.CAP_PROP_BRIGHTNESS, self.bright)
             if key == ord('-'):
                 self.bright -= 10
                 self.cap.set(cv2.CAP_PROP_BRIGHTNESS, self.bright)
-
-            # Mostra o brilho atual no frame
             brilho_atual = self.cap.get(cv2.CAP_PROP_BRIGHTNESS)
             cv2.putText(frame, f'Brilho: {brilho_atual}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             cv2.imshow("Ajuste de Brilho", frame)
-
         cv2.destroyWindow("Ajuste de Brilho")
         self.ajuste = False
 
