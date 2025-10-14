@@ -25,7 +25,7 @@ from behaviour_parameters import BehaviourParameters
 class StandStillRoutine(Node):
 
     def __init__(self):
-        super().__init__('idle_march_node')
+        super().__init__('idle_node')
 
         self.parameters = BehaviourParameters()
         

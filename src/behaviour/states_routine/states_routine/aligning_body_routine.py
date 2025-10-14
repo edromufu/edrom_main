@@ -34,7 +34,6 @@ class BodyAligner(Node):
         self.get_logger().info("BodyAligner iniciado e aguardando comandos.")
 
     def flag_update(self, msg):
-        
         if msg.current_state == 'aligning':
             self.flag = True
         else:
