@@ -28,7 +28,7 @@ class Localization(Node):
         
         # --- Parâmetro de Lado Inicial (CORRIGIDO) ---
         # Lado de início: 'LEFT', 'RIGHT', ou 'BOTH'
-        self.start_side = self.declare_parameter('loc.start_side', 'BOTH').get_parameter_value().string_value
+        self.start_side = self.declare_parameter('loc.start_side', 'LEFT').get_parameter_value().string_value
         self.get_logger().info(f"Inicialização do lado: {self.start_side}")
         
         # --- Parâmetros de Ruído (Otimização Sugerida) ---
