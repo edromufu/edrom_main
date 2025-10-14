@@ -1,0 +1,20 @@
+#!/bin/bash
+# Este script é chamado pelo Webots e executa o nó ROS 2 com o ambiente correto.
+
+# Define o caminho do seu workspace
+WORKSPACE_DIR="/home/vtr_caixeta/edrom_main"
+
+# Carrega o ambiente principal do ROS 2
+source /opt/ros/humble/setup.bash
+
+# Carrega o ambiente do seu workspace específico
+if [ -f "${WORKSPACE_DIR}/install/setup.bash" ]; then
+    source "${WORKSPACE_DIR}/install/setup.bash"
+fi
+
+# ADICIONA EXPLICITAMENTE O CAMINHO DOS PACOTES PYTHON
+# Esta é a correção para o PackageNotFoundError
+export PYTHONPATH="${WORKSPACE_DIR}/install/bhv_simulator/lib/python3.10/site-packages:${PYTHONPATH}"
+
+
+exec ros2 run bhv_simulator bhv_sim "$@"
