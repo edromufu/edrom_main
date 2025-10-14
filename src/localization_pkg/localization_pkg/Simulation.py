@@ -17,6 +17,8 @@ class Simulation(Node):
     def __init__(self):
         super().__init__('robot_simulation')
         self.get_logger().info('Nó de Simulação do Robô (MODO REALISTA) Iniciado')
+        self.start_side = self.declare_parameter('sim.start_side', 'LEFT').get_parameter_value().string_value
+        self.get_logger().info(f"Simulação inicializando no lado: {self.start_side}")
 
         # --- Publishers ---
         self.odometry_publisher = self.create_publisher(Float32MultiArray, 'robot/odometry', 10)
@@ -31,11 +33,28 @@ class Simulation(Node):
         self.create_subscription(Float32MultiArray, 'robot/command', self.command_callback, 10)
         
         # --- Estado do Robô (Ground Truth) ---
+        if self.start_side == 'LEFT':
+            # Escolhe aleatoriamente entre as 4 posições do lado esquerdo (L1 a L4)
+            start_positions = fg.allStartPos[:4]
+        elif self.start_side == 'RIGHT':
+            # Escolhe aleatoriamente entre as 4 posições do lado direito (R1 a R4)
+            start_positions = fg.allStartPos[4:]
+        else: # 'CENTER' ou qualquer outro valor
+            # Pose antiga (meio do campo, 0 deg)
+            start_positions = [[fg.padding + fg.fieldLenght / 2, fg.padding + fg.fieldWidth / 2, 0.0]]
+        
+        # 2. Escolher uma posição de início (seja aleatoriamente do conjunto ou a única do centro)
+        start_pos = random.choice(start_positions)
+        
+        # 3. Inicializar a pose do robô (x, y, body_theta, head_pan, head_tilt)
         self.sim_robot_pose = np.array([
-            fg.padding + fg.fieldLenght / 2, 
-            fg.padding + fg.fieldWidth / 2, 
-            0.0, 0.0, 0.0 # x, y, body_theta_deg, head_pan_deg, head_tilt_deg
+            start_pos[0],            # x
+            start_pos[1],            # y
+            start_pos[2],            # body_theta_deg
+            0.0, 0.0                 # head_pan_deg, head_tilt_deg (inicia olhando para frente)
         ], dtype=float)
+
+        self.get_logger().info(f"Ground Truth em: ({self.sim_robot_pose[0]:.1f}, {self.sim_robot_pose[1]:.1f}, {self.sim_robot_pose[2]:.1f} deg)")
 
         self.odometry_command = np.zeros(3)
 

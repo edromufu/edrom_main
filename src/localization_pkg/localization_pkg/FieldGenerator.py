@@ -76,12 +76,18 @@ class FieldGenerator():
     ]
 
     # --- ADIÇÃO: Coordenadas das 4 posições de início legais ---
-    startPos1 = [(padding + 100), (padding + fieldWidth/2), 0]
-    startPos2 = [(padding + 200), (padding + fieldWidth/4), 0]
-    startPos3 = [(padding + 200), (padding + 3*fieldWidth/4), 0]
-    startPos4 = [(int(padding + fieldLenght/2 - 80)), (int(padding + fieldWidth/2)), 0]
-    allStartPos = [startPos1, startPos2, startPos3, startPos4]
+    startPosL1 = [(padding + 100), (padding + fieldWidth/2), 0]
+    startPosL2 = [(padding + 200), (padding + fieldWidth/4), 0]
+    startPosL3 = [(padding + 200), (padding + 3*fieldWidth/4), 0]
+    startPosL4 = [(int(padding + fieldLenght/2 - 80)), (int(padding + fieldWidth/2)), 0]
 
+    startPosR1 = [(padding + fieldLenght - 100), (padding + fieldWidth/2), 180]
+    startPosR2 = [(padding + fieldLenght - 200), (padding + fieldWidth/4), 180]
+    startPosR3 = [(padding + fieldLenght - 200), (padding + 3*fieldWidth/4), 180]
+    startPosR4 = [(int(padding + fieldLenght/2 + 80)), (int(padding + fieldWidth/2)), 180]
+
+    allStartPos = [startPosL1, startPosL2, startPosL3, startPosL4,
+                   startPosR1, startPosR2, startPosR3, startPosR4]
     @staticmethod
     def generate():
         field = np.zeros((FieldGenerator.padding*2+FieldGenerator.fieldWidth,
