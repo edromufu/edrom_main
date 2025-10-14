@@ -8,7 +8,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from modularized_bhv_msgs.msg import CurrentStateMsg
 from vision_msgs.msg import Webotsmsg
 from edrom_motion.aurea_kick.action import Kick
-from transitions_and_states.behaviour_parameters import BehaviourParameters
+from .transitions_and_states.behaviour_parameters import BehaviourParameters
 
 
 class KickRoutine(Node):

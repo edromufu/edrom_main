@@ -9,6 +9,7 @@ e interpreta esses dados para determinar o estado de queda do robô (em pé, ca�
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Vector3, PoseStamped
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import os
 import sys
 
@@ -31,27 +32,33 @@ class FallInterpreter(Node):
 
         self.parameters = BehaviourParameters()
 
+        qos_profile = QoSProfile(
+            reliability=ReliabilityPolicy.BEST_EFFORT, # Melhor esforço para dados de sensor
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1
+        )
+
         # 2. Cria os subscribers para os tópicos da IMU
         self.accel_sub = self.create_subscription(
             Vector3,
             self.parameters.imuAccelTopic,
             self.callback_sensor_accel,
-            10)
-        
+            qos_profile)
+
         self.gyro_sub = self.create_subscription(
             Vector3,
             self.parameters.imuGyroTopic,
             self.callback_sensor_gyro,
-            10)
+            qos_profile)
             
         self.roll_sub = self.create_subscription(
             Vector3, # Mantido como Vector3 conforme o código original
             self.parameters.imuRollTopic,
             self.callback_sensor_roll,
-            10)
+                qos_profile)
         
         # 3. Cria o publisher para o estado de queda
-        self.fall_pub = self.create_publisher(PoseStamped, self.parameters.fallStateTopic, 10)
+        self.fall_pub = self.create_publisher(PoseStamped, self.parameters.fallStateTopic, qos_profile)
 
         # Variáveis de estado do sistema de detecção de queda
         self.fallState = self.parameters.up

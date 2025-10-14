@@ -19,7 +19,7 @@ import threading
 # O setup.py deve ser configurado para tratar os módulos corretamente.
 # edrom_dir = '/home/' + os.getlogin() + '/edromufu/src/'
 # sys.path.append(edrom_dir + 'behaviour/transitions_and_states/src')
-from behaviour.transitions_and_states.src.behaviour_parameters import BehaviourParameters
+from transitions_and_states.behaviour_parameters import BehaviourParameters
 
 class ImuReader(Node):
 
