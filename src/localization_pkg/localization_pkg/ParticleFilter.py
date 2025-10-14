@@ -145,57 +145,78 @@ class ParticleFilter():
     # NO ARQUIVO: ParticleFilter.py
 
 # --- FUNÇÃO ATUALIZADA ---
+    # ParticleFilter.py (Substituir o método update completo)
+
     def update(self, observed_landmarks, sensor_noise_dist, sensor_noise_angle, neck_angle_deg, max_range_cm,imu_yaw_deg):
         # observed_landmarks é uma lista de tuplas (dist_cm, id, ang_deg)
         
+        # Parâmetro para penalizar Falsos Positivos e Misses (Ajustável!)
+        PROB_MISS_PENALTY = 0.5 
+        
         for i, particle in enumerate(self.particles):
-            # --- MUDANÇA AQUI ---
-            # A função agora usa os valores reais de neck_angle_deg e max_range_cm
-            # que foram passados como argumentos para a função.
-            # Os placeholders foram removidos.
             expected_landmarks = self.checkFOV(particle, max_range_cm, neck_angle_deg)
             
-            # O resto da lógica de cálculo de pesos permanece exatamente o mesmo
             total_prob = 1.0
             
-            if not expected_landmarks and observed_landmarks:
+            # 1. Penalidade por Ver Nada / Prever Algo
+            
+            # Penalidade 1: O robô vê landmarks (visão) mas a partícula não (está em um local "cego")
+            if observed_landmarks and not expected_landmarks:
+                total_prob *= 0.001 # Penalidade alta por estar em um local cego mas ver algo
+                
+            # Penalidade 2: O robô não vê nada (visão) mas a partícula prevê vários landmarks
+            if not observed_landmarks and expected_landmarks:
+                # Penaliza suavemente pela possível perda de detecção (Falso Negativo da Visão)
                 total_prob *= 0.1 
 
+            # 2. Casamento de Observações
             for obs_dist, obs_id, obs_ang in observed_landmarks:
+                
+                best_match_found = False
                 best_prob_for_obs = 1e-300
                 
-                for exp_landmark_data, exp_dist, exp_ang in expected_landmarks:
+                for exp_data in expected_landmarks:
+                    exp_landmark_data, exp_dist, exp_ang = exp_data
                     exp_id = exp_landmark_data[2]
                     
                     if obs_id == exp_id:
                         dist_diff = obs_dist - exp_dist
                         ang_diff = obs_ang - exp_ang
                         
+                        # Função de densidade de probabilidade Gaussiana (PDF)
                         prob_dist = np.exp(-(dist_diff**2) / (2 * sensor_noise_dist**2))
                         prob_ang = np.exp(-(ang_diff**2) / (2 * sensor_noise_angle**2))
                         
                         prob = prob_dist * prob_ang
+                        
+                        # Encontra o melhor match para esta observação
                         if prob > best_prob_for_obs:
                             best_prob_for_obs = prob
-                
-                total_prob *= best_prob_for_obs
+                            best_match_found = True
 
-            # Compara o ângulo da partícula com o ângulo do IMU
+                # Multiplica pela probabilidade do melhor match
+                total_prob *= best_prob_for_obs
+                
+                # Penalidade para Falso Positivo (Ghost Landmark):
+                # Se não houver um bom match (prob muito baixa), penalizar a partícula suavemente.
+                # O limiar 0.001 é arbitrário, mas funciona bem na prática
+                if best_prob_for_obs < 0.001 and best_prob_for_obs > 1e-300: 
+                    total_prob *= PROB_MISS_PENALTY # Penaliza em 50%
+
+            # 3. Integração do IMU
             imu_error = particle[2] - imu_yaw_deg
-            # Normaliza o erro para o intervalo [-180, 180] para lidar com a descontinuidade 0/360
             imu_error = (imu_error + 180) % 360 - 180
             
-            # Calcula a probabilidade baseada no erro do IMU. 
-            # Usamos um desvio padrão maior para ser menos restritivo.
-            prob_imu = np.exp(-(imu_error ** 2) / (2 * (15.0 * 2) ** 2)) # Ex: desvio de 30 graus
-            
-            # O peso final é o produto da probabilidade da visão e da probabilidade do IMU
+            # Usando um desvio padrão de 20 graus (20.0) para ser mais restritivo que o 30.0 anterior
+            prob_imu = np.exp(-(imu_error ** 2) / (2 * (20.0) ** 2)) 
             
             self.weights[i] = total_prob * prob_imu
 
+
         # A normalização dos pesos permanece a mesma
         self.weights += 1e-300
-        if np.sum(self.weights) > 0:
-            self.weights /= np.sum(self.weights)
+        sum_weights = np.sum(self.weights)
+        if sum_weights > 0:
+            self.weights /= sum_weights
         else:
             self.weights.fill(1.0 / self.N)
