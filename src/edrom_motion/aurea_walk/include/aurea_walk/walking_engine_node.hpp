@@ -6,11 +6,25 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <mutex>
 #include <string>
-#include "std_msgs/msg/empty.hpp" // Adicione este include
+#include "std_msgs/msg/empty.hpp" 
 #include "aurea_walk/srv/solve_ik.hpp" 
-#include "aurea_walk/trajectory_generator.hpp"// ADICIONADO
+#include "aurea_walk/trajectory_generator.hpp"
 
 using SolveIK = aurea_walk::srv::SolveIK; 
+struct LinkData {
+  std::string name;
+  std::string parent_name;
+  double mass;
+  Eigen::Vector3d com_position_local; // Posição do CoM relativa à origem DO PRÓPRIO LINK
+  Eigen::Vector3d joint_axis_parent;   // Eixo de rotação da junta no frame do PAI
+  Eigen::Vector3d translation_from_parent; // Translação da origem do PAI para a origem DESTE link
+};
+
+struct Foot {
+  bool is_left;
+  Eigen::Vector2d position;
+  double yaw;
+};
 
 class WalkingEngineNode : public rclcpp::Node
 {
@@ -19,12 +33,40 @@ public:
     IDLE,
     WALKING,
     IDLE_MARCH,
-    STOPPING
+    STOPPING,
+    HOMING
   };
 
   WalkingEngineNode();
 
 private:
+
+  void initialize_robot_model();
+  void run_forward_kinematics(
+  const std::map<std::string, double>& joint_angles,
+  const std::string& base_link_name,
+  const Eigen::Affine3d& base_link_pose);
+  void calculate_downstream_properties(
+  const std::string& current_link_name,
+  double& total_mass,
+  Eigen::Vector3d& combined_com_world);
+  std::map<std::string, double> calculate_gravity_compensation_for_support_leg(
+  const std::map<std::string, double>& base_joint_angles, bool is_left_support);
+  void homing_loop();
+  // --- ESTRUTURAS DE DADOS DO MODELO DO ROBÔ ---
+  std::map<std::string, LinkData> robot_model_;
+  std::map<std::string, std::string> joint_to_link_map_;
+  std::map<std::string, Eigen::Affine3d> link_poses_world_;
+  // Parâmetros de controle e compensação
+  double backlash_offset_hp_;
+  //double servo_kp_gain_; // Ganho para converter torque (Nm) em offset de posição (rad)
+  double kp_gain_hip_roll_;
+  double kp_gain_hip_pitch_;
+  double kp_gain_knee_;
+   //std::map<std::string, double> last_filtered_gravity_offsets_;
+  //double filter_alpha_; // Parâmetro do filtro de suavização
+
+
   void cmd_vel_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
   void main_loop();
   void ik_response_callback(rclcpp::Client<SolveIK>::SharedFuture future);
@@ -39,6 +81,12 @@ private:
   double idle_shoulder_roll_;
   double idle_elbow_;
   double update_period_;
+
+  double homing_duration_;
+  double t_homing_{0.0};
+  aurea_walk::PoseData torso_homing_start_;
+  aurea_walk::PoseData left_foot_homing_start_;
+  aurea_walk::PoseData right_foot_homing_start_;
 
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr stop_sub_;
   bool stop_requested_ = false;
