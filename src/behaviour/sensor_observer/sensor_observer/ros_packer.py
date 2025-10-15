@@ -59,9 +59,9 @@ class ROSPacker(Node):
         self.state_machine_vars = StateMachineMsg()
 
         # Variáveis de interpretação
-        self.p_ball_position, self.p_ball_close, self.p_ball_found = self.iBall.get_values()
-        self.p_fall_state = self.iFall.get_values()
-        self.p_hor_motor_out_of_center, self.p_head_kick_check = self.iNeck.get_values() 
+        self.p_ball_position, self.p_ball_close, self.p_ball_found = self.iBall.getValues()
+        self.p_fall_state = self.iFall.getValues()
+        self.p_hor_motor_out_of_center, self.p_head_kick_check = self.iNeck.getValues() 
 
         self.sm_vars_last_value = [
             self.p_ball_position, self.p_ball_close, self.p_ball_found,
@@ -85,9 +85,9 @@ class ROSPacker(Node):
         ])
 
     def run_values_update(self):
-        self.p_ball_position, self.p_ball_close, self.p_ball_found = self.iBall.get_values()
-        self.p_fall_state = self.iFall.get_values()
-        self.p_hor_motor_out_of_center, self.p_head_kick_check = self.iNeck.get_values()         
+        self.p_ball_position, self.p_ball_close, self.p_ball_found = self.iBall.getValues()
+        self.p_fall_state = self.iFall.getValues()
+        self.p_hor_motor_out_of_center, self.p_head_kick_check = self.iNeck.getValues()         
 
     def state_machine_flagger(self, sm_vars_current_value):
         if not sm_vars_current_value == self.sm_vars_last_value:

@@ -67,6 +67,13 @@ class FallInterpreter(Node):
         self.gyro_data = Vector3()
         self.roll = 0.0
 
+
+    def getValues(self):
+        """
+        -> Output: Estado da queda
+        """
+        return self.fallState
+
     def callback_sensor_accel(self, msg):
         self.accel_data = msg
     

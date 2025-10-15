@@ -26,6 +26,14 @@ ament_target_dependencies(direct_controller
   dynamixel_sdk
 )
 
+add_executable(head_reader src/head_reader.cpp)
+
+ament_target_dependencies(head_reader
+  rclcpp
+  sensor_msgs
+  dynamixel_sdk
+)
+
 add_executable(robot_initializer src/robot_initializer.cpp)
 ament_target_dependencies(robot_initializer
   rclcpp
@@ -55,6 +63,7 @@ install(TARGETS
   aurea_hardware_interface
   direct_controller
   robot_initializer
+  head_reader
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

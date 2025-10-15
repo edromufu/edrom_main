@@ -37,27 +37,30 @@ class StandStillRoutine(Node):
         )
         # Subscriber para o estado atual da máquina de estados
         self.state_sub = self.create_subscription(
-            CurrentStateMsg, self.parameters.currentStateTopic, self.flag_update, qos_profile)
+            CurrentStateMsg, '/transitions_and_states/state_machine', self.flag_update, qos_profile)
         
         # Publisher para rotação
         self.idle_march_pub = self.create_publisher(Empty, '/stop_walking', 10)
 
         self.flag = False
-        self.timer = self.create_timer(self.parameters.timer_first_pose, self.run_stand_still)
 
     def run_stand_still(self):
         if self.flag:
-            empty = Empty()
+            msg = Empty()
             
-            self.idle_march_pub.publish(empty)
+            self.idle_march_pub.publish(msg)
 
     def flag_update(self, msg):
         message = msg.current_state 
 
-        if message == 'march':
+        if message == 'idle':
             self.flag = True
+            msg = Empty()
+            
+            self.idle_march_pub.publish(msg)
         else:
             self.flag = False
+
 
 def main(args=None):
     rclpy.init(args=args)

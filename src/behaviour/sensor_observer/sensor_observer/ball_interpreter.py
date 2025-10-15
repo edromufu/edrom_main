@@ -9,14 +9,12 @@ Retorna infos booleanos sobre a bola
 
 import rclpy
 from rclpy.node import Node
-from vision_msgs.msg import Webotsmsg
+from rclpy.qos import QoSProfile
+from edrom_msgs.msg import VisionData
 
-edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
-
-sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
 from behaviour_parameters import BehaviourParameters
 
-class BallInterpreter():
+class BallInterpreter(Node):
 
     def __init__(self):
         """
@@ -24,12 +22,18 @@ class BallInterpreter():
         - Define as variaveis do ROS
         - Define e inicializa variaveis do código
         """    
+        super().__init__('ball_interpreter_node')
+        qos = QoSProfile(depth=10)
 
         self.parameters = BehaviourParameters()
 
         #Variaveis do ROS
-        rospy.Subscriber(self.parameters.vision2BhvTopic, Webotsmsg, self.callback_vision)
-        
+        self.create_subscription(
+            VisionData,
+            self.parameters.vision2BhvTopic,
+            self.callback_vision,
+            qos
+        )        
         #Variaveis de código
         self.ballRelativePosition = 'none'
         self.ballClose = False

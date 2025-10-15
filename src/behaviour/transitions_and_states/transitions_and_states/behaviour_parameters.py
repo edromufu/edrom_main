@@ -18,7 +18,7 @@ class BehaviourParameters:
         self.minVerRad2Kick = -1.22
 
         self.maxSpeedLinearX = 0.05
-        self.maxSpeedAngularZ = 0.05
+        self.maxSpeedAngularZ = 0.03
 
     def behaviourwiseParameters(self):
         # Relacionado à número de vezes que uma variável deve extrapolar certo valor para resetar

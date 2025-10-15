@@ -6,9 +6,9 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from modularized_bhv_msgs.msg import CurrentStateMsg
-from vision_msgs.msg import Webotsmsg
-from edrom_motion.aurea_kick.action import Kick
-from .transitions_and_states.behaviour_parameters import BehaviourParameters
+from edrom_msgs.msg import VisionData
+from aurea_kick.action import Kick
+from transitions_and_states.behaviour_parameters import BehaviourParameters
 
 
 class KickRoutine(Node):
@@ -33,7 +33,7 @@ class KickRoutine(Node):
         )
 
         self.create_subscription(
-            Webotsmsg, self.parameters.vision2BhvTopic, self.kick_decision_side, qos_profile
+            VisionData, self.parameters.vision2BhvTopic, self.kick_decision_side, qos_profile
         )
 
         self.kick_action_client = ActionClient(self, Kick, '/movement_central/kick')
@@ -44,8 +44,8 @@ class KickRoutine(Node):
     def kick_decision_side(self, msg):
         if not self.flag:
             return  # Só decide o chute quando o estado for 'kick'
-
-        left_post_box = msg.Leftgoalpost.roi_width * msg.Leftgoalpost.roi_height
+        '''
+        left_post_box = msg.leftgoal* msg.Leftgoalpost.roi_height
         right_post_box = msg.Rightgoalpost.roi_width * msg.Rightgoalpost.roi_height
 
         if left_post_box > right_post_box:
@@ -54,7 +54,8 @@ class KickRoutine(Node):
             self.last_decision = 'direita'
         else:
             return
-
+        '''
+        self.last_decision = 'esquerda'
         if not self.kick_action_client.wait_for_server(timeout_sec=1.0):
             self.get_logger().warn("Servidor de ação de chute não disponível.")
             return

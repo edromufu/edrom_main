@@ -23,7 +23,7 @@ def generate_launch_description():
     )
     simulation_arg = DeclareLaunchArgument(
         "simulation",
-        default_value="true"
+        default_value="false"
     )
 
     # Configurações
@@ -91,12 +91,14 @@ def generate_launch_description():
             name="idle_march",
             output="screen"
         ),
+
         Node(
             package="states_routine",
-            executable="getting_up_routine",
-            name="getting_up_routine",
+            executable="idle_routine",
+            name="idle",
             output="screen"
         ),
+
 
         # Simulador (condicional)
         Node(

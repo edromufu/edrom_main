@@ -5,7 +5,7 @@
 <robot
   name="Aurea">
 	 <webots>
-        <plugin type="aurea_webots.aurea_sensors.AureaSensors" />
+        <plugin type="aurea_webots.aurea_driver.AureaJointController" />
     </webots>
   <link
     name="base_link">

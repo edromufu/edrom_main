@@ -7,12 +7,12 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import os
 import sys
 
-from movement_utils.msg import HeadMotorsData # Verificar nova mensagem
-
 edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
 sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
 
 from behaviour_parameters import BehaviourParameters
+from sensor_msgs.msg import JointState
+
 
 class NeckInterpreter(Node):
     """
@@ -35,8 +35,8 @@ class NeckInterpreter(Node):
         
         # ROS 2: Criando o subscriber
         self.subscription = self.create_subscription(
-            HeadMotorsData, 
-            self.parameters.headPositionsTopic,
+            JointState, 
+            "/head_feedback",
             self.callback_positions,
             qos_profile
         )
@@ -46,7 +46,7 @@ class NeckInterpreter(Node):
         self.verAngleAccomplished = False
 
 
-    def get_values(self):
+    def getValues(self):
         """
         Retorna a interpretação da posição dos motores da cabeça.
         -> Output:

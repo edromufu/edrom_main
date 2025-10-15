@@ -28,7 +28,6 @@ PROTO Aurea [
     
     children [
       Shape {
-        
         appearance DEF base_link_material PBRAppearance {
           baseColor 0.752940 0.752940 0.752940
           roughness 1.000000
@@ -37,7 +36,6 @@ PROTO Aurea [
         geometry DEF base_link Mesh {
           url "../../../../../src/aurea_description/meshes/base_link.STL"
         }
-        castShadows FALSE
       }
       Accelerometer {
         name "imu_accel"
@@ -55,7 +53,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "head_pan"
-            maxTorque 3.5
+            maxTorque 10000
           }
           PositionSensor {
             name "head_pan_sensor"
@@ -73,7 +71,6 @@ PROTO Aurea [
               geometry DEF head_pan_link Mesh {
                 url "../../../../../src/aurea_description/meshes/head_pan_link.STL"
               }
-              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -83,12 +80,11 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "head_tilt"
-                  maxTorque 3.5
+                  maxTorque 10000
                 }
                 PositionSensor {
                   name "head_tilt_sensor"
                 }
-                
               ]
               endPoint Solid {
                 translation 0.000000 0.000200 0.061040
@@ -102,19 +98,6 @@ PROTO Aurea [
                     geometry DEF head_tilt_link Mesh {
                       url "../../../../../src/aurea_description/meshes/head_tilt_link.STL"
                     }
-                    castShadows FALSE
-                  }
-                  Transform{
-                    translation 0.1 0.0 0.0
-                    rotation 0 1 0 -1.5708
-                    children[
-                      Camera{
-                        name "camera"
-                        fieldOfView 1.3613
-                        width 600
-                        height 400
-                      }
-                    ]
                   }
                   Transform{
                     translation 0.1 0.0 0.0
@@ -177,7 +160,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "l_sho_pitch"
-            maxTorque 3.5
+            maxTorque 10000
           }
           PositionSensor {
             name "l_sho_pitch_sensor"
@@ -195,7 +178,6 @@ PROTO Aurea [
               geometry DEF l_sho_pitch_link Mesh {
                 url "../../../../../src/aurea_description/meshes/l_sho_pitch_link.STL"
               }
-              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -204,7 +186,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "l_sho_roll"
-                  maxTorque 3.5
+                  maxTorque 10000
                 }
                 PositionSensor {
                   name "l_sho_roll_sensor"
@@ -222,7 +204,6 @@ PROTO Aurea [
                     geometry DEF l_sho_roll_link Mesh {
                       url "../../../../../src/aurea_description/meshes/l_sho_roll_link.STL"
                     }
-                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -232,7 +213,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "l_el"
-                        maxTorque 3.5
+                        maxTorque 10000
                       }
                       PositionSensor {
                         name "l_el_sensor"
@@ -250,7 +231,6 @@ PROTO Aurea [
                           geometry DEF l_el_link Mesh {
                             url "../../../../../src/aurea_description/meshes/l_el_link.STL"
                           }
-                          castShadows FALSE
                         }
                       ]
                       name "l_el_link"
@@ -323,7 +303,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "r_sho_pitch"
-            maxTorque 3.5
+            maxTorque 10000
           }
           PositionSensor {
             name "r_sho_pitch_sensor"
@@ -341,7 +321,6 @@ PROTO Aurea [
               geometry DEF r_sho_pitch_link Mesh {
                 url "../../../../../src/aurea_description/meshes/r_sho_pitch_link.STL"
               }
-              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -350,7 +329,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "r_sho_roll"
-                  maxTorque 3.5
+                  maxTorque 10000
                 }
                 PositionSensor {
                   name "r_sho_roll_sensor"
@@ -368,7 +347,6 @@ PROTO Aurea [
                     geometry DEF r_sho_roll_link Mesh {
                       url "../../../../../src/aurea_description/meshes/r_sho_roll_link.STL"
                     }
-                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -378,7 +356,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "r_el"
-                        maxTorque 3.5
+                        maxTorque 10000
                       }
                       PositionSensor {
                         name "r_el_sensor"
@@ -396,7 +374,6 @@ PROTO Aurea [
                           geometry DEF r_el_link Mesh {
                             url "../../../../../src/aurea_description/meshes/r_el_link.STL"
                           }
-                          castShadows FALSE
                         }
                       ]
                       name "r_el_link"
@@ -469,7 +446,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "r_hip_yaw"
-            maxTorque 3.5
+            maxTorque 10000
           }
           PositionSensor {
             name "r_hip_yaw_sensor"
@@ -487,7 +464,6 @@ PROTO Aurea [
               geometry DEF r_hip_yaw_link Mesh {
                 url "../../../../../src/aurea_description/meshes/r_hip_yaw_link.STL"
               }
-              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -496,7 +472,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "r_hip_roll"
-                  maxTorque 3.5
+                  maxTorque 10000
                 }
                 PositionSensor {
                   name "r_hip_roll_sensor"
@@ -514,7 +490,6 @@ PROTO Aurea [
                     geometry DEF r_hip_roll_link Mesh {
                       url "../../../../../src/aurea_description/meshes/r_hip_roll_link.STL"
                     }
-                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -524,7 +499,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "r_hip_pitch"
-                        maxTorque 3.5
+                        maxTorque 10000
                       }
                       PositionSensor {
                         name "r_hip_pitch_sensor"
@@ -542,7 +517,6 @@ PROTO Aurea [
                           geometry DEF r_hip_pitch_link Mesh {
                             url "../../../../../src/aurea_description/meshes/r_hip_pitch_link.STL"
                           }
-                          castShadows FALSE
                         }
                         HingeJoint {
                           jointParameters HingeJointParameters {
@@ -552,7 +526,7 @@ PROTO Aurea [
                           device [
                             RotationalMotor {
                               name "r_knee"
-                              maxTorque 3.5
+                              maxTorque 10000
                             }
                             PositionSensor {
                               name "r_knee_sensor"
@@ -570,7 +544,6 @@ PROTO Aurea [
                                 geometry DEF r_knee_link Mesh {
                                   url "../../../../../src/aurea_description/meshes/r_knee_link.STL"
                                 }
-                                castShadows FALSE
                               }
                               HingeJoint {
                                 jointParameters HingeJointParameters {
@@ -580,7 +553,7 @@ PROTO Aurea [
                                 device [
                                   RotationalMotor {
                                     name "r_ank_pitch"
-                                    maxTorque 3.5
+                                    maxTorque 10000
                                   }
                                   PositionSensor {
                                     name "r_ank_pitch_sensor"
@@ -598,7 +571,6 @@ PROTO Aurea [
                                       geometry DEF r_ank_pitch_link Mesh {
                                         url "../../../../../src/aurea_description/meshes/r_ank_pitch_link.STL"
                                       }
-                                      castShadows FALSE
                                     }
                                     HingeJoint {
                                       jointParameters HingeJointParameters {
@@ -607,7 +579,7 @@ PROTO Aurea [
                                       device [
                                         RotationalMotor {
                                           name "r_ank_roll"
-                                          maxTorque 3.5
+                                          maxTorque 10000
                                         }
                                         PositionSensor {
                                           name "r_ank_roll_sensor"
@@ -625,7 +597,6 @@ PROTO Aurea [
                                             geometry DEF r_ank_roll_link Mesh {
                                               url "../../../../../src/aurea_description/meshes/r_ank_roll_link.STL"
                                             }
-                                            castShadows FALSE
                                           }
                                         ]
                                         name "r_ank_roll_link"
@@ -763,7 +734,7 @@ PROTO Aurea [
         device [
           RotationalMotor {
             name "l_hip_yaw"
-            maxTorque 3.5
+            maxTorque 10000
           }
           PositionSensor {
             name "l_hip_yaw_sensor"
@@ -781,7 +752,6 @@ PROTO Aurea [
               geometry DEF l_hip_yaw_link Mesh {
                 url "../../../../../src/aurea_description/meshes/l_hip_yaw_link.STL"
               }
-              castShadows FALSE
             }
             HingeJoint {
               jointParameters HingeJointParameters {
@@ -790,7 +760,7 @@ PROTO Aurea [
               device [
                 RotationalMotor {
                   name "l_hip_roll"
-                  maxTorque 3.5
+                  maxTorque 10000
                 }
                 PositionSensor {
                   name "l_hip_roll_sensor"
@@ -808,7 +778,6 @@ PROTO Aurea [
                     geometry DEF l_hip_roll_link Mesh {
                       url "../../../../../src/aurea_description/meshes/l_hip_roll_link.STL"
                     }
-                    castShadows FALSE
                   }
                   HingeJoint {
                     jointParameters HingeJointParameters {
@@ -818,7 +787,7 @@ PROTO Aurea [
                     device [
                       RotationalMotor {
                         name "l_hip_pitch"
-                        maxTorque 3.5
+                        maxTorque 10000
                       }
                       PositionSensor {
                         name "l_hip_pitch_sensor"
@@ -836,7 +805,6 @@ PROTO Aurea [
                           geometry DEF l_hip_pitch_link Mesh {
                             url "../../../../../src/aurea_description/meshes/l_hip_pitch_link.STL"
                           }
-                          castShadows FALSE
                         }
                         HingeJoint {
                           jointParameters HingeJointParameters {
@@ -846,7 +814,7 @@ PROTO Aurea [
                           device [
                             RotationalMotor {
                               name "l_knee"
-                              maxTorque 3.5
+                              maxTorque 10000
                             }
                             PositionSensor {
                               name "l_knee_sensor"
@@ -864,7 +832,6 @@ PROTO Aurea [
                                 geometry DEF l_knee_link Mesh {
                                   url "../../../../../src/aurea_description/meshes/l_knee_link.STL"
                                 }
-                                castShadows FALSE
                               }
                               HingeJoint {
                                 jointParameters HingeJointParameters {
@@ -874,7 +841,7 @@ PROTO Aurea [
                                 device [
                                   RotationalMotor {
                                     name "l_ank_pitch"
-                                    maxTorque 3.5
+                                    maxTorque 10000
                                   }
                                   PositionSensor {
                                     name "l_ank_pitch_sensor"
@@ -892,7 +859,6 @@ PROTO Aurea [
                                       geometry DEF l_ank_pitch_link Mesh {
                                         url "../../../../../src/aurea_description/meshes/l_ank_pitch_link.STL"
                                       }
-                                      castShadows FALSE
                                     }
                                     HingeJoint {
                                       jointParameters HingeJointParameters {
@@ -901,7 +867,7 @@ PROTO Aurea [
                                       device [
                                         RotationalMotor {
                                           name "l_ank_roll"
-                                          maxTorque 3.5
+                                          maxTorque 10000
                                         }
                                         PositionSensor {
                                           name "l_ank_roll_sensor"
@@ -919,7 +885,6 @@ PROTO Aurea [
                                             geometry DEF l_ank_roll_link Mesh {
                                               url "../../../../../src/aurea_description/meshes/l_ank_roll_link.STL"
                                             }
-                                            castShadows FALSE
                                           }
                                         ]
                                         name "l_ank_roll_link"
@@ -1061,7 +1026,7 @@ PROTO Aurea [
     }
     physics Physics {
       density -1
-      mass 1.8
+      mass 1.438300
       centerOfMass [ -0.005439 -0.001346 0.071435 ]
       inertiaMatrix [
         2.822000e-03 1.147700e-03 3.502800e-03

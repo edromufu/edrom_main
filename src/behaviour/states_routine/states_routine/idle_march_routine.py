@@ -39,7 +39,6 @@ class StandStillRoutine(Node):
         self.idle_march_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
         self.flag = False
-        self.timer = self.create_timer(self.parameters.timer_first_pose, self.run_stand_still)
 
     def run_stand_still(self):
         if self.flag:
