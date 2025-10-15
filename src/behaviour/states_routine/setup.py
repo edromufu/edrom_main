@@ -23,9 +23,11 @@ setup(
             'aligning_body_routine = states_routine.aligning_body_routine:main',
             'walking_routine = states_routine.walking_routine:main',
             'kick_routine = states_routine.kick_routine:main',
-            'idle_march = states_routine.idle_march_routine:main',
+            'idle_march_routine = states_routine.idle_march_routine:main',
             'idle_routine = states_routine.idle_routine:main',
             'getting_up_routine = states_routine.getting_up_routine:main',
+            'searching_routine = states_routine.searching_routine:main'
+
 
         ],
     },

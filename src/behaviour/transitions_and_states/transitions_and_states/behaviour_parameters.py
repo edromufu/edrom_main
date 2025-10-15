@@ -22,7 +22,7 @@ class BehaviourParameters:
 
     def behaviourwiseParameters(self):
         # Relacionado à número de vezes que uma variável deve extrapolar certo valor para resetar
-        self.timerCountLimit = 3
+        self.timerCountLimit = 20
 
         self.idle_duration = 1.0  # Duração mínima em segundos para o estado idle_march
 
@@ -66,8 +66,8 @@ class BehaviourParameters:
         self.vision2BhvTopic = '/vision/vision_inference'
 
         # Parâmetros da câmera
-        self.cameraWidth = 416
-        self.cameraHeight = 416
+        self.cameraWidth = 640
+        self.cameraHeight = 480
 
         # Parâmetros de interpretação da câmera
         self.xCenterLeftLimit = 4 * self.cameraWidth / 10
