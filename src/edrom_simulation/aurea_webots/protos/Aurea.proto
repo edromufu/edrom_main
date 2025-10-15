@@ -2,7 +2,7 @@
 # license: Apache License 2.0
 # license url: http://www.apache.org/licenses/LICENSE-2.0
 # This is a proto file for Webots for the Aurea
-# Extracted from: /home/pedrohperes/Edrom_main/src/aurea_description/urdf/aurea_urdf_pkg.urdf
+# Extracted from: ../../../../../asrc/urea_description/urdf/aurea_urdf_pkg.urdf
 
 PROTO Aurea [
   field  SFVec3f     translation     0 0 0
@@ -35,9 +35,17 @@ PROTO Aurea [
           metalness 0
         }
         geometry DEF base_link Mesh {
-          url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/base_link.STL"
+          url "../../../../../src/aurea_description/meshes/base_link.STL"
         }
         castShadows FALSE
+      }
+      Accelerometer {
+        name "imu_accel"
+        resolution 0.01
+        lookupTable []
+      }   
+      Gyro {
+      name "imu_gyro"
       }
       HingeJoint {
         jointParameters HingeJointParameters {
@@ -63,7 +71,7 @@ PROTO Aurea [
                 metalness 0
               }
               geometry DEF head_pan_link Mesh {
-                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_pan_link.STL"
+                url "../../../../../src/aurea_description/meshes/head_pan_link.STL"
               }
               castShadows FALSE
             }
@@ -92,7 +100,7 @@ PROTO Aurea [
                       metalness 0
                     }
                     geometry DEF head_tilt_link Mesh {
-                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/head_tilt_link.STL"
+                      url "../../../../../src/aurea_description/meshes/head_tilt_link.STL"
                     }
                     castShadows FALSE
                   }
@@ -107,6 +115,17 @@ PROTO Aurea [
                         height 400
                       }
                     ]
+                  }
+                  Transform{
+                    translation 0.1 0.0 0.0
+                    children[
+                      Camera{
+                        name "camera_front"
+                        width 600
+                        height 400 
+                      }
+                    ]
+
                   }
                 ]
                 name "head_tilt_link"
@@ -174,7 +193,7 @@ PROTO Aurea [
                 metalness 0
               }
               geometry DEF l_sho_pitch_link Mesh {
-                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_sho_pitch_link.STL"
+                url "../../../../../src/aurea_description/meshes/l_sho_pitch_link.STL"
               }
               castShadows FALSE
             }
@@ -201,7 +220,7 @@ PROTO Aurea [
                       metalness 0
                     }
                     geometry DEF l_sho_roll_link Mesh {
-                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_sho_roll_link.STL"
+                      url "../../../../../src/aurea_description/meshes/l_sho_roll_link.STL"
                     }
                     castShadows FALSE
                   }
@@ -229,7 +248,7 @@ PROTO Aurea [
                             metalness 0
                           }
                           geometry DEF l_el_link Mesh {
-                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_el_link.STL"
+                            url "../../../../../src/aurea_description/meshes/l_el_link.STL"
                           }
                           castShadows FALSE
                         }
@@ -320,7 +339,7 @@ PROTO Aurea [
                 metalness 0
               }
               geometry DEF r_sho_pitch_link Mesh {
-                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_sho_pitch_link.STL"
+                url "../../../../../src/aurea_description/meshes/r_sho_pitch_link.STL"
               }
               castShadows FALSE
             }
@@ -347,7 +366,7 @@ PROTO Aurea [
                       metalness 0
                     }
                     geometry DEF r_sho_roll_link Mesh {
-                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_sho_roll_link.STL"
+                      url "../../../../../src/aurea_description/meshes/r_sho_roll_link.STL"
                     }
                     castShadows FALSE
                   }
@@ -375,7 +394,7 @@ PROTO Aurea [
                             metalness 0
                           }
                           geometry DEF r_el_link Mesh {
-                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_el_link.STL"
+                            url "../../../../../src/aurea_description/meshes/r_el_link.STL"
                           }
                           castShadows FALSE
                         }
@@ -466,7 +485,7 @@ PROTO Aurea [
                 metalness 0
               }
               geometry DEF r_hip_yaw_link Mesh {
-                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_yaw_link.STL"
+                url "../../../../../src/aurea_description/meshes/r_hip_yaw_link.STL"
               }
               castShadows FALSE
             }
@@ -493,7 +512,7 @@ PROTO Aurea [
                       metalness 0
                     }
                     geometry DEF r_hip_roll_link Mesh {
-                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_roll_link.STL"
+                      url "../../../../../src/aurea_description/meshes/r_hip_roll_link.STL"
                     }
                     castShadows FALSE
                   }
@@ -521,7 +540,7 @@ PROTO Aurea [
                             metalness 0
                           }
                           geometry DEF r_hip_pitch_link Mesh {
-                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_hip_pitch_link.STL"
+                            url "../../../../../src/aurea_description/meshes/r_hip_pitch_link.STL"
                           }
                           castShadows FALSE
                         }
@@ -549,7 +568,7 @@ PROTO Aurea [
                                   metalness 0
                                 }
                                 geometry DEF r_knee_link Mesh {
-                                  url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_knee_link.STL"
+                                  url "../../../../../src/aurea_description/meshes/r_knee_link.STL"
                                 }
                                 castShadows FALSE
                               }
@@ -577,7 +596,7 @@ PROTO Aurea [
                                         metalness 0
                                       }
                                       geometry DEF r_ank_pitch_link Mesh {
-                                        url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_ank_pitch_link.STL"
+                                        url "../../../../../src/aurea_description/meshes/r_ank_pitch_link.STL"
                                       }
                                       castShadows FALSE
                                     }
@@ -604,7 +623,7 @@ PROTO Aurea [
                                               metalness 0
                                             }
                                             geometry DEF r_ank_roll_link Mesh {
-                                              url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/r_ank_roll_link.STL"
+                                              url "../../../../../src/aurea_description/meshes/r_ank_roll_link.STL"
                                             }
                                             castShadows FALSE
                                           }
@@ -760,7 +779,7 @@ PROTO Aurea [
                 metalness 0
               }
               geometry DEF l_hip_yaw_link Mesh {
-                url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_yaw_link.STL"
+                url "../../../../../src/aurea_description/meshes/l_hip_yaw_link.STL"
               }
               castShadows FALSE
             }
@@ -787,7 +806,7 @@ PROTO Aurea [
                       metalness 0
                     }
                     geometry DEF l_hip_roll_link Mesh {
-                      url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_roll_link.STL"
+                      url "../../../../../src/aurea_description/meshes/l_hip_roll_link.STL"
                     }
                     castShadows FALSE
                   }
@@ -815,7 +834,7 @@ PROTO Aurea [
                             metalness 0
                           }
                           geometry DEF l_hip_pitch_link Mesh {
-                            url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_hip_pitch_link.STL"
+                            url "../../../../../src/aurea_description/meshes/l_hip_pitch_link.STL"
                           }
                           castShadows FALSE
                         }
@@ -843,7 +862,7 @@ PROTO Aurea [
                                   metalness 0
                                 }
                                 geometry DEF l_knee_link Mesh {
-                                  url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_knee_link.STL"
+                                  url "../../../../../src/aurea_description/meshes/l_knee_link.STL"
                                 }
                                 castShadows FALSE
                               }
@@ -871,7 +890,7 @@ PROTO Aurea [
                                         metalness 0
                                       }
                                       geometry DEF l_ank_pitch_link Mesh {
-                                        url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_ank_pitch_link.STL"
+                                        url "../../../../../src/aurea_description/meshes/l_ank_pitch_link.STL"
                                       }
                                       castShadows FALSE
                                     }
@@ -898,7 +917,7 @@ PROTO Aurea [
                                               metalness 0
                                             }
                                             geometry DEF l_ank_roll_link Mesh {
-                                              url "/home/pedrohperes/Edrom_main/src/aurea_description/meshes/l_ank_roll_link.STL"
+                                              url "../../../../../src/aurea_description/meshes/l_ank_roll_link.STL"
                                             }
                                             castShadows FALSE
                                           }

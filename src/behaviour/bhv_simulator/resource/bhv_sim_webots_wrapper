@@ -1,0 +1,6 @@
+#!/bin/bash
+# Encontra o diretório de instalação do workspace
+# e executa o nó ROS 2 real
+source /opt/ros/iron/setup.bash
+source $(colcon list | head -n 1 | awk '{print $2}')/setup.bash
+ros2 run bhv_simulator bhv_sim "$@"
