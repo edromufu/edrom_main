@@ -16,6 +16,9 @@ from edrom_msgs.msg import VisionData, Detection, DetectionArray, Landmark, Land
 from sensor_msgs.msg import Image as ROS_Image
 from std_msgs.msg import Header
 
+### CORREÇÃO: A importação foi movida para o topo do arquivo ###
+from ament_index_python.packages import get_package_share_directory
+
 sys.setrecursionlimit(100000)
 
 
@@ -25,61 +28,60 @@ class Visao(Node):
         super().__init__(nome_no)
         self.get_logger().info('Nó de Visão Unificado Iniciado')
 
-        # --- Parâmetros e Modelo (comum a ambos os modos) ---
+        # Parâmetros e variáveis comuns no topo
         self.output_img = self.declare_parameter('vision.img_output', True).get_parameter_value().bool_value
         self.use_simulation = self.declare_parameter('use_simulation', False).get_parameter_value().bool_value
         self.model = ri.set_model_input(is_simulation=self.use_simulation)
         self.searching = True
         self.current_frame = None
 
-        # --- LÓGICA CONDICIONAL DE INICIALIZAÇÃO ---
+        # Publishers comuns criados fora do if/else
+        self.localization_publisher = self.create_publisher(LandmarkArray, 'vision/landmarks', 10)
+        self.publisher = self.create_publisher(VisionData, 'vision2BhvTopic', 10)
+        
+        # if/else focado apenas no que é diferente
         if self.use_simulation:
-            # ... (código do modo simulação permanece o mesmo) ...
-            self.get_logger().info('>> RODANDO EM MODO SIMULAÇÃO (Publicando Imagem Processada) <<')
+            self.get_logger().info('>> RODANDO EM MODO SIMULAÇÃO <<')
+            ipm_matrix_path = "ipm_matrix_sim.npy"
             self.bridge = CvBridge()
-            self.processed_image_publisher = self.create_publisher(ROS_Image, 'processed_image_topic', 10)
+            self.processed_image_publisher = self.create_publisher(ROS_Image, 'processed_image_topic', 10) 
             self.camera_subscriber = self.create_subscription(
                 ROS_Image, '/camera/image', self.image_callback, 10
             )
         else:
-            # ... (código do modo real permanece o mesmo) ...
-            self.get_logger().info('>> RODANDO EM MODO REAL (Publicando Mensagens de Dados) <<')
-            self.publisher = self.create_publisher(VisionData, 'self_parameters_vision2BhvTopic', 100)
+            self.get_logger().info('>> RODANDO EM MODO REAL <<')
+            ipm_matrix_path = "ipm_matrix.npy"
             self.camera_idx = self.declare_parameter('vision.camera_idx', 0).get_parameter_value().integer_value
             self.ajuste = self.declare_parameter('vision.ajuste', False).get_parameter_value().bool_value
             self.bright = self.declare_parameter('vision.brilho', 4).get_parameter_value().integer_value
+    
+        # Carregamento da matriz agora fica em um lugar único
+        self.M_ipm = None 
+        try:
+            package_share_path = get_package_share_directory('object_finder')
+            full_path = os.path.join(package_share_path, ipm_matrix_path)
+            self.M_ipm = np.load(full_path)
+            self.get_logger().info(f"Matriz de IPM '{full_path}' carregada com sucesso!")
+        except (FileNotFoundError, NameError):
+            self.get_logger().warn(f"ARQUIVO DE MATRIZ IPM '{ipm_matrix_path}' NÃO ENCONTRADO. Landmarks não serão publicados.")
+        
+        if not self.use_simulation:
             self.initialize_webcam_and_loop()
 
-        # --- ATUALIZADO: Carregamento da Matriz de IPM para Localização ---
-        self.localization_publisher = self.create_publisher(LandmarkArray, 'vision/landmarks', 10)
         
-        # --- MUDANÇA AQUI ---
-        self.M_ipm = None # Renomeado de self.H para self.M_ipm para clareza
-        ipm_matrix_path = "ipm_matrix.npy" # Carrega o arquivo que geramos
-        try:
-            self.M_ipm = np.load(ipm_matrix_path)
-            self.get_logger().info(f"Matriz de IPM '{ipm_matrix_path}' carregada com sucesso!")
-        except FileNotFoundError:
-            self.get_logger().warn(f"ARQUIVO DE MATRIZ IPM '{ipm_matrix_path}' NÃO ENCONTRADO. Landmarks não serão publicados.")
-
-
     def image_callback(self, ros_image_msg):
-        # ... (código permanece o mesmo) ...
         try:
             frame = self.bridge.imgmsg_to_cv2(ros_image_msg, desired_encoding="bgr8")
             self.process_frame(frame)
         except Exception as e:
             self.get_logger().error(f'Falha na conversão da imagem: {e}')
-
+            
     def initialize_webcam_and_loop(self):
-        # ... (código permanece o mesmo) ...
         self.cap = cv2.VideoCapture(self.camera_idx)
         if not self.cap.isOpened():
             self.get_logger().error(f"Não foi possível abrir a câmera no índice {self.camera_idx}"); rclpy.shutdown(); return
-
         self.cap.set(cv2.CAP_PROP_BRIGHTNESS, self.bright)
         if self.ajuste: self.ajuste_camera()
-
         while rclpy.ok():
             ret, frame = self.cap.read()
             if not ret: self.get_logger().warn("Falha ao capturar frame da webcam."); continue
@@ -89,11 +91,13 @@ class Visao(Node):
                 self.get_logger().warn('Tecla "q" pressionada. Encerrando.'); rclpy.shutdown(); break
 
     def process_frame(self, frame):
-        # ... (código permanece o mesmo) ...
         self.current_frame = frame
         self.classes, self.scores, self.boxes, self.inference_frame = ri.detect_model(self.model, self.current_frame)
+        
+        self.publish_localization_data()
 
         if self.use_simulation:
+            self.publish_results() 
             try:
                 processed_image_msg = self.bridge.cv2_to_imgmsg(self.inference_frame, "bgr8")
                 self.processed_image_publisher.publish(processed_image_msg)
@@ -101,21 +105,24 @@ class Visao(Node):
                 self.get_logger().error(f'Falha ao publicar imagem processada: {e}')
         else:
             self.publish_results() 
-            self.publish_localization_data()
 
         if self.output_img:
             cv2.imshow("Visao EDROM", self.inference_frame)
             cv2.waitKey(1)
 
-    # --- ATUALIZADO: Função que converte pixel para coordenadas RELATIVAS AO ROBÔ ---
     def transform_pixel_to_world(self, bounding_box):
         # Usa a nova matriz M_ipm
         if self.M_ipm is None:
             return None, None
 
-        x, y, w, h = bounding_box
-        # O ponto de âncora na base do objeto é a melhor escolha
-        anchor_pixel = (x + w / 2, y + h)
+        # A bounding_box está no formato (center_x, center_y, width, height)
+        center_x, center_y, w, h = bounding_box
+        
+        # O ponto de âncora correto é o centro da base da caixa
+        anchor_pixel_x = center_x
+        anchor_pixel_y = center_y + (h / 2)
+        
+        anchor_pixel = (anchor_pixel_x, anchor_pixel_y)
         pixel_coords = np.array([[anchor_pixel]], dtype=np.float32)
         
         # Usa a matriz de IPM para transformar o pixel em coordenadas do robô (em cm)
@@ -131,42 +138,38 @@ class Visao(Node):
         
         return distance_cm, angle_rad
 
-    # --- ATUALIZADO: Função de publicação agora usa a matriz correta ---
     def publish_localization_data(self):
-        # Verifica se a matriz M_ipm foi carregada
-        if self.M_ipm is None or not hasattr(self, 'boxes') or not self.boxes:
-            return
-
+        if self.M_ipm is None or not hasattr(self, 'boxes') or not self.boxes: return
         landmarks_msg = LandmarkArray()
         landmarks_msg.header = Header(stamp=self.get_clock().now().to_msg())
-        
         detected_landmarks = []
         for i in range(len(self.boxes)):
             box = self.boxes[i]
-            # A chamada para a função de transformação agora usa a lógica de IPM
             distance_cm, angle_rad = self.transform_pixel_to_world(box)
-            
             if distance_cm is not None:
                 landmark = Landmark()
-                landmark.id = self.classes[i]
-                landmark.distance_m = distance_cm / 100.0  # Converte cm para metros
-                landmark.angle_rad = angle_rad
-                detected_landmarks.append(landmark)
+                landmark.id = int(self.classes[i])
+                dist_m = distance_cm / 100.0    
 
+                landmark.distance_m = float(dist_m)
+                landmark.angle_rad = float(angle_rad)
+    
+                detected_landmarks.append(landmark)
+                if self.output_img:
+                    angle_deg = np.rad2deg(angle_rad)
+                    text = f"D:{dist_m:.2f}m A:{angle_deg:.1f}d"
+                    box_x_center, box_y_center, box_w, box_h = box
+                    text_pos = (int(box_x_center - box_w/2), int(box_y_center - box_h/2 - 10))
+                    cv2.putText(self.inference_frame, text, text_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 2)
         landmarks_msg.landmarks = detected_landmarks
         self.localization_publisher.publish(landmarks_msg)
 
     def publish_results(self):
-        # ... (esta função permanece exatamente a mesma) ...
-        """Publica a mensagem VisionData. Usado apenas no modo REAL."""
         objects_msg = VisionData()
         objects_msg.searching = self.searching
         objects_msg.fps = int(self.fps if hasattr(self, 'fps') else 0)
-
-        # Listas para separar as detecções por classe
         ball_objects, robot_objects, right_goal_objects, left_goal_objects = [], [], [], []
         x_intersection_objects, l_intersection_objects, t_intersection_objects, center_objects = [], [], [], []
-
         if hasattr(self, 'boxes') and self.boxes:
             for i in range(len(self.boxes)):
                 results = [True, int(self.boxes[i][0]), int(self.boxes[i][1]), int(self.boxes[i][2]), int(self.boxes[i][3]), self.scores[i]]
@@ -179,32 +182,26 @@ class Visao(Node):
                 elif class_id == 5: t_intersection_objects.append(results)
                 elif class_id == 6: x_intersection_objects.append(results)
                 elif class_id == 7: center_objects.append(results)
-
         ball_objects.sort(key=lambda obj: obj[5], reverse=True)
         robot_objects.sort(key=lambda obj: obj[5], reverse=True)
         right_goal_objects.sort(key=lambda obj: obj[1])
         left_goal_objects.sort(key=lambda obj: obj[1])
-
         if ball_objects: objects_msg.ball = self.setup_object(ball_objects[0])
         if robot_objects: objects_msg.robot = self.setup_object(robot_objects[0])
         if right_goal_objects: objects_msg.rightgoal = self.setup_object(right_goal_objects[-1])
         if left_goal_objects: objects_msg.leftgoal = self.setup_object(left_goal_objects[0])
-
         if x_intersection_objects: objects_msg.x_intersection = self.create_multi_objects(x_intersection_objects)
         if l_intersection_objects: objects_msg.l_intersection = self.create_multi_objects(l_intersection_objects)
         if t_intersection_objects: objects_msg.t_intersection = self.create_multi_objects(t_intersection_objects)
         if center_objects: objects_msg.center = self.create_multi_objects(center_objects)
-
         self.publisher.publish(objects_msg)
-        
+
     def setup_object(self, obj_data):
-        # ... (esta função permanece exatamente a mesma) ...
         obj = Detection()
         [obj.found, obj.x, obj.y, obj.roi_width, obj.roi_height, _] = obj_data
         return obj
 
     def create_multi_objects(self, detection_list):
-        # ... (esta função permanece exatamente a mesma) ...
         multi_objects_msg = DetectionArray()
         multi_objects_msg.found = True
         detections = []
@@ -215,8 +212,6 @@ class Visao(Node):
         return multi_objects_msg
 
     def ajuste_camera(self):
-        # ... (esta função permanece exatamente a mesma) ...
-        """Permite o ajuste manual de brilho da câmera no modo real."""
         print("Ajuste de Brilho: '=' para aumentar, '-' para diminuir. 'w' para continuar.")
         while rclpy.ok():
             key = cv2.waitKey(1)
@@ -235,14 +230,13 @@ class Visao(Node):
         cv2.destroyWindow("Ajuste de Brilho")
         self.ajuste = False
 
-# ... (função main permanece a mesma) ...
 def main(args=None):
     rclpy.init(args=args)
+    ### REMOVIDO: A importação daqui foi movida para o topo ###
     no_visao = Visao('Visao')
     rclpy.spin(no_visao)
     no_visao.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

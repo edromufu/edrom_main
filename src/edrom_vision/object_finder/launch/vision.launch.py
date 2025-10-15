@@ -26,7 +26,7 @@ def generate_launch_description():
     # --- Argumentos Específicos do Robô Real ---
     camera_idx_arg = DeclareLaunchArgument(
         'camera_idx',
-        default_value='0',
+        default_value='2',
         description='Índice da webcam (ex: 0, 1, ...)'
     )
     ajuste_arg = DeclareLaunchArgument(

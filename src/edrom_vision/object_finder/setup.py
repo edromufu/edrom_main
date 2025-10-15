@@ -22,6 +22,7 @@ setup(
         
         # Instala o modelo .pt para a simulação
         (os.path.join('share', package_name, 'modelo'), glob('modelo/*.pt') + glob('modelo/*.onnx')),
+        (os.path.join('share', package_name), glob('resource/*')),
     ],
     
     # install_requires lista as dependências de Python que o pip deve instalar.

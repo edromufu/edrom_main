@@ -27,7 +27,7 @@ def set_model_input(is_simulation=False):
         else:
             # --- MODO REAL (SEM OPENVINO) ---
             print("Carregando modelo PADRÃO para o Robô Real (.pt)...")
-            model_path = os.path.join(model_base_path, 'yolov8n-vision.pt') # Carrega o modelo .pt padrão
+            model_path = os.path.join(model_base_path, 'best.pt') # Carrega o modelo .pt padrão
 
         print(f"Tentando carregar o modelo de: {model_path}")
         if not os.path.exists(model_path):

@@ -30,9 +30,9 @@ class BallInterpreter(Node):
         #Variaveis do ROS
         self.create_subscription(
             VisionData,
-            self.parameters.vision2BhvTopic,
+            'vision2BhvTopic',
             self.callback_vision,
-            qos
+            10
         )        
         #Variaveis de código
         self.ballRelativePosition = 'none'

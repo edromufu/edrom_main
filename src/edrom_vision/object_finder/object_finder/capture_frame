@@ -4,7 +4,7 @@ import os
 # ==============================================================================
 # --- CONFIGURAÇÕES ---
 # ==============================================================================
-CAMERA_INDEX = 0             # Mude este número se você tiver múltiplas câmeras (0, 1, 2...)
+CAMERA_INDEX = 2             # Mude este número se você tiver múltiplas câmeras (0, 1, 2...)
 OUTPUT_FILENAME = "calibration_image.png"
 # ==============================================================================
 

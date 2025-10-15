@@ -62,7 +62,7 @@ def generate_launch_description():
         Node(
             package="sensor_observer",
             executable="ros_packer",
-            name="fall_interpreter",
+            name="ros_packer",
             output="screen"
         ),
 

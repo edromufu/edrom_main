@@ -30,6 +30,8 @@ class StateMachine:
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_walking', 'source': 'kicking', 'dest': 'walking',
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
+             { 'trigger': 'go_to_walking', 'source': 'searching', 'dest': 'walking',
+             'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
         ]
         
         go_to_idle_march_transitions = [
