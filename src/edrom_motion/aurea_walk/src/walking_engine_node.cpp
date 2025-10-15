@@ -20,9 +20,9 @@ WalkingEngineNode::WalkingEngineNode()
   // Declara e carrega os parâmetros
   this->declare_parameter<double>("step_period", 0.3);
   this->declare_parameter<double>("com_height", 0.22);
-  this->declare_parameter<double>("step_height", 0.03);
+  this->declare_parameter<double>("step_height", 0.0475);
   this->declare_parameter<double>("double_support_ratio", 0.1);
-  this->declare_parameter<double>("feet_separation", 0.0465);
+  this->declare_parameter<double>("feet_separation", 0.044);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
@@ -31,7 +31,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.25);
+  this->declare_parameter<double>("backlash_offset_hp", -0.26);
   //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);
@@ -711,7 +711,7 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         }
 
         // Adiciona balanço dos braços
-        double phi = t_step_ / T_;
+        /*double phi = t_step_ / T_;
         double base_angle = arm_swing_amplitude_ * std::sin(M_PI * phi);
         double l_sho_pitch = (support_foot_->is_left) ? -base_angle : base_angle;
         double r_sho_pitch = (support_foot_->is_left) ? base_angle : -base_angle;
@@ -720,7 +720,8 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         combined_joint_state_.position.push_back(l_sho_pitch);
         combined_joint_state_.name.push_back("r_sho_pitch");
         combined_joint_state_.position.push_back(r_sho_pitch);
-        
+        */
+       
         combined_joint_state_.header.stamp = this->get_clock()->now();    
 
         std::string support_hip_roll = support_foot_->is_left ? "l_hip_roll" : "r_hip_roll";

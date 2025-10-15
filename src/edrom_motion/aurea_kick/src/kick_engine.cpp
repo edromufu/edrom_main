@@ -62,12 +62,16 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
             double kick_phi = (phi < 0.5) ? (2.0*phi*phi) : (1.0 - 2.0*(1.0-phi)*(1.0-phi));
             kick_foot_offset.x() = -params_.x_kick + (params_.x_kick * 1.5) * kick_phi;
             kick_foot_offset.z() = params_.z_kick;
+            // Inclinacao
+            double torso_fwd_offset = params_.torso_kick_offset_x * phi;
+            out_torso_pos.x() += torso_fwd_offset;
         } else {
             double phase_t = kick_phase_time - (params_.tB + params_.tC);
             double phi = phase_t / params_.tD;
             double h_phi = 0.5 * (1.0 - std::cos(M_PI * phi));
             kick_foot_offset.x() = (1.0 - h_phi) * (params_.x_kick * 0.5);
             kick_foot_offset.z() = (1.0 - h_phi) * params_.z_kick;
+            out_torso_pos.x() += params_.torso_kick_offset_x;
         }
         
         Eigen::Rotation2Dd rot(torso_start_yaw_);
@@ -85,7 +89,7 @@ bool KickEngine::update(double dt, Eigen::Vector3d & out_torso_pos, Eigen::Vecto
     case Phase::RETURN_TO_CENTER:
       {
         Eigen::Vector2d com_target = support_foot_start_pos_;
-        com_target.x() = torso_start_pos_.x();
+        com_target.x() = torso_start_pos_.x()+ params_.torso_kick_offset_x;
         double phi = std::min(phase_time_ / params_.tE, 1.0);
         double h_phi = 0.5 * (1.0 - std::cos(M_PI * phi));
         Eigen::Vector2d current_torso_pos_2d = (1.0 - h_phi) * com_target + h_phi * torso_start_pos_;

@@ -12,6 +12,8 @@
   <depend>hardware_interface</depend>
   <depend>rclcpp</depend>
   <depend>dynamixel_sdk</depend>
+  <depend>aurea_walk</depend>
+
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

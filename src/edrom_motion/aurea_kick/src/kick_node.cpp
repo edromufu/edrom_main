@@ -30,18 +30,19 @@ public:
   KickNode() : Node("kick_node")
   {
     auto params = aurea_kick::KickParameters();
-    this->declare_parameter("phase_a_time", 0.6);
-    this->declare_parameter("phase_b_time", 0.4);
-    this->declare_parameter("phase_c_time", 0.3);
-    this->declare_parameter("phase_d_time", 0.4);
-    this->declare_parameter("phase_e_time", 0.6);
-    this->declare_parameter("x_amplitude", 0.15);
-    this->declare_parameter("z_height", 0.08);
-    this->declare_parameter("com_height", 0.22);
-    this->declare_parameter("feet_separation", 0.045);
-    this->declare_parameter<double>("kp_gain_hip_roll", 2.0);
-    this->declare_parameter<double>("kp_gain_hip_pitch", -2.0);
-    this->declare_parameter<double>("kp_gain_knee", 2.0);
+    this->declare_parameter("phase_a_time", 1.0);
+    this->declare_parameter("phase_b_time", 0.7);
+    this->declare_parameter("phase_c_time", 0.1);
+    this->declare_parameter("phase_d_time", 0.7);
+    this->declare_parameter("phase_e_time", 1.0);
+    this->declare_parameter("x_amplitude", 0.1);
+    this->declare_parameter("z_height", 0.05);
+    this->declare_parameter("com_height", 0.21);
+    this->declare_parameter("feet_separation", 0.044);
+    this->declare_parameter("torso_kick_offset_x", 0.0); 
+    this->declare_parameter<double>("kp_gain_hip_roll", 1.0);
+    this->declare_parameter<double>("kp_gain_hip_pitch", -10.0);
+    this->declare_parameter<double>("kp_gain_knee", 10.0);
     this->declare_parameter<double>("backlash_hip_offset", -0.3);
 
     kp_gain_hip_roll_ = this->get_parameter("kp_gain_hip_roll").as_double();
@@ -57,6 +58,7 @@ public:
     params.z_kick = this->get_parameter("z_height").as_double();
     params.com_height = this->get_parameter("com_height").as_double();
     params.y_sep = this->get_parameter("feet_separation").as_double();
+    params.torso_kick_offset_x = this->get_parameter("torso_kick_offset_x").as_double();
     kick_engine_ = std::make_unique<aurea_kick::KickEngine>(params);
     backlash_hip_offset_ = this->get_parameter("backlash_hip_offset").as_double();
     initialize_robot_model(); 
@@ -194,22 +196,7 @@ private:
                 final_joints.position = support_res->result_joint_state.position;
                 final_joints.position.insert(final_joints.position.end(), kick_res->result_joint_state.position.begin(), kick_res->result_joint_state.position.end());
                 
-                // 4. APLICA OS OFFSETS DIRETAMENTE NA MENSAGEM FINAL
-                for (size_t i = 0; i < final_joints.name.size(); ++i) {
-                    const std::string& joint_name = final_joints.name[i];
-                    if (gravity_offsets.count(joint_name)) {
-                        final_joints.position[i] += gravity_offsets.at(joint_name);
-                    }
-                    // Verifica se é uma junta do quadril (roll ou pitch)
-                    bool is_hip_joint = (joint_name.find("hip_pitch") != std::string::npos);
-
-                    if (is_hip_joint) {
-                        // Aplica o offset apenas se a junta pertencer à perna de apoio
-                        final_joints.position[i] += backlash_hip_offset_;
-                        
-                    }
-
-                }
+                
                 
                 // --- FIM DA LÓGICA DO GRAVITY COMPENSATOR ---
           final_joints.header.stamp = this->now();
@@ -217,6 +204,22 @@ private:
           final_joints.name.insert(final_joints.name.end(), kick_res->result_joint_state.name.begin(), kick_res->result_joint_state.name.end());
           final_joints.position.insert(final_joints.position.end(), support_res->result_joint_state.position.begin(), support_res->result_joint_state.position.end());
           final_joints.position.insert(final_joints.position.end(), kick_res->result_joint_state.position.begin(), kick_res->result_joint_state.position.end());
+          for (size_t i = 0; i < final_joints.name.size(); ++i) {
+                    const std::string& joint_name = final_joints.name[i];
+
+                    // 1. Aplica compensação de gravidade
+                    if (gravity_offsets.count(joint_name)) {
+                        final_joints.position[i] += gravity_offsets.at(joint_name);
+                    }
+                    
+                    // ====================== LÓGICA DE ESTABILIDADE ADICIONADA ======================
+                    // Aplica o offset de estabilidade estática nos motores do quadril (pitch)
+                    if (joint_name == "l_hip_pitch" || joint_name == "r_hip_pitch") {
+                        final_joints.position[i] += backlash_hip_offset_;
+                    }
+                    // =============================================================================
+                }
+          
           joint_pub_->publish(final_joints);
         }
       } else {

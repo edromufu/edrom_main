@@ -12,6 +12,17 @@ def generate_launch_description():
         'motors_direct.yaml'
     )
 
+
+    robot_initializer_node = Node(
+        package='edrom_lowlevel',
+        executable='robot_initializer',
+        name='robot_initializer',
+        output='screen',
+        parameters=[{
+            'initial_com_height': 0.22,
+            'initial_feet_separation': 0.0465
+        }]
+    )
     # Definição do nó do controlador
     controller_node = Node(
         package='edrom_lowlevel',
@@ -22,5 +33,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        controller_node
+        controller_node,
+        robot_initializer_node
     ])

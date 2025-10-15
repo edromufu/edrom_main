@@ -12,6 +12,7 @@ struct KickParameters {
   double tA, tB, tC, tD, tE;
   double x_kick, z_kick, y_sep;
   double com_height;
+  double torso_kick_offset_x;
 };
 
 struct LinkData {
