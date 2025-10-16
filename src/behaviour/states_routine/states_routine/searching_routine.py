@@ -1,115 +1,86 @@
 #!/usr/bin/env python3
 #coding=utf-8
 
-'''
-Recebe o estado 'idle_march' da máquina de estados e executa uma rotina de 
-parada segura: envia velocidade zero por 1 segundo e depois publica um 
-comando para parar a engine de caminhada.
-'''
-
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from modularized_bhv_msgs.msg import CurrentStateMsg
+from std_msgs.msg import String # Para comandar o HeadControllerNode
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Empty
-from rclpy.duration import Duration
-
-# Supondo que sua mensagem de estado venha deste pacote e tenha este nome.
-# Se for diferente, ajuste a linha abaixo.
-from modularized_bhv_msgs.msg import CurrentStateMsg 
 
 class SearchingRoutine(Node):
-
+    """
+    Nó Gerente da Rotina de Busca.
+    Quando ativado pelo estado 'searching', comanda o corpo para girar e 
+    o nó especialista da cabeça para iniciar seu padrão de busca.
+    """
     def __init__(self):
         super().__init__('searching_routine_node')
 
-        # Parâmetros de QoS (Qualidade de Serviço)
-        qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=1
-        )
+        self.is_active = False
+
+        # Parâmetro para a velocidade de giro do corpo
+        self.declare_parameter('body_spin_speed_rad_s', 0.4)
+        self.body_spin_speed = self.get_parameter('body_spin_speed_rad_s').get_parameter_value().double_value
         
-        # Subscriber para o estado atual da máquina de estados
-        # ATENÇÃO: Verifique se o nome do tópico 'self.parameters.currentStateTopic' está correto.
-        # Para este exemplo, vou usar um nome explícito.
+        self.timer_period = 0.05  # 20 Hz
+
+        # --- Subscriber ---
+        # Ouve as ordens da StateMachine principal
         self.state_sub = self.create_subscription(
             CurrentStateMsg, 
-            '/transitions_and_states/state_machine', # Exemplo de nome de tópico
+            '/transitions_and_states/state_machine', 
             self.state_callback, 
-            qos_profile
-        )
+            10)
+
+        # --- Publishers ---
+        # Publisher para comandar o especialista da cabeça
+        self.head_control_pub = self.create_publisher(String, '/head_control/state', 10)
+        # Publisher para comandar o corpo
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+
+        # --- Timer ---
+        self.timer = self.create_timer(self.timer_period, self.control_loop)
         
-        # Publishers
-        self.velocity_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.stop_walking_pub = self.create_publisher(Empty, '/stop_walking', 10)
-
-        # Variáveis para controlar a lógica de temporização
-        self.is_stand_still_required = False # Flag ativada pelo subscriber
-        self.stand_still_active = False      # Flag que indica se a sequência de 1s está em andamento
-        self.stand_still_start_time = None   # Guarda o momento em que a sequência começou
-
-        # Timer que chama a função de controle principal 20 vezes por segundo (a 20 Hz)
-        self.timer = self.create_timer(0.1, self.control_loop)
-        
-        self.get_logger().info("Nó SearchingRoutine pronto e rodando.")
-
-    def control_loop(self):
-        """
-        Esta função é chamada continuamente pelo timer e contém a lógica principal.
-        """
-        # Condição de entrada: o estado exige 'stand still' E a sequência ainda não começou.
-        if self.is_stand_still_required and not self.stand_still_active:
-            self.get_logger().info("Iniciando sequência de 'stand still' por 1 segundo...")
-            self.stand_still_active = True
-            self.stand_still_start_time = self.get_clock().now()
-
-        # Se a sequência está ativa, executa a lógica de temporização.
-        if self.stand_still_active:
-            elapsed_time = self.get_clock().now() - self.stand_still_start_time
-        
-            # DURANTE a sequência (enquanto o tempo for menor que 1 segundo)
-            if elapsed_time < Duration(seconds=1.0):
-                twist = Twist()
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
-                # Publica continuamente para garantir que o robô receba o comando de parar
-                self.velocity_pub.publish(twist)
-            
-            # FIM da sequência (quando 1 segundo se passar)
-            else:
-                self.get_logger().info("Tempo concluído. Publicando em /stop_walking e terminando a sequência.")
-                
-                # 1. Publica a mensagem Empty para o nó de caminhada
-                self.stop_walking_pub.publish(Empty())
-                
-                # 2. Reseta o estado para que a sequência não se repita
-                self.stand_still_active = False
-                self.stand_still_start_time = None
-                
-                # 3. Importante: Reseta a flag principal para que a sequência
-                #    só seja acionada novamente se um novo comando 'idle_march' chegar.
-                self.is_stand_still_required = False
+        self.get_logger().info("Rotina de Busca ('searching_routine') pronta e ouvindo ordens.")
 
     def state_callback(self, msg):
-        """
-        Callback que lê o estado da máquina de estados e ativa a flag para iniciar a rotina.
-        """
-        received_state = msg.current_state 
+        """Ativa ou desativa a rotina."""
+        if msg.current_state == 'searching':
+            if not self.is_active:
+                self.get_logger().info("Ordem 'searching' recebida! Ativando rotina de busca.")
+            self.is_active = True
+        else:
+            if self.is_active:
+                self.get_logger().info(f"Ordem '{msg.current_state}' recebida. Desativando rotina de busca.")
+            self.is_active = False
 
-        # Ativa a flag APENAS se o estado for 'idle_march' e a sequência não estiver já rodando
-        if received_state == 'searching' and not self.stand_still_active:
-            self.is_stand_still_required = True
-        
+    def control_loop(self):
+        """Se a rotina estiver ativa, envia os comandos para os especialistas."""
+        if not self.is_active:
+            # Se a rotina não está ativa, não fazemos nada. Outra rotina (ex: walking) está no controle.
+            return
+
+        # --- Comandos para os especialistas ---
+
+        # 1. Ordem para o especialista da cabeça: "Execute a busca"
+        head_command = String()
+        head_command.data = "SEARCHING"
+        self.head_control_pub.publish(head_command)
+
+        # 2. Ordem para o motor de caminhada: "Gire no lugar"
+        twist_command = Twist()
+        twist_command.angular.z = self.body_spin_speed
+        self.cmd_vel_pub.publish(twist_command)
+
 def main(args=None):
     rclpy.init(args=args)
-    routine = SearchingRoutine()
+    searching_routine = SearchingRoutine()
     try:
-        rclpy.spin(routine)
+        rclpy.spin(searching_routine)
     except KeyboardInterrupt:
         pass
     finally:
-        routine.destroy_node()
+        searching_routine.destroy_node()
         rclpy.shutdown()
 
 if __name__ == '__main__':

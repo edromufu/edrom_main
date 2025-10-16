@@ -81,28 +81,15 @@ def generate_launch_description():
 
         Node(
             package="states_routine",
-            executable="kick_routine",
+            executable="kicking_routine",
             name="kick_routine",
-            output="screen"
-        ),
-        Node(
-            package="states_routine",
-            executable="idle_march_routine",
-            name="idle_march",
-            output="screen"
-        ),
-
-        Node(
-            package="states_routine",
-            executable="idle_routine",
-            name="idle",
             output="screen"
         ),
 
         Node(
             package="states_routine",
             executable="searching_routine",
-            name="idle",
+            name="searching_routine",
             output="screen"
         ),
 

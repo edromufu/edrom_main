@@ -12,7 +12,6 @@ from std_msgs.msg import Bool
 from .state_machine import StateMachine
 from .behaviour_parameters import BehaviourParameters
 
-
 class StateMachineReceiver(Node):
 
     def __init__(self):
@@ -22,64 +21,69 @@ class StateMachineReceiver(Node):
         - Cria subscribers para as variáveis de comportamento e para o status do chute
         - Publica o estado atual da máquina
         """
-        super().__init__('state_machine_receiver')
+        # MUDANÇA: Nome do nó para ser único e descritivo
+        super().__init__('behavior_brain_node')
 
         self.parameters = BehaviourParameters()
         self.state_machine = StateMachine()
 
         # Inicializa variáveis internas
-        self.last_state_machine_msg = None
-        self.kick_done = False
+        self.last_sensor_data_msg = None
+        self.kick_done_flag = False
 
         # Publisher do estado atual
         self.state_publisher = self.create_publisher(
             CurrentStateMsg, '/transitions_and_states/state_machine', 10
         )
 
-        # Subscribers
+        # Subscriber para os dados consolidados dos sensores (do ROSPacker)
         self.create_subscription(
-            StateMachineMsg, self.parameters.stateMachineTopic, self.state_machine_callback, 10
+            StateMachineMsg, self.parameters.stateMachineTopic, self.sensor_data_callback, 10
         )
 
-        self.create_subscription(
-            Bool, "/kick/_action/feedback", self.kick_done_callback, 10
-        )
+        # Subscriber que ouve o resultado final da rotina de chute
+        self.create_subscription(Bool, '/kick_done', self.kick_done_callback, 10)
 
-        self.get_logger().info("StateMachineReceiver iniciado e aguardando mensagens...")
-        # Timer para tentar atualizar o estado periodicamente
+        self.get_logger().info("StateMachineReceiver (Cérebro) iniciado e aguardando mensagens...")
 
-
-
-    # Recebe mensagem principal da máquina (com variáveis de percepção e estado)
-    def state_machine_callback(self, msg):
-        self.last_state_machine_msg = msg
+    def kick_done_callback(self, msg: Bool):
+        """Atualiza a flag quando a rotina de chute sinaliza que terminou."""
+        self.kick_done_flag = msg.data
+        # Após receber a notificação, força uma reavaliação do estado
         self.update_state()
 
-    # Recebe flag indicando se o chute terminou
-    def kick_done_callback(self, msg):
-        self.kick_done = msg.feedback.current_phase
+    def sensor_data_callback(self, msg: StateMachineMsg):
+        """Recebe a mensagem principal com todos os dados dos sensores."""
+        self.last_sensor_data_msg = msg
+        self.update_state()
 
     def update_state(self):
-        # Só processa se já recebeu a mensagem principal
-        if self.last_state_machine_msg is None:
+        # Só processa se já recebeu alguma mensagem dos sensores
+        if self.last_sensor_data_msg is None:
             return
 
-        stateMachineVars = self.last_state_machine_msg
+        sensor_data = self.last_sensor_data_msg
 
-        # Atualiza a máquina de estados com todos os dados
-        state_msg = self.state_machine.request_state_machine_update(
-            stateMachineVars.ball_position,
-            stateMachineVars.ball_close,
-            stateMachineVars.ball_found,
-            stateMachineVars.fall_state,
-            stateMachineVars.hor_motor_out_of_center,
-            stateMachineVars.head_kick_check,
-            self.kick_done
+        # Atualiza a máquina de estados com todos os dados e obtém a STRING do novo estado
+        state_string_result = self.state_machine.request_state_machine_update(
+            ball_found=sensor_data.ball_found,
+            ball_close=sensor_data.ball_close,
+            #ball_position=sensor_data.ball_position,
+            fall_state=sensor_data.fall_state,
+            hor_motor_out_of_center=sensor_data.hor_motor_out_of_center,
+            head_kick_check=sensor_data.head_kick_check,
+            kick_done=self.kick_done_flag
         )
-
-        # Publica o estado atual
-        self.state_publisher.publish(state_msg)
-        self.get_logger().debug(f"Estado publicado: {state_msg.current_state}")
+        
+        # --- CORREÇÃO PRINCIPAL ---
+        # Cria o objeto de mensagem (o "envelope")
+        msg_to_publish = CurrentStateMsg()
+        # Coloca a string do estado dentro do campo correto
+        msg_to_publish.current_state = state_string_result
+        
+        # Publica a mensagem completa
+        self.state_publisher.publish(msg_to_publish)
+        self.get_logger().info(f"Estado Atual Publicado: {msg_to_publish.current_state}", throttle_duration_sec=1)
 
 
 def main(args=None):
