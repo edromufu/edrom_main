@@ -28,6 +28,8 @@ class StateMachine:
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_walking', 'source': 'idle', 'dest': 'walking',
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
+            { 'trigger': 'go_to_walking', 'source': 'idle_march', 'dest': 'walking',
+             'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_walking', 'source': 'kicking', 'dest': 'walking',
              'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
              { 'trigger': 'go_to_walking', 'source': 'searching', 'dest': 'walking',
@@ -41,6 +43,10 @@ class StateMachine:
              'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_idle_march', 'source': 'walking', 'dest': 'idle_march',
              'conditions': 'aligning_condition', 'unless': 'getting_up_condition'},
+            { 'trigger': 'go_to_idle_march', 'source': 'walking', 'dest': 'idle_march',
+             'conditions': 'kick_condition', 'unless': 'getting_up_condition'},
+            { 'trigger': 'go_to_idle_march', 'source': 'aligning', 'dest': 'idle_march',
+             'conditions': 'walking_condition', 'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_idle_march', 'source': 'kicking', 'dest': 'idle_march',
              'conditions': 'kick_done_condition', 'unless': 'getting_up_condition'},
         ]
@@ -105,14 +111,6 @@ class StateMachine:
         self.robot_state_machine = Machine(
             self, states=states, transitions=all_transitions, initial='idle_march'
         )
-        try:
-            from transitions.extensions import GraphMachine
-            graph_transitions = [t for t in all_transitions if 'impossible' not in t['trigger']]
-            self.graph = GraphMachine(model=self, states=states, transitions=graph_transitions, initial='idle')
-            self.graph.get_graph().draw("state_machine_graph.png", prog='dot')
-            print("✅ Gráfico da máquina de estados gerado: state_machine_graph.png")
-        except Exception as e:
-            print(f"⚠️ Não foi possível gerar o gráfico: {e}")
 
         # flags internas (privadas)
         self._walking_condition = False
@@ -183,17 +181,17 @@ class StateMachine:
             finish_march = (time.time() - self.enter_time) >= self.march_duration
             if finish_march:
                 self.enter_time = None
-                if self._aligning_condition and 'go_to_aligning' in valid_triggers:
-                    self.go_to_aligning()
-                    print('Transição idle_march → aligning')
-                    return
-                elif self._kick_condition and self.state == 'idle_march' and 'go_to_idle' in valid_triggers:
+                if self._kick_condition and self.state == 'idle_march' and 'go_to_idle' in valid_triggers:
                     self.go_to_idle()
                     print('Transição idle_march → idle (pré-chute)')
                     return 
                 elif self._walking_condition and 'go_to_walking' in valid_triggers:
                     self.go_to_walking()
                     print('Transição idle_march → walking')
+                    return
+                elif self._aligning_condition and self.state == 'idle_march' and 'go_to_aligning' in valid_triggers:
+                    self.go_to_aligning()
+                    print('Transição idle_march → aligning')
                     return
             else:
                 return        
@@ -229,9 +227,13 @@ class StateMachine:
 
         # PRIORIDADE 5: WALKING (Verificado antes de Aligning e Kicking)
         if self._walking_condition:
-            if self.state in ['idle', 'aligning', 'searching'] and 'go_to_walking' in valid_triggers:
+            if self.state in ['idle', 'searching'] and 'go_to_walking' in valid_triggers:
                 self.go_to_walking()
                 print(f'Transição de {self.state} para walking')
+                return
+            if self.state == 'aligning' and 'go_to_idle_march' in valid_triggers:
+                self.go_to_idle_march()
+                print(f'Transição aligning → idle_march (pré-andar)')
                 return
             elif self.state == 'walking': # Se já está andando e a condição é verdadeira, continue.
                 return # Não faz nada, permanece no estado de walking.
@@ -278,24 +280,36 @@ class StateMachine:
 
     # ----- FUNÇÕES RETURN CONDITION (usadas pelo transitions) -----
     def search_condition(self): 
+        if self._search_condition:
+            print("Condição search_condition atendida")
         return self._search_condition
+        
 
     def walking_condition(self): 
-        return self._walking_condition  
-    
-    def getting_up_condition(self): 
-        return self._getting_up_condition  
-    
+        if self._walking_condition:
+            print("Condição walking_condition atendida")
+        return self._walking_condition
+
+    def getting_up_condition(self):
+        if self._getting_up_condition:
+            print("Condição getting_up_condition atendida")
+        return self._getting_up_condition
+
     def kick_condition(self):
+        if self._kick_condition:
+            print("Condição kick_condition atendida")
         return self._kick_condition
     
     def kick_done_condition(self):
-        return self._kick_done_condition    
-    
-    def aligning_condition(self): 
+        if self._kick_done_condition:
+            print("Condição kick_done_condition atendida")
+        return self._kick_done_condition
+
+    def aligning_condition(self):
+        if self._aligning_condition:
+            print("Condição aligning_condition atendida")
         return self._aligning_condition
     
     def impossible_condition(self): 
         return self._impossible_condition
-
 

@@ -21,10 +21,6 @@ def generate_launch_description():
         "imu_port",
         default_value="/dev/ttyIMU"
     )
-    simulation_arg = DeclareLaunchArgument(
-        "simulation",
-        default_value="false"
-    )
 
     # Configurações
     imu_connected = LaunchConfiguration("imu_connected")
@@ -42,13 +38,7 @@ def generate_launch_description():
         # Declaração de argumentos
         imu_connected_arg,
         imu_port_arg,
-        simulation_arg,
 
-        # Inclui outro launch (condicional)
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(behaviour_sim_launch),
-            condition=IfCondition(simulation)
-        ),
 
         # Máquina de Estados
         Node(
@@ -65,7 +55,6 @@ def generate_launch_description():
             name="ros_packer",
             output="screen"
         ),
-
         Node(
             package="states_routine",
             executable="aligning_body_routine",
@@ -78,7 +67,6 @@ def generate_launch_description():
             name="walking_routine",
             output="screen"
         ),
-
         Node(
             package="states_routine",
             executable="kick_routine",
@@ -98,14 +86,12 @@ def generate_launch_description():
             name="idle",
             output="screen"
         ),
-
         Node(
             package="states_routine",
             executable="searching_routine",
             name="idle",
             output="screen"
         ),
-
 
         # Simulador (condicional)
         Node(
