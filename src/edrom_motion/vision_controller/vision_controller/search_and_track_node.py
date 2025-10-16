@@ -3,21 +3,22 @@ import rclpy
 from rclpy.node import Node
 from modularized_bhv_msgs.msg import CurrentStateMsg 
 from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Twist
 from edrom_msgs.msg import VisionData
 import numpy as np
 
 class SearchAndTrackNode(Node):
     """
-    Nó que implementa um padrão de busca complexo (pan e tilt) e
-    o tracking da bola, publicando os comandos em /goal_joint_states.
+    Nó especialista em controle de cabeça: implementa um padrão de busca 
+    e um rastreamento (pan/tilt) da bola, publicando os comandos em /goal_joint_states.
     """
     def __init__(self):
         super().__init__('search_and_track_node')
 
         # --- Parâmetros ---
         self.declare_parameter('image_width', 640)
-        self.declare_parameter('kp_tracking', 0.005)
+        self.declare_parameter('image_height', 480)
+        self.declare_parameter('kp_head_pan', 0.0005)
+        self.declare_parameter('kp_head_tilt', 0.0005)
         self.declare_parameter('pan_speed_rad_s', 0.5)
         self.declare_parameter('pan_min_limit_rad', -1.57)
         self.declare_parameter('pan_max_limit_rad', 1.57)
@@ -27,8 +28,13 @@ class SearchAndTrackNode(Node):
 
         # Obtém os valores dos parâmetros
         self.image_width = self.get_parameter('image_width').get_parameter_value().integer_value
+        self.image_height = self.get_parameter('image_height').get_parameter_value().integer_value
         self.center_x = self.image_width / 2.0
-        self.kp = self.get_parameter('kp_tracking').get_parameter_value().double_value
+        self.center_y = self.image_height / 2.0
+        
+        self.kp_pan = self.get_parameter('kp_head_pan').get_parameter_value().double_value
+        self.kp_tilt = self.get_parameter('kp_head_tilt').get_parameter_value().double_value
+        
         self.pan_speed = self.get_parameter('pan_speed_rad_s').get_parameter_value().double_value
         self.pan_min = self.get_parameter('pan_min_limit_rad').get_parameter_value().double_value
         self.pan_max = self.get_parameter('pan_max_limit_rad').get_parameter_value().double_value
@@ -36,115 +42,123 @@ class SearchAndTrackNode(Node):
         self.tilt_min = self.get_parameter('tilt_min_limit_rad').get_parameter_value().double_value
         self.tilt_step = self.get_parameter('tilt_step_rad').get_parameter_value().double_value
 
-        # --- Variáveis de Estado Internas ---
-        self.current_state = "IDLE"
-        self.last_ball_x = 0.0
+        # --- Variáveis de Estado ---
+        self.internal_state = "IDLE"
         self.ball_is_found = False
+        self.last_ball_x = 0.0
+        self.last_ball_y = 0.0
         
-        # Variáveis da Lógica de Busca
+        # CORREÇÃO: Usando um nome consistente para o ângulo alvo
         self.pan_target_angle = 0.0
         self.tilt_target_angle = self.tilt_initial
         self.pan_direction = 1
         
         self.timer_period = 0.05
 
-        # --- Publishers ---
+        # --- Publishers e Subscribers ---
         self.joint_state_pub = self.create_publisher(JointState, '/goal_joint_states', 10)
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-
-        # --- Subscribers ---
         self.state_sub = self.create_subscription(CurrentStateMsg, 'transitions_and_states/state_machine', self.state_callback, 10)
         self.vision_sub = self.create_subscription(
-            VisionData, 'self_parameters_vision2BhvTopic', self.vision_callback, 10)
+            VisionData, 'vision2BhvTopic', self.vision_callback, 10)
 
         # --- Timer ---
         self.timer = self.create_timer(self.timer_period, self.control_loop)
-
-        self.get_logger().info("Nó de Busca e Tracking (com busca avançada) pronto.")
+        self.get_logger().info("Nó de Controle de Cabeça (Busca/Track) pronto.")
 
     def state_callback(self, msg):
-        if self.current_state != "searching" and msg.current_state == "searching":
-            self.get_logger().info("Entrando no estado de busca. Resetando posição da cabeça.")
-            self.pan_target_angle = 0.0
-            self.tilt_target_angle = self.tilt_initial
-            self.pan_direction = 1
+        new_internal_state = ""
+        received_state = msg.current_state
 
-        if self.current_state != msg.current_state:
-            self.get_logger().info(f"Mudando de estado: {self.current_state} -> {msg.current_state}")
-            self.current_state = msg.current_state
+        if received_state == "searching":
+            new_internal_state = "SEARCHING"
+        elif received_state in ["walking", "idle_march", "aligning"]:
+            new_internal_state = "TRACKING"
+        else:
+            new_internal_state = "IDLE"
+
+        if self.internal_state != new_internal_state:
+            self.get_logger().info(f"Estado da FSM '{received_state}' -> Comportamento mudou de '{self.internal_state}' para '{new_internal_state}'")
+            self.internal_state = new_internal_state
+            
+            if self.internal_state == "SEARCHING":
+                self.get_logger().info("Resetando posição da cabeça para iniciar a busca.")
+                # CORREÇÃO: Usando a variável correta
+                self.pan_target_angle = 0.0
+                self.tilt_target_angle = self.tilt_initial
+                self.pan_direction = 1
 
     def vision_callback(self, msg: VisionData):
         self.ball_is_found = msg.ball.found
         if self.ball_is_found:
             self.last_ball_x = float(msg.ball.x)
+            self.last_ball_y = float(msg.ball.y)
 
     def control_loop(self):
-        if self.current_state == "searching":
+        if self.internal_state == "SEARCHING":
             self.execute_search()
-        elif self.current_state == "tracking":
+        elif self.internal_state == "TRACKING":
             self.execute_tracking()
         else:
             self.stop_all_motion()
 
     def execute_search(self):
-        """Implementa um padrão de busca em 'serpente' com pan e tilt."""
-        self.cmd_vel_pub.publish(Twist())
-
-        # Atualiza a posição do pan
         pan_increment = self.pan_speed * self.timer_period
+        # CORREÇÃO: Usando a variável correta
         self.pan_target_angle += pan_increment * self.pan_direction
         
-        ## LÓGICA CORRIGIDA ##
-        # Verifica se atingiu o limite DIREITO enquanto se movia para a DIREITA
         if self.pan_direction == 1 and self.pan_target_angle >= self.pan_max:
-            self.pan_target_angle = self.pan_max # Garante que não ultrapasse
-            self.pan_direction = -1 # Inverte a direção
-            self.tilt_target_angle -= self.tilt_step # Desce o tilt
-
-            if self.tilt_target_angle < self.tilt_min:
-                self.tilt_target_angle = self.tilt_initial
-
-        # Verifica se atingiu o limite ESQUERDO enquanto se movia para a ESQUERDA
+            self.pan_target_angle = self.pan_max; self.pan_direction = -1
+            self.tilt_target_angle -= self.tilt_step
+            if self.tilt_target_angle < self.tilt_min: self.tilt_target_angle = self.tilt_initial
         elif self.pan_direction == -1 and self.pan_target_angle <= self.pan_min:
-            self.pan_target_angle = self.pan_min # Garante que não ultrapasse
-            self.pan_direction = 1 # Inverte a direção
-            self.tilt_target_angle -= self.tilt_step # Desce o tilt
-            
-            if self.tilt_target_angle < self.tilt_min:
-                self.tilt_target_angle = self.tilt_initial
-
-        # Cria e publica a mensagem JointState para a cabeça
-        joint_state_msg = JointState()
-        joint_state_msg.header.stamp = self.get_clock().now().to_msg()
-        joint_state_msg.name = ['head_pan', 'head_tilt']
-        joint_state_msg.position = [self.pan_target_angle, self.tilt_target_angle]
+            self.pan_target_angle = self.pan_min; self.pan_direction = 1
+            self.tilt_target_angle -= self.tilt_step
+            if self.tilt_target_angle < self.tilt_min: self.tilt_target_angle = self.tilt_initial
         
-        self.joint_state_pub.publish(joint_state_msg)
+        self.set_head_position(self.pan_target_angle, self.tilt_target_angle)
         
     def execute_tracking(self):
-        """Move a base do robô e centraliza a cabeça."""
-        self.center_head()
-        if self.ball_is_found:
-            error = self.center_x - self.last_ball_x
-            angular_z = self.kp * error
-            robot_command = Twist()
-            robot_command.angular.z = angular_z
-            self.cmd_vel_pub.publish(robot_command)
-        else:
-            self.cmd_vel_pub.publish(Twist()) 
+        if not self.ball_is_found:
+            self.get_logger().warn("Modo Tracking, mas a bola não foi encontrada.", throttle_duration_sec=2.0)
+            return
+
+        error_x = self.center_x - self.last_ball_x
+        error_y = self.center_y - self.last_ball_y
+
+        pan_adjustment = -self.kp_pan * error_x
+        tilt_adjustment = -self.kp_tilt * error_y
+        
+        # CORREÇÃO: Usando a variável correta
+        self.pan_target_angle -= pan_adjustment
+        self.tilt_target_angle += tilt_adjustment
+        
+        self.get_logger().info(
+            f"Tracking Inc: Erro(x={error_x:.1f}, y={error_y:.1f}) -> "
+            f"Alvo(pan={self.pan_target_angle:.3f}, tilt={self.tilt_target_angle:.3f})",
+            throttle_duration_sec=0.5
+        )
+
+        self.pan_target_angle = np.clip(self.pan_target_angle, self.pan_min, self.pan_max)
+        self.tilt_target_angle = np.clip(self.tilt_target_angle, self.tilt_min, self.tilt_initial)
+
+        self.set_head_position(self.pan_target_angle, self.tilt_target_angle)
 
     def stop_all_motion(self):
-        """Para a base e centraliza a cabeça."""
-        self.cmd_vel_pub.publish(Twist())
         self.center_head()
 
     def center_head(self):
-        """Função auxiliar para publicar o comando de centralizar a cabeça."""
+        # CORREÇÃO: Usando a variável correta
+        self.pan_target_angle = 0.0
+        self.tilt_target_angle = self.tilt_initial
+        self.set_head_position(0.0, self.tilt_initial)
+    
+    def set_head_position(self, pan_rad, tilt_rad):
         joint_state_msg = JointState()
         joint_state_msg.header.stamp = self.get_clock().now().to_msg()
         joint_state_msg.name = ['head_pan', 'head_tilt']
-        joint_state_msg.position = [0.0, self.tilt_initial]
+        joint_state_msg.position = [pan_rad, tilt_rad]
         self.joint_state_pub.publish(joint_state_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)

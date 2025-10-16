@@ -34,8 +34,6 @@ class WalkingRoutine(Node):
 
         if self.current_state == 'walking':
             twist.linear.x = self.parameters.maxSpeedLinearX
-        else:
-            twist.linear.x = 0.0
             
         self.walk_pub.publish(twist)
         self.get_logger().info(f"Comando de caminhada enviado: linear.x = {twist.linear.x}")

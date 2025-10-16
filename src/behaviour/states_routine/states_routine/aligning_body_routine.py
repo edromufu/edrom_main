@@ -54,16 +54,15 @@ class BodyAligner(Node):
             twist.angular.z = self.parameters.maxSpeedAngularZ
         elif self.headRelativePos == 'right':
             twist.angular.z = -self.parameters.maxSpeedAngularZ
-        else:  # Center
-            twist.angular.z = 0.0
 
         self.body_rotation_pub.publish(twist)
         self.get_logger().info(f"Alinhando corpo: cabeça {self.headRelativePos}, z={twist.angular.z:.2f}")
 
 def main(args=None):
     rclpy.init(args=args)
-    node = BodyAligner()
-    rclpy.spin(node)
+    routine = BodyAligner()
+    rclpy.spin(routine)
+    routine.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

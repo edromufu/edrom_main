@@ -42,7 +42,7 @@ class StateMachineReceiver(Node):
         )
 
         self.create_subscription(
-            Bool, "/kick_done", self.kick_done_callback, 10
+            Bool, "/kick/_action/feedback", self.kick_done_callback, 10
         )
 
         self.get_logger().info("StateMachineReceiver iniciado e aguardando mensagens...")
@@ -57,7 +57,7 @@ class StateMachineReceiver(Node):
 
     # Recebe flag indicando se o chute terminou
     def kick_done_callback(self, msg):
-        self.kick_done = msg.data
+        self.kick_done = msg.feedback.current_phase
 
     def update_state(self):
         # Só processa se já recebeu a mensagem principal

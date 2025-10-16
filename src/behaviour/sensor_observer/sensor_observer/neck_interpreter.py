@@ -36,7 +36,7 @@ class NeckInterpreter(Node):
         # ROS 2: Criando o subscriber
         self.subscription = self.create_subscription(
             JointState, 
-            "/head_feedback",
+            "/goal_joint_states",
             self.callback_positions,
             qos_profile
         )
@@ -61,8 +61,8 @@ class NeckInterpreter(Node):
         -> Input:
             - msg: Mensagem recebida do tópico de posições dos motores da cabeça.
         """
-        hor_motor_value = msg.pos_vector[0]
-        ver_motor_value = msg.pos_vector[1]
+        hor_motor_value = msg.position[0]
+        ver_motor_value = msg.position[1]
 
         # Lógica de interpretação dos valores
         if (hor_motor_value < self.parameters.lookingLeftRad) and (hor_motor_value > self.parameters.lookingRightRad):

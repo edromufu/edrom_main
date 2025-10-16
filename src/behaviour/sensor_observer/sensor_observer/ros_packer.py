@@ -76,7 +76,6 @@ class ROSPacker(Node):
         # A condição agora deve funcionar, pois os intérpretes estão atualizando seus valores
         if sm_vars_current_value != self.sm_vars_last_value:
             self.sm_vars_last_value = sm_vars_current_value
-            self.run_prints()
             self.publish_to_state_machine()
 
     def run_values_update(self):
@@ -95,14 +94,6 @@ class ROSPacker(Node):
         self.pub_to_state_machine.publish(self.state_machine_vars)
         self.get_logger().info('Publicando em /state_machine_vars')
     
-    def run_prints(self):
-        print("----------------------------")
-        print("Posicao da bola: ", self.p_ball_position)
-        print("Encontrada: ", self.p_ball_found, "   | Bola proxima: ", self.p_ball_close)
-        print("Posicao de robo (queda): ", self.p_fall_state)
-        print("Posição horizontal da cabeça: ", self.p_hor_motor_out_of_center)
-        print("Cabeca confirma o chute: ", self.p_head_kick_check)
-        print("----------------------------")
 
 def main(args=None):
     rclpy.init(args=args)

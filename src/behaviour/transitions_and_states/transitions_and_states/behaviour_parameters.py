@@ -13,8 +13,8 @@ class BehaviourParameters:
         self.headPositionsTopic = '/u2d2_comm/data2head'
 
         # Parâmetros dos motores da cabeça
-        self.lookingLeftRad = 0.35
-        self.lookingRightRad = -0.35
+        self.lookingLeftRad = 1
+        self.lookingRightRad = -1
         self.minVerRad2Kick = -1.22
 
         self.maxSpeedLinearX = 0.05

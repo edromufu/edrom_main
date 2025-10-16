@@ -37,7 +37,10 @@ class Visao(Node):
 
         # Publishers comuns criados fora do if/else
         self.localization_publisher = self.create_publisher(LandmarkArray, 'vision/landmarks', 10)
-        self.publisher = self.create_publisher(VisionData, 'vision2BhvTopic', 10)
+        self.publisher = self.create_publisher(VisionData, 'vision2BhvTopic', 100)
+
+        self.camera_matrix = None
+        self.dist_coeffs = None
         
         # if/else focado apenas no que é diferente
         if self.use_simulation:
@@ -55,6 +58,22 @@ class Visao(Node):
             self.ajuste = self.declare_parameter('vision.ajuste', False).get_parameter_value().bool_value
             self.bright = self.declare_parameter('vision.brilho', 4).get_parameter_value().integer_value
     
+        # ### ADICIONADO ###: Carrega os arquivos de calibração da câmera para o modo real
+            package_share_path = get_package_share_directory('object_finder')
+            try:
+                cam_matrix_full_path = os.path.join(package_share_path, 'camera_matrix.npy')
+                self.camera_matrix = np.load(cam_matrix_full_path)
+                self.get_logger().info(f"Matriz da câmera '{cam_matrix_full_path}' carregada com sucesso!")
+            except FileNotFoundError:
+                self.get_logger().warn("ARQUIVO 'camera_matrix.npy' NÃO ENCONTRADO. A correção de distorção não será aplicada.")
+            
+            try:
+                dist_coeffs_full_path = os.path.join(package_share_path, 'dist_coeffs.npy')
+                self.dist_coeffs = np.load(dist_coeffs_full_path)
+                self.get_logger().info(f"Coeficientes de distorção '{dist_coeffs_full_path}' carregados com sucesso!")
+            except FileNotFoundError:
+                self.get_logger().warn("ARQUIVO 'dist_coeffs.npy' NÃO ENCONTRADO. A correção de distorção não será aplicada.")
+                
         # Carregamento da matriz agora fica em um lugar único
         self.M_ipm = None 
         try:
@@ -67,7 +86,6 @@ class Visao(Node):
         
         if not self.use_simulation:
             self.initialize_webcam_and_loop()
-
         
     def image_callback(self, ros_image_msg):
         try:
@@ -91,6 +109,11 @@ class Visao(Node):
                 self.get_logger().warn('Tecla "q" pressionada. Encerrando.'); rclpy.shutdown(); break
 
     def process_frame(self, frame):
+        # ### MODIFICADO ###: Aplica a correção de distorção da lente ANTES de qualquer processamento
+        # Apenas se estiver no modo real e os arquivos de calibração tiverem sido carregados
+        if not self.use_simulation and self.camera_matrix is not None and self.dist_coeffs is not None:
+            frame = cv2.undistort(frame, self.camera_matrix, self.dist_coeffs, None, self.camera_matrix)
+            
         self.current_frame = frame
         self.classes, self.scores, self.boxes, self.inference_frame = ri.detect_model(self.model, self.current_frame)
         

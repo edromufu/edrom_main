@@ -2,6 +2,7 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "aurea_walk/srv/solve_ik.hpp" 
+#include "std_msgs/msg/bool.hpp" 
 #include "aurea_kick/action/kick.hpp"
 #include "aurea_kick/kick_engine.hpp"
 #include <Eigen/Dense>
@@ -64,7 +65,7 @@ public:
     initialize_robot_model(); 
     ik_client_ = this->create_client<SolveIK>("/solve_ik");
     joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/goal_joint_states", 10);
-    
+    kick_done_pub_ = this->create_publisher<std_msgs::msg::Bool>("/kick_done", 10);
     action_server_ = rclcpp_action::create_server<Kick>(
       this, "kick",
       std::bind(&KickNode::handle_goal, this, _1, _2),
@@ -103,6 +104,7 @@ private:
     (void)uuid;
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
   }
+
 
   rclcpp_action::CancelResponse handle_cancel(
     const std::shared_ptr<GoalHandleKick> goal_handle)
@@ -233,17 +235,21 @@ private:
     
     if (rclcpp::ok()) {
       result->success = (kick_engine_->get_current_phase() == aurea_kick::KickEngine::Phase::DONE);
+      auto done_msg = std_msgs::msg::Bool();
+      done_msg.data = result->success;
       if (result->success) {
         goal_handle->succeed(result);
       } else {
         goal_handle->abort(result);
       }
+      kick_done_pub_->publish(done_msg);
     }
   }
 
   rclcpp_action::Server<Kick>::SharedPtr action_server_;
   rclcpp::Client<SolveIK>::SharedPtr ik_client_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
+  rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr kick_done_pub_;
   std::unique_ptr<aurea_kick::KickEngine> kick_engine_;
 };
 

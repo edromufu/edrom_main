@@ -40,7 +40,7 @@ class StateMachine:
             { 'trigger': 'go_to_idle_march', 'source': 'getting_up', 'dest': 'idle_march',
              'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_idle_march', 'source': 'walking', 'dest': 'idle_march',
-             'unless': 'getting_up_condition'},
+             'conditions': 'aligning_condition', 'unless': 'getting_up_condition'},
             { 'trigger': 'go_to_idle_march', 'source': 'kicking', 'dest': 'idle_march',
              'conditions': 'kick_done_condition', 'unless': 'getting_up_condition'},
         ]
@@ -139,10 +139,10 @@ class StateMachine:
         
         self.search_condition_update(ball_found)
         self.getting_up_condition_update(fall_state)
-        self.walking_condition_update(ball_found, ball_close)
+        self.walking_condition_update(ball_found, head_kick_check)
         self.kick_condition_update(head_kick_check, ball_close, hor_motor_out_of_center)
         self.kick_done_condition_update(kick_done)
-        self.aligning_condition_update(hor_motor_out_of_center)
+        self.aligning_condition_update(ball_found, hor_motor_out_of_center)
 
         print(f'-------------------\nEstado {str(self.state)}')        
         self.update_state()
@@ -157,16 +157,15 @@ class StateMachine:
         - Tempo de estabilização (idle_march)
         """
 
-        # Proteção contra transições inválidas (MachineError)
         valid_triggers = self.robot_state_machine.get_triggers(self.state)
 
-        #PRIORIDADE 1: GETTING UP 
+        # PRIORIDADE 1: GETTING UP 
         if self.getting_up_condition() and 'go_to_getting_up' in valid_triggers:
             self.go_to_getting_up()
             print(f'Transição de {self.state} para getting_up')
             return
 
-        #PRIORIDADE 2: SEARCHING
+        # PRIORIDADE 2: SEARCHING
         if self._search_condition and self.state != 'searching' and 'go_to_searching' in valid_triggers:
             self.go_to_searching()
             print(f'Transição de {self.state} para searching')
@@ -176,17 +175,14 @@ class StateMachine:
             print(f'Transição de {self.state} para walking')
             return
         
-        #PRIORIDADE 3: FASE DE ESTABILIZAÇÃO 
+        # PRIORIDADE 3: FASE DE ESTABILIZAÇÃO (idle_march)
         if self.state == 'idle_march':
+            # ... (esta seção permanece a mesma) ...
             if self.enter_time is None:
                 self.enter_time = time.time()
-
-            #Verifica se o tempo mínimo de estabilização passou
             finish_march = (time.time() - self.enter_time) >= self.march_duration
-
             if finish_march:
-                self.enter_time = None  #eset
-                #Decide próximo passo: aligning → kicking → walking
+                self.enter_time = None
                 if self._aligning_condition and 'go_to_aligning' in valid_triggers:
                     self.go_to_aligning()
                     print('Transição idle_march → aligning')
@@ -200,11 +196,11 @@ class StateMachine:
                     print('Transição idle_march → walking')
                     return
             else:
-                #Ainda estabilizando
                 return        
     
-        #PRIORIDADE 4: FASE DE ESTABILIZAÇÃO (idle)
+        # PRIORIDADE 4: FASE DE ESTABILIZAÇÃO (idle)
         if self.state == 'idle':
+            # ... (esta seção permanece a mesma) ...
             if self.enter_time is None:
                 self.enter_time = time.time()
             if (time.time() - self.enter_time) >= self.idle_duration:
@@ -213,69 +209,48 @@ class StateMachine:
                     self.go_to_kicking()
                     print("idle → kicking")
                     return
-                
-                elif self.state == 'kicking' and self._kick_done_condition and 'go_to_idle' in valid_triggers:
-                    self.go_to_idle()
-                    print("kicking → idle")
-                    return
                 elif self._walking_condition and 'go_to_walking' in valid_triggers:
                     self.go_to_walking()
                     print("idle → walking")
                     return
             return
 
-        #PRIORIDADE 3: KICKING 
-        if self._kick_condition:
-            if self.state == 'aligning' and 'go_to_idle' in valid_triggers:
-                self.go_to_idle()
-                print('Transição aligning → idle (pré-chute)')
-                return
-            #Se ainda não passou por march, forçamos o caminho intermediário
-            elif self.state == 'walking' and 'go_to_idle_march' in valid_triggers:
-                self.go_to_idle_march()
-                print('Transição walking → idle_march (pré-chute)')
-                return
+        # --- LÓGICA CORRIGIDA ABAIXO ---
 
-            elif self.state == 'idle' and 'go_to_kicking' in valid_triggers:
-                self.go_to_kicking()
-                print('Transição idle → kicking (pré-chute)')
-                return
-            
-        #PRIORIDADE 4: ALIGNING 
         if self._aligning_condition:
-            if self.state == 'idle_march' and 'go_to_aligning' in valid_triggers:
-                self.go_to_aligning()
-                print('Transição idle_march → aligning')
-                return
-           
-            elif self.state == 'walking' and 'go_to_idle_march' in valid_triggers:
+            if self.state == 'walking' and 'go_to_idle_march' in valid_triggers:
                 self.go_to_idle_march()
                 print('Transição walking → idle_march (pré-alinhamento)')
                 return
-            
-            
-        #PRIORIDADE 5: WALKING 
-        if self._walking_condition:
-            if self.state == 'idle' and 'go_to_walking' in valid_triggers:
-                self.go_to_walking()
-                print('Transição idle → walking')
+            elif self.state == 'idle_march' and 'go_to_aligning' in valid_triggers:
+                self.go_to_aligning()
+                print('Transição idle_march → aligning')
                 return
-            elif self.state == 'aligning' and not self._aligning_condition and 'go_to_walking' in valid_triggers:
-                self.go_to_walking()
-                print('Transição aligning → walking')
-                return
-            
-        #PRIORIDADE 6: FINAL DO CHUTE 
-        if self._kick_done_condition and 'go_to_walking' in valid_triggers:
-            self.go_to_walking()
-            print('Chute finalizado → walking')
-            return
 
-        #PRIORIDADE 7: PÓS-LEVANTAR 
-        if self.state =='getting_up' and 'go_to_idle_march' in valid_triggers:
-            self.go_to_idle_march()
-            print('Pós-ação → idle_march')
-            return
+        # PRIORIDADE 5: WALKING (Verificado antes de Aligning e Kicking)
+        if self._walking_condition:
+            if self.state in ['idle', 'aligning', 'searching'] and 'go_to_walking' in valid_triggers:
+                self.go_to_walking()
+                print(f'Transição de {self.state} para walking')
+                return
+            elif self.state == 'walking': # Se já está andando e a condição é verdadeira, continue.
+                return # Não faz nada, permanece no estado de walking.
+
+        # PRIORIDADE 6: KICKING 
+        if self._kick_condition:
+            if self.state in ['walking', 'aligning'] and 'go_to_idle_march' in valid_triggers:
+                self.go_to_idle_march()
+                print(f'Transição {self.state} → idle_march (pré-chute)')
+                return
+            elif self.state == 'idle' and 'go_to_kicking' in valid_triggers:
+                self.go_to_kicking()
+                print('Transição idle → kicking')
+                return
+            
+        # PRIORIDADE 7: ALIGNING 
+       
+            
+        # ... (O resto da sua lógica de prioridades) ...
 
         #SE NENHUMA CONDIÇÃO FOI ATENDIDA 
         print(f"Nenhuma transição feita")
@@ -292,14 +267,14 @@ class StateMachine:
     def kick_done_condition_update(self, kick_done):
         self._kick_done_condition = kick_done
 
-    def walking_condition_update(self, ball_found, ball_close):
-        self._walking_condition = (ball_found and not ball_close)
+    def walking_condition_update(self, ball_found, head_kick_check):
+        self._walking_condition = (ball_found and not head_kick_check)
 
     def kick_condition_update(self, head_kick_check, ball_close, hor_motor_out_of_center):
         self._kick_condition = (head_kick_check and ball_close and hor_motor_out_of_center == CENTER)
 
-    def aligning_condition_update(self, hor_motor_out_of_center):
-        self._aligning_condition = (hor_motor_out_of_center != CENTER) 
+    def aligning_condition_update(self, ball_found, hor_motor_out_of_center):
+        self._aligning_condition = (hor_motor_out_of_center != CENTER and ball_found) 
 
     # ----- FUNÇÕES RETURN CONDITION (usadas pelo transitions) -----
     def search_condition(self): 
