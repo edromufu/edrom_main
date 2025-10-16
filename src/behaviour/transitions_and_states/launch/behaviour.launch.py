@@ -53,8 +53,8 @@ def generate_launch_description():
         # Máquina de Estados
         Node(
             package="transitions_and_states",
-            executable="state_machine_receiver",
-            name="state_machine",
+            executable="behaviour_node",
+            name="behaviour",
             output="screen"
         ),
 
@@ -66,42 +66,6 @@ def generate_launch_description():
             output="screen"
         ),
 
-        Node(
-            package="states_routine",
-            executable="aligning_body_routine",
-            name="aligning_body_routine",
-            output="screen"
-        ),
-        Node(
-            package="states_routine",
-            executable="walking_routine",
-            name="walking_routine",
-            output="screen"
-        ),
-
-        Node(
-            package="states_routine",
-            executable="kicking_routine",
-            name="kick_routine",
-            output="screen"
-        ),
-
-        Node(
-            package="states_routine",
-            executable="searching_routine",
-            name="searching_routine",
-            output="screen"
-        ),
-
-
-        # Simulador (condicional)
-        Node(
-            package="bhv_simulator",
-            executable="bhv_sim",
-            name="bhv_simulator",
-            output="screen",
-            condition=IfCondition(simulation),
-        ),
 
         # Leitura do IMU (condicional)
         Node(

@@ -24,7 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'state_machine_receiver = transitions_and_states.state_machine_receiver:main',
-        
+            'behaviour_node = transitions_and_states.behaviour_node:main',
         ],
     },
 )
