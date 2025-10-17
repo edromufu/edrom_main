@@ -7,94 +7,119 @@ import time
 
 # Mensagens para comunicação
 from modularized_bhv_msgs.msg import StateMachineMsg, CurrentStateMsg
-from std_msgs.msg import String
+from std_msgs.msg import String as StringMsg
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 
 class StateMachine:
     """
-    Máquina de estados simplificada e robusta para o comportamento de futebol.
+    Máquina de estados que gerencia a sequência:
+    Buscar -> Alinhar Corpo -> Pausar -> Andar.
     """
     def __init__(self):
+        # MUDANÇA: Adicionados novos estados para a sequência
         self.state = 'SEARCHING'
-        self.LOST_BALL_TIMEOUT = 2.0  # Segundos de "paciência"
+        
+        # --- Controles de Timeout ---
+        self.LOST_BALL_TIMEOUT = 2.0
+        self.PAUSE_DURATION = 1.0 # Duração da pausa em segundos
+        
         self.time_ball_was_lost = None
+        self.time_pause_started = None
 
-    def update(self, ball_found, head_pan_angle):
+    def update(self, ball_found,ball_close, head_tilt_angle, head_pan_angle, alignment_tolerance=0.1):
+        """
+        Executa a lógica de transição de estados.
+        'alignment_tolerance' é o quão perto de zero o ângulo da cabeça precisa estar (em radianos).
+        """
+        previous_state = self.state
+
         # --- Lógica de Transição de Estados ---
 
-        # 1. Se a bola foi encontrada
+        # Se a bola foi encontrada...
         if ball_found:
-            self.time_ball_was_lost = None # Reseta o timer de bola perdida
+            self.time_ball_was_lost = None
             
-            # Se estava procurando, agora começa a andar
+            # Se estava procurando, a primeira coisa a fazer é alinhar o corpo.
             if self.state == 'SEARCHING' or self.state == 'LOST_BALL_WALK':
-                self.state = 'WALKING'
-        
-        # 2. Se a bola NÃO foi encontrada
-        else:
-            # Se estava andando e acabou de perder a bola
-            if self.state == 'WALKING':
-                self.state = 'LOST_BALL_WALK'
-                self.time_ball_was_lost = time.time() # Inicia o cronômetro
+                self.state = 'ALIGNING_BODY'
+            
+            # Se está alinhando o corpo e o alinhamento está concluído...
+            elif self.state == 'ALIGNING_BODY' and abs(head_pan_angle) < alignment_tolerance:
+                self.state = 'PAUSING' # ...começa a pausa.
+                self.time_pause_started = time.time() # Inicia o cronômetro da pausa
+            
+            # Se está pausando...
+            elif self.state == 'PAUSING':
+                # ...verifica se a pausa já terminou.
+                if time.time() - self.time_pause_started > self.PAUSE_DURATION:
+                    self.state = 'WALKING' # Pausa concluída, começa a andar.
 
-            # Se está no estado de paciência (LOST_BALL_WALK)
+            # Se o alinhamento do corpo for perdido durante a caminhada, volta a alinhar
+            elif self.state == 'WALKING' and abs(head_pan_angle) > alignment_tolerance * 1.5: # Usa uma tolerância maior para evitar oscilações
+                 self.state = 'ALIGNING_BODY'
+
+
+
+
+        # Se a bola NÃO foi encontrada...
+        else:
+            # Se estava andando ou alinhando e acabou de perder a bola...
+            if self.state in ['WALKING', 'ALIGNING_BODY', 'PAUSING']:
+                self.state = 'LOST_BALL_WALK'
+                self.time_ball_was_lost = time.time()
+
+            # Se já está na fase de paciência...
             elif self.state == 'LOST_BALL_WALK':
-                # Verifica se o tempo de paciência acabou
+                if self.time_ball_was_lost is None: self.time_ball_was_lost = time.time()
+                
                 if time.time() - self.time_ball_was_lost > self.LOST_BALL_TIMEOUT:
-                    # Paciência esgotada, inicia a busca ativa
                     self.state = 'SEARCHING'
         
+        if previous_state != self.state:
+            print(f"[StateMachine] Transição {previous_state} -> {self.state}")
+            
         return self.state
 
 class BehaviorNode(Node):
     """
-    O Cérebro do Robô.
-    - Ouve os sensores interpretados.
-    - Roda a StateMachine para decidir o que fazer.
-    - Envia comandos para os especialistas (cabeça e motor de caminhada).
+    O Cérebro do Robô. Orquestra a sequência de busca, alinhamento, pausa e caminhada.
     """
     def __init__(self):
         super().__init__('behavior_node')
         self.state_machine = StateMachine()
 
         # --- Parâmetros ---
-        self.declare_parameter('spin_search_speed', 0.5)
-        self.declare_parameter('walk_forward_speed', 0.1)
+        self.declare_parameter('spin_search_speed', 0.3)
+        self.declare_parameter('walk_forward_speed', 0.06)
         self.declare_parameter('kp_body_align', 0.8)
+        self.declare_parameter('alignment_tolerance_rad', 0.1) # ~5.7 graus
 
         self.spin_speed = self.get_parameter('spin_search_speed').get_parameter_value().double_value
         self.walk_speed = self.get_parameter('walk_forward_speed').get_parameter_value().double_value
         self.kp_align = self.get_parameter('kp_body_align').get_parameter_value().double_value
+        self.alignment_tolerance = self.get_parameter('alignment_tolerance_rad').get_parameter_value().double_value
 
         # --- Variáveis de Sensores ---
         self.ball_found = False
         self.head_pan_angle = 0.0
 
-        # --- Subscribers ---
-        # Ouve os dados consolidados do ROSPacker
+        # --- Subscribers e Publishers ---
         self.create_subscription(StateMachineMsg, 'sensor_observer/state_machine_vars', self.sensor_data_callback, 10)
-        # Ouve a posição atual da cabeça para o alinhamento do corpo
         self.create_subscription(JointState, '/goal_joint_states', self.head_feedback_callback, 10)
 
-        # --- Publishers ---
-        # Publica o estado global para outros nós (como o HUD ou depuração)
         self.state_publisher = self.create_publisher(CurrentStateMsg, '/transitions_and_states/state_machine', 10)
-        # Comanda o especialista da cabeça
-        self.head_control_pub = self.create_publisher(String, '/head_control/state', 10)
-        # Comanda o motor de caminhada
+        self.head_control_pub = self.create_publisher(StringMsg, '/head_control/state', 10)
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
-        # --- Timer Principal (O "coração" do cérebro) ---
+        # --- Timer Principal ---
         self.timer = self.create_timer(0.05, self.control_loop) # 20 Hz
-        self.get_logger().info("Cérebro do Robô (BehaviorNode) iniciado e operacional.")
+        self.get_logger().info("Cérebro do Robô (BehaviorNode) com nova sequência iniciado.")
 
     def sensor_data_callback(self, msg: StateMachineMsg):
-        """Atualiza o estado dos sensores com base nos dados do ROSPacker."""
         self.ball_found = msg.ball_found
 
     def head_feedback_callback(self, msg: JointState):
-        """Armazena o ângulo de pan da cabeça para o alinhamento."""
         try:
             index = msg.name.index('head_pan')
             self.head_pan_angle = msg.position[index]
@@ -102,36 +127,50 @@ class BehaviorNode(Node):
             pass
 
     def control_loop(self):
-        """O ciclo principal de Percepção -> Decisão -> Ação."""
         # 1. Decisão: Roda a StateMachine para obter o estado atual
-        current_state = self.state_machine.update(self.ball_found, self.head_pan_angle)
+        current_state = self.state_machine.update(
+            self.ball_found, 
+            self.head_pan_angle,
+            self.alignment_tolerance
+        )
 
-        # Publica o estado atual para depuração
-        state_msg = CurrentStateMsg()
-        state_msg.current_state = current_state
+        # Publica o estado para depuração
+        state_msg = CurrentStateMsg(); state_msg.current_state = current_state.lower()
         self.state_publisher.publish(state_msg)
         
         # 2. Ação: Envia os comandos corretos com base no estado
-        head_command = String()
+        head_command = StringMsg()
         twist_command = Twist()
 
         if current_state == 'SEARCHING':
-            # Comanda a cabeça para procurar e o corpo para girar
             head_command.data = 'SEARCHING'
             twist_command.angular.z = self.spin_speed
-            self.get_logger().info("Ação: Busca Ativa (girando corpo e cabeça)", throttle_duration_sec=1)
+            self.get_logger().info("Ação: Busca Ativa", throttle_duration_sec=1)
+
+        elif current_state == 'ALIGNING_BODY':
+            # Mantém a cabeça travada na bola e gira o corpo para alinhar
+            head_command.data = 'TRACKING'
+            twist_command.angular.z = -self.kp_align * self.head_pan_angle
+            self.get_logger().info("Ação: Alinhando corpo com a cabeça", throttle_duration_sec=1)
+        
+        elif current_state == 'PAUSING':
+            # Mantém a cabeça travada na bola e para o corpo completamente
+            head_command.data = 'TRACKING'
+            # Todos os campos de twist já são 0.0 por padrão
+            self.get_logger().info("Ação: Pausando por 1s após alinhamento", throttle_duration_sec=0.5)
 
         elif current_state == 'WALKING':
-            # Comanda a cabeça para rastrear e o corpo para andar e alinhar
+            # Mantém a cabeça travada na bola e anda para frente
             head_command.data = 'TRACKING'
             twist_command.linear.x = self.walk_speed
-            twist_command.angular.z = self.kp_align * self.head_pan_angle # <-- Alinhamento do corpo!
-            self.get_logger().info("Ação: Andando em direção à bola e alinhando", throttle_duration_sec=1)
+            # Opcional: mantém um pequeno alinhamento enquanto anda
+            # twist_command.angular.z = self.kp_align * self.head_pan_angle
+            self.get_logger().info("Ação: Andando em direção à bola", throttle_duration_sec=1)
 
         elif current_state == 'LOST_BALL_WALK':
-            # Comanda a cabeça para rastrear (onde a bola estava) e o corpo para continuar reto
+            # Mantém a cabeça olhando para frente e continua andando reto
             head_command.data = 'TRACKING'
-            twist_command.linear.x = self.walk_speed # Continua andando reto
+            twist_command.linear.x = self.walk_speed
             self.get_logger().warn("Ação: Bola perdida, andando reto por 2s...", throttle_duration_sec=1)
 
         # Envia os comandos para os especialistas
