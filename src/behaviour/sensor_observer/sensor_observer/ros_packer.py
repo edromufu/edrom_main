@@ -14,7 +14,7 @@ from .ball_interpreter import BallInterpreter
 from .neck_interpreter import NeckInterpreter
 
 from modularized_bhv_msgs.msg import StateMachineMsg 
-from behaviour_parameters import BehaviourParameters
+from transitions_and_states.behaviour_parameters import BehaviourParameters
 
 class ROSPacker(Node):
     """

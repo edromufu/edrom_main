@@ -13,11 +13,11 @@ class HeadControllerNode(Node):
         # --- Parâmetros ---
         self.declare_parameter('image_width', 640)
         self.declare_parameter('image_height', 480)
-        self.declare_parameter('kp_head_pan', 0.001)
-        self.declare_parameter('kp_head_tilt', 0.001)
-        self.declare_parameter('pan_speed_rad_s', 1.0)
-        self.declare_parameter('pan_min_limit_rad', -1.57)
-        self.declare_parameter('pan_max_limit_rad', 1.57)
+        self.declare_parameter('kp_head_pan', 0.0007)
+        self.declare_parameter('kp_head_tilt', 0.0007)
+        self.declare_parameter('pan_speed_rad_s', 0.8)
+        self.declare_parameter('pan_min_limit_rad', -1.4)
+        self.declare_parameter('pan_max_limit_rad', 1.4)
         self.declare_parameter('tilt_initial_rad', 0.0)
         self.declare_parameter('tilt_min_limit_rad', -0.52)
         self.declare_parameter('tilt_max_limit_rad', 0.52)
@@ -117,7 +117,7 @@ class HeadControllerNode(Node):
 
         error_x = self.center_x - self.last_ball_x
         error_y = self.center_y - self.last_ball_y
-
+	
         pan_change = self.kp_pan * error_x
         tilt_change = self.kp_tilt * error_y
         

@@ -12,7 +12,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from edrom_msgs.msg import VisionData
 
-from behaviour_parameters import BehaviourParameters
+from transitions_and_states.behaviour_parameters import BehaviourParameters
 
 class BallInterpreter(Node):
 
