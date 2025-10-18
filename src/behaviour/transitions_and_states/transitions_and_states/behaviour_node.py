@@ -102,7 +102,7 @@ class BehaviorNode(Node):
         self.head_pan_angle = 0.0
 
         # --- Subscribers e Publishers ---
-        self.create_subscription(StateMachineMsg, 'sensor_observer/state_machine_vars', self.sensor_data_callback, 10)
+        self.create_subscription(StateMachineMsg, '/sensor_observer/state_machine_vars', self.sensor_data_callback, 10)
         self.create_subscription(JointState, '/goal_joint_states', self.head_feedback_callback, 10)
 
         self.state_publisher = self.create_publisher(CurrentStateMsg, '/transitions_and_states/state_machine', 10)
