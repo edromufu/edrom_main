@@ -6,19 +6,18 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_dir = get_package_share_directory('aurea_walk')
     
-    config_file = os.path.join(pkg_dir, 'config', 'walking_params.yaml')
-    config = os.path.join(
-        get_package_share_directory('aurea_kick'),
-        'config',
-        'kick_params.yaml'
-    )
+    #config_file = os.path.join(pkg_dir, 'configs', 'walking_params.yaml')
+    #config = os.path.join(
+    #    get_package_share_directory('aurea_kick'),
+    #    'configs',
+    #    'kick_params.yaml'
+    #)
 
     return LaunchDescription([
         Node(
             package='aurea_walk',
             executable='walking_engine_node',
             name='walking_engine_node',
-            parameters=[config_file],
             output='screen'
         ),
         Node(
@@ -31,7 +30,6 @@ def generate_launch_description():
             package='aurea_kick',
             executable='kick_node',
             name='kick_node',
-            parameters=[config],
             output='screen'
         )
 

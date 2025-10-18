@@ -55,6 +55,15 @@ install(
   DIRECTORY include/ launch/ config/ action/
   DESTINATION share/${PROJECT_NAME}
 )
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(DIRECTORY
+  config
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 # 6. Finalização
 ament_package()

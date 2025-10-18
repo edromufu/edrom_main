@@ -79,8 +79,19 @@ install(
 )
 
 install(
-  DIRECTORY include/ launch/ srv/ configs/
+  DIRECTORY include/ srv/
   DESTINATION share/${PROJECT_NAME}
 )
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
+install(DIRECTORY
+  configs
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 
 ament_package()
