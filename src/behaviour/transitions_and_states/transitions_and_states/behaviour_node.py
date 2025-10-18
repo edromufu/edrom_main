@@ -27,7 +27,7 @@ class StateMachine:
         self.time_ball_was_lost = None
         self.time_pause_started = None
 
-    def update(self, ball_found,ball_close, head_tilt_angle, head_pan_angle, alignment_tolerance=0.1):
+    def update(self, ball_found, head_pan_angle, alignment_tolerance=0.1):
         """
         Executa a lógica de transição de estados.
         'alignment_tolerance' é o quão perto de zero o ângulo da cabeça precisa estar (em radianos).
@@ -59,9 +59,6 @@ class StateMachine:
             elif self.state == 'WALKING' and abs(head_pan_angle) > alignment_tolerance * 1.5: # Usa uma tolerância maior para evitar oscilações
                  self.state = 'ALIGNING_BODY'
 
-
-
-
         # Se a bola NÃO foi encontrada...
         else:
             # Se estava andando ou alinhando e acabou de perder a bola...
@@ -90,10 +87,10 @@ class BehaviorNode(Node):
         self.state_machine = StateMachine()
 
         # --- Parâmetros ---
-        self.declare_parameter('spin_search_speed', 0.3)
+        self.declare_parameter('spin_search_speed', 0.22)
         self.declare_parameter('walk_forward_speed', 0.06)
-        self.declare_parameter('kp_body_align', 0.8)
-        self.declare_parameter('alignment_tolerance_rad', 0.1) # ~5.7 graus
+        self.declare_parameter('kp_body_align', 0.6)
+        self.declare_parameter('alignment_tolerance_rad', 0.15) # ~5.7 graus
 
         self.spin_speed = self.get_parameter('spin_search_speed').get_parameter_value().double_value
         self.walk_speed = self.get_parameter('walk_forward_speed').get_parameter_value().double_value
@@ -150,7 +147,7 @@ class BehaviorNode(Node):
         elif current_state == 'ALIGNING_BODY':
             # Mantém a cabeça travada na bola e gira o corpo para alinhar
             head_command.data = 'TRACKING'
-            twist_command.angular.z = -self.kp_align * self.head_pan_angle
+            twist_command.angular.z = self.kp_align * self.head_pan_angle
             self.get_logger().info("Ação: Alinhando corpo com a cabeça", throttle_duration_sec=1)
         
         elif current_state == 'PAUSING':

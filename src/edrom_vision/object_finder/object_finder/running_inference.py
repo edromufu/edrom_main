@@ -11,24 +11,11 @@ from ament_index_python.packages import get_package_share_directory
 size = 320
 
 def set_model_input(is_simulation=False):
-    """
-    Carrega o modelo de IA no formato .pt (PyTorch).
-    - Se is_simulation for True, carrega o modelo 'best.pt'.
-    - Se is_simulation for False, carrega o modelo 'yolov8n-vision.pt' para o robô real.
-    """
+
     try:
         package_share_path = get_package_share_directory('object_finder')
         model_base_path = os.path.join(package_share_path, 'modelo')
-
-        if is_simulation:
-            # --- MODO SIMULAÇÃO ---
-            print("Carregando modelo para SIMULAÇÃO (.pt)...")
-            model_path = os.path.join(model_base_path, 'best.pt')
-        else:
-            # --- MODO REAL (SEM OPENVINO) ---
-            print("Carregando modelo PADRÃO para o Robô Real (.pt)...")
-            model_path = os.path.join(model_base_path, 'best.pt') # Carrega o modelo .pt padrão
-
+        model_path = os.path.join(model_base_path, 'best.pt') # Carrega o modelo .pt padrão
         print(f"Tentando carregar o modelo de: {model_path}")
         if not os.path.exists(model_path):
             print(f"!!!!!! ATENÇÃO: O arquivo do modelo não foi encontrado em {model_path}. !!!!!!")
