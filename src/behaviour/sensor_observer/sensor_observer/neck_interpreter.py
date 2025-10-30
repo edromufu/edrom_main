@@ -7,10 +7,8 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 import os
 import sys
 
-edrom_dir = '/home/'+os.getlogin()+'/edromufu/src/'
-sys.path.append(edrom_dir+'behaviour/transitions_and_states/src')
 
-from behaviour_parameters import BehaviourParameters
+from transitions_and_states.behaviour_parameters import BehaviourParameters
 from sensor_msgs.msg import JointState
 
 

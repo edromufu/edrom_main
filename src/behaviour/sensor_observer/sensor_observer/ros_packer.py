@@ -9,9 +9,9 @@ import os
 import sys
 
 # MUDANÇA: Os intérpretes são nós, então devem ser importados como tal
-from .fall_interpreter import FallInterpreter
-from .ball_interpreter import BallInterpreter
-from .neck_interpreter import NeckInterpreter
+from sensor_observer.fall_interpreter import FallInterpreter
+from sensor_observer.ball_interpreter import BallInterpreter
+from sensor_observer.neck_interpreter import NeckInterpreter
 
 from modularized_bhv_msgs.msg import StateMachineMsg 
 from transitions_and_states.behaviour_parameters import BehaviourParameters

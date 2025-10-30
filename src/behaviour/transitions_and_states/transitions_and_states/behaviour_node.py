@@ -88,7 +88,7 @@ class BehaviorNode(Node):
 
         # --- Parâmetros ---
         self.declare_parameter('spin_search_speed', 0.26)
-        self.declare_parameter('walk_forward_speed', 0.1)
+        self.declare_parameter('walk_forward_speed', 0.15)
         self.declare_parameter('kp_body_align', 0.7)
         self.declare_parameter('alignment_tolerance_rad', 0.13) # ~5.7 graus
 
