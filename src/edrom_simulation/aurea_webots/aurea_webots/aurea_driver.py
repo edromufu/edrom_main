@@ -40,8 +40,8 @@ class AureaJointController:
         ]
         self.__motors = {name: self.__robot.getDevice(name) for name in joint_names}
         
-        mCamera = self.__robot.getDevice("camera")
-        mCamera.enable(self.__timestep)
+        #mCamera = self.__robot.getDevice("camera")
+        #mCamera.enable(self.__timestep)
 
         # --- Habilitar o Teclado ---
         self.__keyboard = self.__robot.getKeyboard()

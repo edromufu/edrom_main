@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Controle do Robô EDROM</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        #controls { display: none; }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 100px 100px 100px;
+            grid-template-rows: 100px 100px 100px;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .grid-item {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            background-color: #007bff;
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none; /* Impede a seleção de texto no celular */
+        }
+        .grid-item:active { background-color: #0056b3; }
+        #fwd { grid-column: 2 / 3; grid-row: 1 / 2; }
+        #left { grid-column: 1 / 2; grid-row: 2 / 3; }
+        #stop { grid-column: 2 / 3; grid-row: 2 / 3; background-color: #dc3545; }
+        #stop:active { background-color: #a71d2a; }
+        #right { grid-column: 3 / 4; grid-row: 2 / 3; }
+        #bwd { grid-column: 2 / 3; grid-row: 3 / 4; }
+        #rot-left { grid-column: 1 / 2; grid-row: 1 / 2; background-color: #28a745; }
+        #rot-right { grid-column: 3 / 4; grid-row: 1 / 2; background-color: #28a745; }
+        #status { font-weight: bold; }
+    </style>
+    <script src="https://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+</head>
+<body>
+    <h2>Controle Remoto do Robô</h2>
+
+    <div id="connection">
+        <label for="robot-ip">IP do Robô (ex: 192.168.1.100):</label><br>
+        <input type="text" id="robot-ip" value="192.168.0.101">
+        <button id="connect-button">Conectar</button>
+        <p id="status">Status: Desconectado</p>
+    </div>
+
+    <div id="controls">
+        <p>Use os botões ou as teclas W, A, S, D, Q, E.</p>
+        <div class="grid-container">
+            <div class="grid-item" id="rot-left">↶ (Q)</div>
+            <div class="grid-item" id="fwd">↑ (W)</div>
+            <div class="grid-item" id="rot-right">↷ (E)</div>
+            <div class="grid-item" id="left">← (A)</div>
+            <div class="grid-item" id="stop">STOP (S)</div>
+            <div class="grid-item" id="right">→ (D)</div>
+            <div class="grid-item" id="bwd">↓ (S)</div>
+        </div>
+    </div>
+
+    <script>
+        var ros = null;
+        var cmdVelTopic = null;
+        var linear_speed = 0.2; // m/s
+        var angular_speed = 0.5; // rad/s
+
+        const connectButton = document.getElementById('connect-button');
+        const robotIpInput = document.getElementById('robot-ip');
+        const statusElement = document.getElementById('status');
+        const connectionDiv = document.getElementById('connection');
+        const controlsDiv = document.getElementById('controls');
+
+        connectButton.onclick = function() {
+            var ip = robotIpInput.value;
+            var url = 'ws://' + ip + ':9090';
+            
+            ros = new ROSLIB.Ros({
+                url: url
+            });
+
+            ros.on('connection', function() {
+                console.log('Conectado ao rosbridge.');
+                statusElement.innerHTML = "Status: Conectado!";
+                statusElement.style.color = "green";
+                connectionDiv.style.display = "none";
+                controlsDiv.style.display = "block";
+                setupPublisher();
+            });
+
+            ros.on('error', function(error) {
+                console.log('Erro ao conectar:', error);
+                statusElement.innerHTML = "Status: Erro na conexão.";
+                statusElement.style.color = "red";
+            });
+
+            ros.on('close', function() {
+                console.log('Conexão fechada.');
+                statusElement.innerHTML = "Status: Desconectado";
+                statusElement.style.color = "red";
+                connectionDiv.style.display = "block";
+                controlsDiv.style.display = "none";
+            });
+        };
+
+        function setupPublisher() {
+            cmdVelTopic = new ROSLIB.Topic({
+                ros: ros,
+                name: '/cmd_vel',
+                messageType: 'geometry_msgs/msg/Twist'
+            });
+        }
+
+        function publishTwist(linearX, angularZ) {
+            if (!cmdVelTopic) return;
+            var twist = new ROSLIB.Message({
+                linear: {
+                    x: linearX,
+                    y: 0.0,
+                    z: 0.0
+                },
+                angular: {
+                    x: 0.0,
+                    y: 0.0,
+                    z: angularZ
+                }
+            });
+            cmdVelTopic.publish(twist);
+        }
+
+        function setupButton(id, linearX, angularZ) {
+            const button = document.getElementById(id);
+            // Eventos para mouse (PC) e toque (Celular)
+            button.addEventListener('mousedown', function() { publishTwist(linearX, angularZ); });
+            button.addEventListener('touchstart', function(e) { e.preventDefault(); publishTwist(linearX, angularZ); });
+            button.addEventListener('mouseup', function() { publishTwist(0, 0); });
+            button.addEventListener('touchend', function(e) { e.preventDefault(); publishTwist(0, 0); });
+        }
+
+        // Mapeia os botões para as velocidades
+        setupButton('fwd', linear_speed, 0);
+        setupButton('bwd', -linear_speed, 0);
+        setupButton('left', 0, angular_speed); // Caminhada lateral (mude para linear.y se seu robô suportar)
+        setupButton('right', 0, -angular_speed); // Caminhada lateral
+        setupButton('rot-left', 0, angular_speed);
+        setupButton('rot-right', 0, -angular_speed);
+        setupButton('stop', 0, 0);
+
+        // Mapeia as teclas do teclado (PC)
+        document.addEventListener('keydown', function(e) {
+            switch(e.key) {
+                case 'w': publishTwist(linear_speed, 0); break;
+                case 's': publishTwist(-linear_speed, 0); break;
+                case 'a': publishTwist(0, angular_speed); break; // Mude para linear.y se preferir
+                case 'd': publishTwist(0, -angular_speed); break; // Mude para linear.y se preferir
+                case 'q': publishTwist(0, angular_speed); break;
+                case 'e': publishTwist(0, -angular_speed); break;
+            }
+        });
+        
+        document.addEventListener('keyup', function(e) {
+            // Para o robô quando qualquer tecla de movimento for solta
+            if ('wasdqe'.includes(e.key)) {
+                publishTwist(0, 0);
+            }
+        });
+        
+        // Ajuste no botão de STOP (ele só clica, não segura)
+        document.getElementById('stop').addEventListener('mousedown', function() { publishTwist(0, 0); });
+        document.getElementById('stop').addEventListener('touchstart', function(e) { e.preventDefault(); publishTwist(0, 0); });
+        // Remove o 'mouseup' e 'touchend' do stop, pois ele não precisa
+        document.getElementById('stop').removeEventListener('mouseup', function() {});
+        document.getElementById('stop').removeEventListener('touchend', function() {});
+        
+    </script>
+</body>
+</html>
