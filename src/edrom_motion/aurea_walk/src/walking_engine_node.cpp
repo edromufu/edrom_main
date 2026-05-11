@@ -20,18 +20,18 @@ WalkingEngineNode::WalkingEngineNode()
   // Declara e carrega os parâmetros
   this->declare_parameter<double>("step_period", 0.3);
   this->declare_parameter<double>("com_height", 0.22);
-  this->declare_parameter<double>("step_height", 0.0475);
+  this->declare_parameter<double>("step_height", 0.045);
   this->declare_parameter<double>("double_support_ratio", 0.1);
-  this->declare_parameter<double>("feet_separation", 0.044);
+  this->declare_parameter<double>("feet_separation", 0.045);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
-  this->declare_parameter<double>("update_frequency", 120.0);
+  this->declare_parameter<double>("update_frequency", 100.0);
   this->declare_parameter<double>("arm_swing_amplitude", 0.4);
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.26);
+  this->declare_parameter<double>("backlash_offset_hp", -0.37); //-0.32
   //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);
@@ -321,10 +321,16 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
     run_forward_kinematics(base_joint_angles, support_foot_link_name, Eigen::Affine3d::Identity());
 
     std::vector<std::string> joints_to_compensate;
+    //if (is_left_support) {
+    //    joints_to_compensate = {"l_hip_roll", "l_hip_pitch", "l_knee", "l_ank_pitch", "l_ank_roll"};
+    //} else {
+    //    joints_to_compensate = {"r_hip_roll", "r_hip_pitch", "r_knee", "r_ank_pitch", "r_ank_roll"};
+    //}
+
     if (is_left_support) {
-        joints_to_compensate = {"l_hip_roll", "l_hip_pitch", "l_knee", "l_ank_pitch", "l_ank_roll"};
+        joints_to_compensate = {};
     } else {
-        joints_to_compensate = {"r_hip_roll", "r_hip_pitch", "r_knee", "r_ank_pitch", "r_ank_roll"};
+        joints_to_compensate = {};
     }
     
     Eigen::Vector3d gravity_vector(0, 0, -g);
@@ -366,8 +372,8 @@ std::map<std::string, double> WalkingEngineNode::calculate_gravity_compensation_
         }else if(joint_name.find("ank_pitch") != std::string::npos){
           current_kp_gain = 1500000.0;
         }
-
-        gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
+        gravity_offsets[joint_name] = 0.0;
+        //gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
         //gravity_offsets[joint_name] = compensating_torque / servo_kp_gain_;
     }
     
@@ -643,6 +649,8 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         // Calcula os offsets para ambas as pernas como se estivessem em apoio
         auto offsets_left_support = calculate_gravity_compensation_for_support_leg(ik_angles, true);
         auto offsets_right_support = calculate_gravity_compensation_for_support_leg(ik_angles, false);
+
+  
 
         if (t_step_ < ds_time) { // Primeira fase de apoio duplo
             auto& offsets_old = support_foot_->is_left ? offsets_right_support : offsets_left_support;
