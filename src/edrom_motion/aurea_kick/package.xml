@@ -4,7 +4,7 @@
   <name>aurea_kick</name>
   <version>0.0.1</version>
   <description>Nó de chute dedicado para o robô Aurea.</description>
-  <maintainer email="seu_email@dominio.com">Seu Nome</maintainer>
+  <maintainer email="pedrohperescode@gmail.com">Pedro H. B. Peres</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

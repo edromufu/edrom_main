@@ -10,6 +10,24 @@ def generate_launch_description():
         'kick_params.yaml'
     )
 
+    declare_teleop_arg = DeclareLaunchArgument(
+        'teleop',
+        default_value='False',
+        description='Inicia a ponte de teleoperação (True/False)'
+    )
+
+    teleop_bridge_node = Node(
+        package='aurea_kick',
+        executable='teleop_kick_bridge',
+        name='teleop_kick_bridge',
+        output='screen',
+        # --- 4. Condição para iniciar ---
+        # Este nó SÓ será iniciado se o argumento 'teleop' for 'True'
+        condition=IfCondition(
+            PythonExpression(["'", LaunchConfiguration('teleop'), "' == 'True'"])
+        )
+    )
+
     return LaunchDescription([
         Node(
             package='aurea_kick',
@@ -17,5 +35,7 @@ def generate_launch_description():
             name='kick_node',
             parameters=[config],
             output='screen'
-        )
+        ),
+        declare_teleop_arg,
+        teleop_bridge_node
     ])

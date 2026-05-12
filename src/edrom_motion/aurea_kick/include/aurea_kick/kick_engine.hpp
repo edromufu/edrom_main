@@ -12,12 +12,23 @@ struct KickParameters {
   double tA, tB, tC, tD, tE;
   double x_kick, z_kick, y_sep;
   double com_height;
+  double torso_kick_offset_x;
 };
+
+struct LinkData {
+  std::string name;
+  std::string parent_name;
+  double mass;
+  Eigen::Vector3d com_position_local;
+  Eigen::Vector3d joint_axis_parent;
+  Eigen::Vector3d translation_from_parent;
+};
+
 
 class KickEngine
 {
 public:
-  enum class Phase {
+  enum class Phase {  
     SHIFT_TO_SUPPORT,
     EXECUTE_KICK,
     RETURN_TO_CENTER,
@@ -31,13 +42,13 @@ public:
   Phase get_current_phase() const { return current_phase_; }
   std::string get_phase_name() const;
 
-private:
+private:  
   KickParameters params_;
-  // CORRIGIDO: Usa o escopo completo para inicializar
   Phase current_phase_{Phase::IDLE};
   double phase_time_{0.0};
   bool is_left_kick_{false};
   
+  // Parâmetros de trajetória
   Eigen::Vector2d torso_start_pos_;
   double torso_start_yaw_;
   Eigen::Vector2d support_foot_start_pos_;

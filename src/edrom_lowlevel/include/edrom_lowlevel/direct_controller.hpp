@@ -20,6 +20,7 @@ struct MotorConfig {
   uint8_t id;
   float protocol;
   bool inverted;
+  double calibration_offset;
 };
 
 class DirectController : public rclcpp::Node

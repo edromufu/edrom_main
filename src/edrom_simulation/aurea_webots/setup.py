@@ -24,7 +24,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'aurea_driver = aurea_webots.aurea_driver:main'
+            'aurea_sensors = aurea_webots.aurea_sensors:main'
         ],
     },
 )

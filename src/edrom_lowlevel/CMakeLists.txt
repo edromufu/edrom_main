@@ -7,9 +7,10 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(dynamixel_sdk REQUIRED)
+find_package(aurea_walk REQUIRED)
+
 
 add_executable(direct_controller src/direct_controller.cpp)
 target_include_directories(direct_controller PUBLIC
@@ -24,26 +25,28 @@ ament_target_dependencies(direct_controller
   dynamixel_sdk
 )
 
-add_library(aurea_hardware_interface SHARED
-  src/aurea_hardware_interface.cpp
-)
-target_include_directories(aurea_hardware_interface PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>
+add_executable(head_reader src/head_reader.cpp)
+
+ament_target_dependencies(head_reader
+  rclcpp
+  sensor_msgs
+  dynamixel_sdk
 )
 
-ament_target_dependencies(aurea_hardware_interface
+add_executable(robot_initializer src/robot_initializer.cpp)
+ament_target_dependencies(robot_initializer
   rclcpp
-  hardware_interface
-  pluginlib
-  dynamixel_sdk
+  sensor_msgs
+  geometry_msgs
+  aurea_walk
 )
 
 ament_export_dependencies(pluginlib)
 
 install(TARGETS
-  aurea_hardware_interface
   direct_controller
+  robot_initializer
+  head_reader
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

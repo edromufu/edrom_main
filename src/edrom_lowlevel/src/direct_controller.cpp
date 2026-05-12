@@ -13,11 +13,13 @@ DirectController::DirectController() : Node("direct_controller")
     this->declare_parameter<int>(name + ".id", 0);
     this->declare_parameter<double>(name + ".protocol", 2.0);
     this->declare_parameter<bool>(name + ".inverted", false);
-    
+    this->declare_parameter<double>(name + ".calibration_offset", 0.0);
+
     motors_[name] = {
       .id = (uint8_t)this->get_parameter(name + ".id").as_int(),
       .protocol = (float)this->get_parameter(name + ".protocol").as_double(),
-      .inverted = this->get_parameter(name + ".inverted").as_bool()
+      .inverted = this->get_parameter(name + ".inverted").as_bool(),
+      .calibration_offset = this->get_parameter(name + ".calibration_offset").as_double()
     };
     RCLCPP_INFO(this->get_logger(), "Carregou motor '%s' com ID %d", name.c_str(), motors_[name].id);
   }
@@ -76,7 +78,7 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
   
   bool param_added_v1 = false;
   bool param_added_v2 = false;
-
+  RCLCPP_INFO(this->get_logger(), "--- Nova Mensagem Recebida ---");    
   for (size_t i = 0; i < msg->name.size(); ++i) {
     const std::string &joint_name = msg->name[i];
     auto it = motors_.find(joint_name);
@@ -86,8 +88,19 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
     const auto &config = it->second;
     double target_pos = msg->position[i];
 
+    if (joint_name == "r_hip_roll" || joint_name == "l_hip_roll") {
+      RCLCPP_INFO(this->get_logger(), "Processando %s: Posição inicial = %.3f", joint_name.c_str(), target_pos);
+    }
+
     if (config.inverted) {
       target_pos *= -1.0;
+    }
+
+    target_pos += config.calibration_offset;
+
+    
+    if (joint_name == "r_hip_roll" || joint_name == "l_hip_roll") {
+      RCLCPP_INFO(this->get_logger(), "-> Posição FINAL para %s = %.3f (após offset de %.3f)", joint_name.c_str(), target_pos, config.calibration_offset);
     }
 
     int goal_value = rad_to_value(target_pos, config.protocol);

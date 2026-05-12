@@ -15,6 +15,9 @@ setup(
         # Adiciona a instrução para instalar todos os arquivos .launch.py
         # que estão na sua pasta 'launch/'
         (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.launch.py')),
 
         # Adiciona a instrução para instalar todos os arquivos .yaml
         # que estão na sua pasta 'config/'

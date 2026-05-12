@@ -1,0 +1,68 @@
+---
+State Machine
+---
+stateDiagram-v2
+  direction LR
+  classDef s_default fill:white,color:black
+  classDef s_inactive fill:white,color:black
+  classDef s_parallel color:black,fill:white
+  classDef s_active color:red,fill:darksalmon
+  classDef s_previous color:blue,fill:azure
+  
+  state "walking" as walking
+  Class walking s_default
+  state "getting_up" as getting_up
+  Class getting_up s_default
+  state "kicking" as kicking
+  Class kicking s_default
+  state "idle" as idle
+  Class idle s_active
+  state "searching" as searching
+  Class searching s_default
+  state "idle_march" as idle_march
+  Class idle_march s_default
+  state "aligning" as aligning
+  Class aligning s_default
+  state "impossible" as impossible
+  Class impossible s_default
+  
+  walking --> walking: go_to_walking
+  walking --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  walking --> getting_up: go_to_getting_up
+  walking --> idle_march: go_to_idle_march
+  walking --> searching: go_to_searching
+  idle --> walking: go_to_walking
+  idle --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  idle --> getting_up: go_to_getting_up
+  idle --> kicking: go_to_kicking
+  idle --> searching: go_to_searching
+  kicking --> walking: go_to_walking
+  kicking --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  kicking --> getting_up: go_to_getting_up
+  kicking --> kicking: go_to_kicking
+  kicking --> idle_march: go_to_idle_march
+  kicking --> idle: go_to_idle
+  kicking --> searching: go_to_searching
+  getting_up --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  getting_up --> getting_up: go_to_getting_up
+  getting_up --> idle_march: go_to_idle_march
+  getting_up --> searching: go_to_searching
+  searching --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  searching --> getting_up: go_to_getting_up
+  searching --> searching: go_to_searching
+  idle_march --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  idle_march --> getting_up: go_to_getting_up
+  idle_march --> idle_march: go_to_idle_march
+  idle_march --> aligning: go_to_aligning
+  idle_march --> idle: go_to_idle
+  idle_march --> searching: go_to_searching
+  aligning --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  aligning --> getting_up: go_to_getting_up
+  aligning --> kicking: go_to_kicking
+  aligning --> aligning: go_to_aligning
+  aligning --> idle: go_to_idle
+  aligning --> searching: go_to_searching
+  impossible --> impossible: go_to_walking | go_to_getting_up | go_to_kicking | go_to_idle_march
+  impossible --> getting_up: go_to_getting_up
+  impossible --> searching: go_to_searching
+  [*] --> idle

@@ -1,0 +1,16 @@
+<package format="3">
+  <name>object_finder_onnx</name>
+  <version>0.0.1</version>
+  <description>Pacote de teste para detecção de objetos com ONNX/OpenCV DNN.</description>
+  <maintainer email="edromufu@gmail.com">EDROM</maintainer>
+  <license>MIT</license>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <depend>rclpy</depend>
+  <depend>cv_bridge</depend>
+  <depend>sensor_msgs</depend>
+  <depend>edrom_msgs</depend>
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

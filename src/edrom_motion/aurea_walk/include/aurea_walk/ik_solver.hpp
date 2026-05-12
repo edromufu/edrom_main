@@ -20,8 +20,8 @@ public:
 private:
   const double L_COXA = 0.12;
   const double L_TIBIA = 0.085;
-  const double D_QUADRIL_OFFSET = 0.05;
-  const double D_TORNOZELO_SOLA = 0.04;
+  const double D_QUADRIL_OFFSET = 0.0425;
+  const double D_TORNOZELO_SOLA = 0.048;
 };
 
 } // namespace op3_kinematics
