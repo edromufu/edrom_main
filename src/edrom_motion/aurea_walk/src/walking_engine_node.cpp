@@ -31,7 +31,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.2); //-0.32
+  this->declare_parameter<double>("backlash_offset_hp", -0.1); //-0.32
   //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);

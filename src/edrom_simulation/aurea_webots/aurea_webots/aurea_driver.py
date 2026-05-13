@@ -23,8 +23,8 @@ class AureaJointController:
         self.__node.get_logger().info("Controlador de Juntas e Teclado para Aurea iniciado.")
 
         # --- Parâmetros de Controle ---
-        self.WALK_VELOCITY = 0.05
-        self.TURN_VELOCITY = 0.2 # Aumentei um pouco para a rotação ser mais visível
+        self.WALK_VELOCITY = 0.12
+        self.TURN_VELOCITY = 0.21 # Aumentei um pouco para a rotação ser mais visível
 
         # --- Estado do Controlador ---
         self.__walking_active = False
