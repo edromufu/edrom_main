@@ -38,13 +38,13 @@ public:
     this->declare_parameter("phase_e_time", 1.0);
     this->declare_parameter("x_amplitude", 0.1);
     this->declare_parameter("z_height", 0.05);
-    this->declare_parameter("com_height", 0.21);
+    this->declare_parameter("com_height", 0.22);
     this->declare_parameter("feet_separation", 0.044);
     this->declare_parameter("torso_kick_offset_x", 0.0); 
     this->declare_parameter<double>("kp_gain_hip_roll", 1.0);
     this->declare_parameter<double>("kp_gain_hip_pitch", -10.0);
     this->declare_parameter<double>("kp_gain_knee", 10.0);
-    this->declare_parameter<double>("backlash_hip_offset", -0.3);
+    this->declare_parameter<double>("backlash_hip_offset", -0.2);
 
     kp_gain_hip_roll_ = this->get_parameter("kp_gain_hip_roll").as_double();
     kp_gain_hip_pitch_ = this->get_parameter("kp_gain_hip_pitch").as_double();
@@ -478,8 +478,8 @@ std::map<std::string, double> KickNode::calculate_gravity_compensation_for_suppo
         }else if(joint_name.find("ank_pitch") != std::string::npos){
           current_kp_gain = 1500000.0;
         }
-
-        gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
+        gravity_offsets[joint_name] = 0.0;
+        //gravity_offsets[joint_name] = compensating_torque / current_kp_gain;
         //gravity_offsets[joint_name] = compensating_torque / servo_kp_gain_;
     }
     
