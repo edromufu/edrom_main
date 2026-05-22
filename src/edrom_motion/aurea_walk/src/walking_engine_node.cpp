@@ -18,11 +18,11 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 0.3);
+  this->declare_parameter<double>("step_period", 0.6);
   this->declare_parameter<double>("com_height", 0.22);
-  this->declare_parameter<double>("step_height", 0.03);
-  this->declare_parameter<double>("double_support_ratio", 0.1);
-  this->declare_parameter<double>("feet_separation", 0.044);
+  this->declare_parameter<double>("step_height", 0.026);
+  this->declare_parameter<double>("double_support_ratio", 0.15);
+  this->declare_parameter<double>("feet_separation", 0.0425);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
   this->declare_parameter<std::string>("cmd_vel_topic", "/cmd_vel");
@@ -47,7 +47,7 @@ WalkingEngineNode::WalkingEngineNode()
   update_period_ = 1.0 / this->get_parameter("update_frequency").as_double();
   y_sep_ = this->get_parameter("feet_separation").as_double();
   update_period_ = 1.0 / this->get_parameter("update_frequency").as_double();
-  arm_swing_amplitude_ = this->get_parameter("arm_swing_amplitude").as_double(); // <-- LEIA O NOVO PARÂMETRO
+  arm_swing_amplitude_ = this->get_parameter("arm_swing_amplitude").as_double(); 
   idle_shoulder_pitch_ = this->get_parameter("idle_arm_pose.shoulder_pitch").as_double();
   idle_shoulder_roll_ = this->get_parameter("idle_arm_pose.shoulder_roll").as_double();
   idle_elbow_ = this->get_parameter("idle_arm_pose.elbow").as_double();
