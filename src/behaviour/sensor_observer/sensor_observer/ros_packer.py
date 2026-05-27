@@ -41,7 +41,7 @@ class ROSPacker(Node):
 
         self.pub_to_state_machine = self.create_publisher(
             StateMachineMsg,
-            'sensor_observer/state_machine_vars', # Usando o nome do tópico que você mencionou
+            'sensor_observer/state_machine_vars', #
             qos_profile
         )
 
@@ -73,7 +73,6 @@ class ROSPacker(Node):
             self.p_hor_motor_out_of_center, self.p_head_kick_check
         ]
 
-        # A condição agora deve funcionar, pois os intérpretes estão atualizando seus valores
         if sm_vars_current_value != self.sm_vars_last_value:
             self.sm_vars_last_value = sm_vars_current_value
             self.publish_to_state_machine()
@@ -99,20 +98,17 @@ def main(args=None):
     rclpy.init(args=args)
     
     try:
-        # MUDANÇA: Instancia todos os nós que precisam rodar
         ball_interpreter = BallInterpreter()
         fall_interpreter = FallInterpreter()
         neck_interpreter = NeckInterpreter()
         ros_packer = ROSPacker(ball_interpreter, fall_interpreter, neck_interpreter)
         
-        # MUDANÇA: Cria um executor e adiciona todos os nós a ele
         executor = MultiThreadedExecutor()
         executor.add_node(ros_packer)
         executor.add_node(ball_interpreter)
         executor.add_node(fall_interpreter)
         executor.add_node(neck_interpreter)
 
-        # MUDANÇA: "Gira" (spin) o executor, que por sua vez "gira" todos os nós
         executor.spin()
 
     except KeyboardInterrupt:

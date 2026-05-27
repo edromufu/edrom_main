@@ -1,8 +1,8 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient # Importar a classe ActionClient
-from sensor_msgs.msg import JointState
-from geometry_msgs.msg import Twist
+from sensor_msgs.msg import JointState, Image
+from geometry_msgs.msg import Twist, Vector3
 from std_msgs.msg import Empty
 from controller import Robot, Keyboard
 
@@ -21,6 +21,27 @@ class AureaJointController:
         
         self.__node = rclpy.create_node('aurea_keyboard_controller')
         self.__node.get_logger().info("Controlador de Juntas e Teclado para Aurea iniciado.")
+
+        # Inicializa o acelerômetro
+        self.__accel = self.__robot.getDevice('imu_accel')
+        if self.__accel is None:
+            self.__node.get_logger().error("Accel not found.")
+            return
+        self.__accel.enable(self.__timestep)
+
+        # Inicializa o gyro
+        self.__gyro = self.__robot.getDevice('imu_gyro')
+        if self.__gyro is None:
+            self.__node.get_logger().error("Gyro not found.")
+            return
+        self.__gyro.enable(self.__timestep)
+
+        # Inicializa a câmera
+        self.__camera = self.__robot.getDevice("camera_front")
+        if self.__camera is None:
+            self.__node.get_logger().error("Câmera not found.")
+            return
+        self.__camera.enable(self.__timestep)
 
         # --- Parâmetros de Controle ---
         self.WALK_VELOCITY = 0.1
@@ -57,6 +78,9 @@ class AureaJointController:
         self.__node.create_subscription(JointState, '/goal_joint_states', self.__joint_command_callback, 1)
         self.__cmd_vel_pub = self.__node.create_publisher(Twist, '/cmd_vel', 10)
         self.__stop_pub = self.__node.create_publisher(Empty, '/stop_walking', 10)
+        self.__accel_pub = self.__node.create_publisher(Vector3, '/behaviour/imu_accel', 10)
+        self.__gyro_pub = self.__node.create_publisher(Vector3, '/behaviour/imu_gyro', 10)
+        self.__camera_pub = self.__node.create_publisher(Image, '/camera/image', 10)
 
         # --- Action Client para o Chute ---
         self.__kick_action_client = ActionClient(self.__node, Kick, '/kick')
@@ -150,6 +174,33 @@ class AureaJointController:
                 self.__cmd_vel_pub.publish(cmd)
                 self.__last_twist_cmd = cmd
 
+    def __publish_sensors(self):
+        if self.__camera is not None:
+            image = self.__camera.getImage()
+            if image is not None:
+                msg = Image()
+                msg.data = image
+                msg.height = self.__camera.getHeight()
+                msg.width = self.__camera.getWidth()
+                msg.encoding = "bgra8"  # Webots retorna BGRA por padrão
+                msg.is_bigendian = 0
+                msg.step = msg.width * 4
+                self.__camera_pub.publish(msg)
+        
+        if self.__accel is not None:
+            values = self.__accel.getValues()
+            msg = Vector3()
+            msg.x, msg.y, msg.z = values
+            self.__accel_pub.publish(msg)
+        
+        if self.__gyro is not None:
+            values = self.__gyro.getValues()
+            msg = Vector3()
+            msg.x, msg.y, msg.z = values
+            self.__gyro_pub.publish(msg)
+
     def step(self):
         rclpy.spin_once(self.__node, timeout_sec=0)
         self.__check_keyboard_and_publish_cmd()
+
+        self.__publish_sensors()    

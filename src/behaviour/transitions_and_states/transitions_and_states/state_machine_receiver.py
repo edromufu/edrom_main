@@ -1,129 +1,94 @@
 #!/usr/bin/env python3
 #coding=utf-8
 '''
-Nó "Cérebro" do Robô.
-- Ouve os dados interpretados dos sensores.
-- Usa a StateMachine para decidir o estado global do robô.
-- Publica o estado para que as rotinas possam agir.
+Node que recebe variáveis da máquina de estados e sinal de término de chute,
+atualiza a StateMachine e publica o estado atual no tópico correspondente.
 '''
 
 import rclpy
 from rclpy.node import Node
 from modularized_bhv_msgs.msg import StateMachineMsg, CurrentStateMsg
-from std_msgs.msg import String as StringMsg # Renomeado para evitar conflito com 'str'
-from geometry_msgs.msg import Twist
-from sensor_msgs.msg import JointState
-
-# Importa a classe de lógica
+from std_msgs.msg import Bool
 from .state_machine import StateMachine
+from .behaviour_parameters import BehaviourParameters
+
 
 class StateMachineReceiver(Node):
+
     def __init__(self):
+        """
+        Construtor:
+        - Inicializa o objeto responsável pelas transições
+        - Cria subscribers para as variáveis de comportamento e para o status do chute
+        - Publica o estado atual da máquina
+        """
         super().__init__('state_machine_receiver')
-        
-        # Instancia a classe de lógica
+
+        self.parameters = BehaviourParameters()
         self.state_machine = StateMachine()
 
-        # --- Parâmetros ---
-        self.declare_parameter('spin_search_speed', 0.5)
-        self.declare_parameter('walk_forward_speed', 0.1)
-        self.declare_parameter('kp_body_align', 0.8)
+        # Inicializa variáveis internas
+        self.last_state_machine_msg = None
+        self.kick_done = False
 
-        self.spin_speed = self.get_parameter('spin_search_speed').get_parameter_value().double_value
-        self.walk_speed = self.get_parameter('walk_forward_speed').get_parameter_value().double_value
-        self.kp_align = self.get_parameter('kp_body_align').get_parameter_value().double_value
-
-        # --- Variáveis de Sensores (para guardar os últimos dados recebidos) ---
-        self.ball_found = False
-        self.fall_state = 'Up'
-        self.head_pan_angle = 0.0
-
-        # --- Subscribers ---
-        # Ouve os dados consolidados do ROSPacker
-        self.create_subscription(StateMachineMsg, 'sensor_observer/state_machine_vars', self.sensor_data_callback, 10)
-        # Ouve a posição atual da cabeça para o alinhamento do corpo
-        self.create_subscription(JointState, '/goal_joint_states', self.head_feedback_callback, 10)
-
-        # --- Publishers ---
-        # Publica o estado global para as rotinas
-        self.state_publisher = self.create_publisher(CurrentStateMsg, '/transitions_and_states/state_machine', 10)
-        # Comanda o especialista da cabeça
-        self.head_control_pub = self.create_publisher(StringMsg, '/head_control/state', 10)
-        # Comanda o motor de caminhada
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
-
-        # --- Timer Principal (O "coração" do cérebro) ---
-        self.timer = self.create_timer(0.05, self.control_loop) # 20 Hz
-        self.get_logger().info("StateMachineReceiver (Cérebro) iniciado e operacional.")
-
-    def sensor_data_callback(self, msg: StateMachineMsg):
-        """Atualiza o estado dos sensores com base nos dados do ROSPacker."""
-        self.ball_found = msg.ball_found
-        self.fall_state = msg.fall_state
-
-    def head_feedback_callback(self, msg: JointState):
-        """Armazena o ângulo de pan da cabeça para o alinhamento."""
-        try:
-            index = msg.name.index('head_pan')
-            self.head_pan_angle = msg.position[index]
-        except (ValueError, IndexError):
-            pass
-
-    def control_loop(self):
-        """O ciclo principal de Percepção -> Decisão -> Ação."""
-        # 1. Decisão: Roda a StateMachine para obter a string do estado atual
-        current_state_str = self.state_machine.request_state_machine_update(
-            ball_found=self.ball_found,
-            fall_state=self.fall_state
+        # Publisher do estado atual
+        self.state_publisher = self.create_publisher(
+            CurrentStateMsg, '/transitions_and_states/state_machine', 10
         )
 
-        # Publica o estado atual para depuração e para as rotinas antigas (se houver)
-        state_msg = CurrentStateMsg()
-        state_msg.current_state = current_state_str.lower()
+        # Subscribers
+        self.create_subscription(
+            StateMachineMsg, self.parameters.stateMachineTopic, self.state_machine_callback, 10
+        )
+
+        self.create_subscription(
+            Bool, "/kick_done", self.kick_done_callback, 10
+        )
+
+        self.get_logger().info("StateMachineReceiver iniciado e aguardando mensagens...")
+        # Timer para tentar atualizar o estado periodicamente
+
+
+
+    # Recebe mensagem principal da máquina (com variáveis de percepção e estado)
+    def state_machine_callback(self, msg):
+        self.last_state_machine_msg = msg
+        self.update_state()
+
+    # Recebe flag indicando se o chute terminou
+    def kick_done_callback(self, msg):
+        self.kick_done = msg.data
+
+    def update_state(self):
+        # Só processa se já recebeu a mensagem principal
+        if self.last_state_machine_msg is None:
+            return
+
+        stateMachineVars = self.last_state_machine_msg
+
+        # Atualiza a máquina de estados com todos os dados
+        state_msg = self.state_machine.request_state_machine_update(
+            stateMachineVars.ball_position,
+            stateMachineVars.ball_close,
+            stateMachineVars.ball_found,
+            stateMachineVars.fall_state,
+            stateMachineVars.hor_motor_out_of_center,
+            stateMachineVars.head_kick_check,
+            self.kick_done
+        )
+
+        # Publica o estado atual
         self.state_publisher.publish(state_msg)
-        
-        # 2. Ação: Envia os comandos corretos com base no estado
-        head_command = StringMsg()
-        twist_command = Twist()
+        self.get_logger().debug(f"Estado publicado: {state_msg.current_state}")
 
-        if current_state_str == 'SEARCHING':
-            # Comanda a cabeça para procurar e o corpo para girar
-            head_command.data = 'SEARCHING'
-            twist_command.angular.z = self.spin_speed
-            self.get_logger().info("Ação: Busca Ativa (girando corpo e cabeça)", throttle_duration_sec=1)
-
-        elif current_state_str == 'WALKING':
-            # Comanda a cabeça para rastrear e o corpo para andar e alinhar
-            head_command.data = 'TRACKING'
-            twist_command.linear.x = self.walk_speed
-            twist_command.angular.z = self.kp_align * self.head_pan_angle # <-- Alinhamento do corpo!
-            self.get_logger().info("Ação: Andando em direção à bola e alinhando", throttle_duration_sec=1)
-
-        elif current_state_str == 'LOST_BALL_WALK':
-            # Comanda a cabeça para rastrear (onde a bola estava) e o corpo para continuar reto
-            head_command.data = 'TRACKING'
-            twist_command.linear.x = self.walk_speed # Continua andando reto
-            self.get_logger().warn("Ação: Bola perdida, andando reto por 2s...", throttle_duration_sec=1)
-        
-        elif current_state_str == 'GETTING_UP':
-            # Para todos os movimentos enquanto o robô se levanta
-            head_command.data = 'IDLE'
-            # A rotina de "levantar" deve ser acionada em outro lugar
-
-        # Envia os comandos para os especialistas
-        self.head_control_pub.publish(head_command)
-        self.cmd_vel_pub.publish(twist_command)
 
 def main(args=None):
     rclpy.init(args=args)
     receiver = StateMachineReceiver()
-    try:
-        rclpy.spin(receiver)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        receiver.destroy_node()
-        rclpy.shutdown()
+    rclpy.spin(receiver)
+    receiver.destroy_node()
+    rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
