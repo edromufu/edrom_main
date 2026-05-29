@@ -6,7 +6,7 @@ package_name = 'transitions_and_states'
 
 setup(
     name=package_name,
-    version='0.0.0',
+    version='0.1.0',
     packages=find_packages(exclude=['test']),
     data_files=[
         ('share/ament_index/resource_index/packages',
@@ -18,13 +18,12 @@ setup(
     zip_safe=True,
     maintainer='vtr_caixeta',
     maintainer_email='victorvasconcelos676@gmail.com',
-    description='TODO: Package description',
+    description='Behaviour package — DSD integration',
     license='TODO: License declaration',
-    #tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'state_machine_receiver = transitions_and_states.state_machine_receiver:main',
             'behaviour_node = transitions_and_states.behaviour_node:main',
+            'dsd_node       = transitions_and_states.dsd_node:main',
         ],
     },
 )

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # coding=utf-8    
-import os
+
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 from launch.conditions import IfCondition   
-from launch import LaunchDescription
+import os
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+
 
 def generate_launch_description():
     # Argumentos
@@ -21,28 +21,39 @@ def generate_launch_description():
         "imu_port",
         default_value="/dev/ttyIMU"
     )
+    simulation_arg = DeclareLaunchArgument(
+        "simulation",
+        default_value="false"
+    )
 
     # Configurações
     imu_connected = LaunchConfiguration("imu_connected")
     imu_port = LaunchConfiguration("imu_port")
+    simulation = LaunchConfiguration("simulation")
 
-    routines_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            get_package_share_directory('states_routine'),
-            'launch',
-            'routines.launch.py'
-        ))
+    # Caminho do outro launch
+    behaviour_sim_launch = os.path.join(
+        get_package_share_directory('bhv_simulator'),
+        'launch',
+        'behaviour_simulator.launch.py'
     )
+
     return LaunchDescription([
         # Declaração de argumentos
         imu_connected_arg,
         imu_port_arg,
-        routines_launch,
+        simulation_arg,
+
+        # Inclui outro launch (condicional)
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(behaviour_sim_launch),
+            condition=IfCondition(simulation)
+        ),
 
         # Máquina de Estados
         Node(
             package="transitions_and_states",
-            executable="state_machine_receiver",
+            executable="behaviour_node",
             name="behaviour",
             output="screen"
         ),
@@ -54,6 +65,7 @@ def generate_launch_description():
             name="ros_packer",
             output="screen"
         ),
+
 
         # Leitura do IMU (condicional)
         Node(

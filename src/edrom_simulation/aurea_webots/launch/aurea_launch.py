@@ -37,11 +37,14 @@ def generate_launch_description():
             'vision_onnx.launch.py'
         ))
     )
+
+
     return LaunchDescription([
         webots,
         #behaviour_launch,
         my_robot_driver,
         vision_onnx_launch,
+        #head_controller_node,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,

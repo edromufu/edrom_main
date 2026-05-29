@@ -87,10 +87,10 @@ class BehaviorNode(Node):
         self.state_machine = StateMachine()
 
         # --- Parâmetros ---
-        self.declare_parameter('spin_search_speed', 0.2)
-        self.declare_parameter('walk_forward_speed', 0.11)
+        self.declare_parameter('spin_search_speed', 0.26)
+        self.declare_parameter('walk_forward_speed', 0.15)
         self.declare_parameter('kp_body_align', 0.7)
-        self.declare_parameter('alignment_tolerance_rad', 0.15) # ~5.7 graus
+        self.declare_parameter('alignment_tolerance_rad', 0.13) # ~5.7 graus
 
         self.spin_speed = self.get_parameter('spin_search_speed').get_parameter_value().double_value
         self.walk_speed = self.get_parameter('walk_forward_speed').get_parameter_value().double_value
@@ -147,13 +147,7 @@ class BehaviorNode(Node):
         elif current_state == 'ALIGNING_BODY':
             # Mantém a cabeça travada na bola e gira o corpo para alinhar
             head_command.data = 'TRACKING'
-            twist_command.angular.z = -self.kp_align * self.head_pan_angle 
-            
-            if(twist_command.angular.z > 0.22):
-                twist_command.angular.z = 0.22
-            elif(twist_command.angular.z < -0.22):
-                twist_command.angular.z = -0.22
-
+            twist_command.angular.z = -self.kp_align * self.head_pan_angle
             self.get_logger().info("Ação: Alinhando corpo com a cabeça", throttle_duration_sec=1)
         
         elif current_state == 'PAUSING':
