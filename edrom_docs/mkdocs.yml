@@ -1,7 +1,14 @@
 site_name: EDROM Docs
+site_description: Documentação do robô humanóide Aurea — EDROM RoboCup
 theme: readthedocs
 nav:
   - Home: index.md
   - Installation:
     - ROS2 Docker: setting-docker.md
     - Webots: setting-webots.md
+  - Bring UP: bringup/index.md
+  - Low Level: lowlevel/index.md
+  - URDF: urdf/index.md
+  - Dynamixel: dynamixel/index.md
+  - Simulation: simulation/index.md
+  - Motion: motion/index.md
