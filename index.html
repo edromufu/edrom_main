@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="None" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="Documentação do robô humanóide Aurea — EDROM RoboCup" />
       <link rel="shortcut icon" href="img/favicon.ico" />
     <title>EDROM Docs</title>
     <link rel="stylesheet" href="css/theme.css" />
@@ -42,6 +42,14 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#visao-geral-do-sistema">Visão Geral do Sistema</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#fluxo-de-dados-principal">Fluxo de Dados Principal</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#build-e-setup">Build e Setup</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#inicializacao-rapida">Inicialização Rápida</a>
+    </li>
     </ul>
                 </li>
               </ul>
@@ -51,6 +59,30 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="setting-webots/">Webots</a>
                   </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="bringup/">Bring UP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="lowlevel/">Low Level</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="urdf/">URDF</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="dynamixel/">Dynamixel</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="simulation/">Simulation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="motion/">Motion</a>
+                </li>
               </ul>
       </div>
     </div>
@@ -75,9 +107,84 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="welcome-to-edrom-documentation">Welcome to EDROM Documentation</h1>
-<p><strong>This documentation is constantly being updated.</strong></p>
-<p>Dev/Test Phase (Pedro H. Peres)</p>
+                <h1 id="edrom-documentation">EDROM Documentation</h1>
+<p><strong>EDROM</strong> é um robô humanóide desenvolvido para a <strong>RoboCup Humanoid Soccer League</strong>.
+O robô se chama <strong>Aurea</strong> e utiliza ROS2 Humble como middleware de robótica.</p>
+<hr />
+<h2 id="visao-geral-do-sistema">Visão Geral do Sistema</h2>
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Tecnologia</th>
+<th>Linguagem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Walking Engine + IK</td>
+<td>ROS2 (aurea_walk)</td>
+<td>C++</td>
+</tr>
+<tr>
+<td>Kick Engine</td>
+<td>ROS2 (aurea_kick)</td>
+<td>C++</td>
+</tr>
+<tr>
+<td>Low Level / Hardware</td>
+<td>ROS2 (edrom_lowlevel)</td>
+<td>C++</td>
+</tr>
+<tr>
+<td>Máquina de Estados</td>
+<td>ROS2 (transitions_and_states)</td>
+<td>Python</td>
+</tr>
+<tr>
+<td>Visão Computacional</td>
+<td>YOLOv8 (object_finder)</td>
+<td>Python</td>
+</tr>
+<tr>
+<td>Simulação</td>
+<td>Webots R2025a</td>
+<td>Python</td>
+</tr>
+</tbody>
+</table>
+<h2 id="fluxo-de-dados-principal">Fluxo de Dados Principal</h2>
+<pre><code>Câmera
+  └─► object_finder (YOLOv8) ──► VisionData
+                                      │
+                               behaviour_node
+                                      │
+                                state_machine ──► cmd_vel / rotinas
+                                      │
+                              walking_engine ──► /solve_ik (serviço)
+                                      │
+                              goal_joint_states
+                                      │
+                             direct_controller
+                                      │
+                               Dynamixel USB
+                                      │
+                                  Motores
+</code></pre>
+<h2 id="build-e-setup">Build e Setup</h2>
+<pre><code class="language-bash">cd edrom_main
+colcon build --symlink-install
+source install/setup.bash
+</code></pre>
+<h2 id="inicializacao-rapida">Inicialização Rápida</h2>
+<pre><code class="language-bash"># Sistema completo
+ros2 launch edrom_bringup robot.launch.py
+
+# Apenas simulação
+ros2 launch bhv_simulator behaviour_simulator.launch.py
+</code></pre>
+<hr />
+<p><em>Esta documentação está em constante atualização.</em></p>
               
             </div>
           </div><footer>
@@ -126,5 +233,5 @@
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-06-13 17:34:06.905844+00:00
+Build Date UTC : 2026-05-30 00:51:35.817420+00:00
 -->

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Low Level - EDROM Docs</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Low Level";
+        var mkdocs_page_input_path = "lowlevel/index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EDROM Docs
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Installation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../setting-docker/">ROS2 Docker</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../setting-webots/">Webots</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../bringup/">Bring UP</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Low Level</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#executaveis">Executáveis</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#launch">Launch</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#direct-controller">Direct Controller</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#interface-ros2">Interface ROS2</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#comunicacao-serial">Comunicação Serial</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#fluxo-de-dados">Fluxo de Dados</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#operacao">Operação</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#robot-initializer">Robot Initializer</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#sequencia-de-inicializacao">Sequência de Inicialização</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#parametros">Parâmetros</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#hardware-interface-opcional">Hardware Interface (Opcional)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#calibracao-dos-motores">Calibração dos Motores</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../urdf/">URDF</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../dynamixel/">Dynamixel</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../simulation/">Simulation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../motion/">Motion</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EDROM Docs</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Low Level</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="low-level-controle-de-hardware">Low Level — Controle de Hardware</h1>
+<p>O pacote <code>edrom_lowlevel</code> é responsável pela comunicação direta com os motores Dynamixel via USB.
+É implementado em C++ para garantir baixa latência na malha de controle.</p>
+<p><strong>Pacote:</strong> <code>src/edrom_lowlevel/</code></p>
+<h2 id="executaveis">Executáveis</h2>
+<table>
+<thead>
+<tr>
+<th>Executável</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>direct_controller</code></td>
+<td>Controla todos os motores via GroupSyncWrite</td>
+</tr>
+<tr>
+<td><code>robot_initializer</code></td>
+<td>Calcula e aplica pose inicial via IK</td>
+</tr>
+<tr>
+<td><code>head_reader</code></td>
+<td>Lê posição atual da cabeça</td>
+</tr>
+</tbody>
+</table>
+<h2 id="launch">Launch</h2>
+<pre><code class="language-bash">ros2 launch edrom_lowlevel direct_control.launch.py
+</code></pre>
+<hr />
+<h2 id="direct-controller">Direct Controller</h2>
+<p><strong>Arquivo:</strong> <code>src/edrom_lowlevel/src/direct_controller.cpp</code></p>
+<p><strong>Config:</strong> <code>src/edrom_lowlevel/config/motors_direct.yaml</code></p>
+<h3 id="interface-ros2">Interface ROS2</h3>
+<table>
+<thead>
+<tr>
+<th>Direção</th>
+<th>Tópico</th>
+<th>Tipo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscreve</td>
+<td><code>/goal_joint_states</code></td>
+<td><code>sensor_msgs/JointState</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="comunicacao-serial">Comunicação Serial</h3>
+<pre><code class="language-yaml">usb_port: &quot;/dev/ttyUSB0&quot;
+baud_rate: 1000000  # 1 Mbps
+</code></pre>
+<h3 id="fluxo-de-dados">Fluxo de Dados</h3>
+<pre><code>/goal_joint_states
+       │
+  direct_controller
+       │
+  GroupSyncWrite ──► Protocolo 1.0 (AX-12A) ──► Cabeça (IDs 1, 2)
+       │
+       └────────────► Protocolo 2.0 (MX-106) ──► Corpo (IDs 3-20)
+</code></pre>
+<h3 id="operacao">Operação</h3>
+<p>A cada mensagem recebida em <code>/goal_joint_states</code>:</p>
+<ol>
+<li>Limpa os buffers dos dois grupos sync</li>
+<li>Converte radianos para valor de posição do motor</li>
+<li>Adiciona offset de calibração</li>
+<li>Aplica inversão de sinal se necessário</li>
+<li>Executa <code>txPacket()</code> em ambos os grupos simultaneamente</li>
+</ol>
+<hr />
+<h2 id="robot-initializer">Robot Initializer</h2>
+<p><strong>Arquivo:</strong> <code>src/edrom_lowlevel/src/robot_initializer.cpp</code></p>
+<p>Coloca o robô em uma posição inicial segura ao inicializar o sistema.</p>
+<h3 id="sequencia-de-inicializacao">Sequência de Inicialização</h3>
+<ol>
+<li>Aguarda o serviço <code>/solve_ik</code> ficar disponível</li>
+<li>Requisita IK para perna direita: posição <code>(0, -feet_sep, 0)</code></li>
+<li>Requisita IK para perna esquerda: posição <code>(0, +feet_sep, 0)</code></li>
+<li>Aplica offset de -0.2 rad no <code>hip_pitch</code></li>
+<li>Publica resultado em <code>/goal_joint_states</code></li>
+</ol>
+<h3 id="parametros">Parâmetros</h3>
+<pre><code class="language-yaml">initial_com_height: 0.22      # Altura do centro de massa em metros
+initial_feet_separation: 0.0465  # Separação lateral dos pés em metros
+</code></pre>
+<hr />
+<h2 id="hardware-interface-opcional">Hardware Interface (Opcional)</h2>
+<p><strong>Arquivo:</strong> <code>src/edrom_lowlevel/include/edrom_lowlevel/aurea_hardware_interface.hpp</code></p>
+<p>Implementa <code>SystemInterface</code> do <code>ros2_control</code>. Disponível para integração futura com controllers do ROS2 Control.</p>
+<hr />
+<h2 id="calibracao-dos-motores">Calibração dos Motores</h2>
+<p>Para calibrar um motor específico, edite <code>motors_direct.yaml</code>:</p>
+<pre><code class="language-yaml">joints:
+  l_knee:
+    id: 15
+    protocol: 2.0
+    inverted: false
+    calibration_offset: -0.15  # Ajuste em radianos
+</code></pre>
+<p><strong>Processo:</strong></p>
+<ol>
+<li>Colocar o robô em pose plana (posição de referência)</li>
+<li>Ajustar <code>calibration_offset</code> para cada junta que precisar</li>
+<li>Salvar o arquivo e reiniciar o <code>direct_controller</code></li>
+<li>Verificar visualmente a pose resultante</li>
+</ol>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../bringup/" class="btn btn-neutral float-left" title="Bring UP"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../urdf/" class="btn btn-neutral float-right" title="URDF">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../bringup/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../urdf/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

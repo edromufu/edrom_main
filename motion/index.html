@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Motion - EDROM Docs</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Motion";
+        var mkdocs_page_input_path = "motion/index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EDROM Docs
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Installation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../setting-docker/">ROS2 Docker</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../setting-webots/">Webots</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../bringup/">Bring UP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../lowlevel/">Low Level</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../urdf/">URDF</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../dynamixel/">Dynamixel</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../simulation/">Simulation</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Motion</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#walking-engine">Walking Engine</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#launch">Launch</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#estados-de-caminhada">Estados de Caminhada</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#interface-ros2">Interface ROS2</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#parametros-principais">Parâmetros Principais</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#fluxo-de-controle-100-hz">Fluxo de Controle (100 Hz)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#comandos-de-teste">Comandos de Teste</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#cinematica-inversa-ik">Cinemática Inversa (IK)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#servico">Serviço</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#exemplo-de-chamada">Exemplo de chamada</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#kick-engine">Kick Engine</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#fases-do-chute">Fases do Chute</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#imu-driver">IMU Driver</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#vision-controller-controle-de-cabeca">Vision Controller (Controle de Cabeça)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#estados">Estados</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#parametros">Parâmetros</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#algoritmo">Algoritmo</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#interface-ros2_1">Interface ROS2</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#gerador-de-trajetorias">Gerador de Trajetórias</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EDROM Docs</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Motion</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="motion-geracao-de-movimento">Motion — Geração de Movimento</h1>
+<p>O sistema de motion do Aurea é composto por quatro módulos principais, todos dentro de <code>src/edrom_motion/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Módulo</th>
+<th>Tecnologia</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>aurea_walk</code></td>
+<td>C++ + Eigen3</td>
+<td>Walking engine + cinemática inversa</td>
+</tr>
+<tr>
+<td><code>aurea_kick</code></td>
+<td>C++</td>
+<td>Engine de chute (ROS2 Action)</td>
+</tr>
+<tr>
+<td><code>edrom_imu_driver</code></td>
+<td>Python</td>
+<td>Leitura do IMU via serial</td>
+</tr>
+<tr>
+<td><code>vision_controller</code></td>
+<td>Python</td>
+<td>Controle de cabeça (busca + rastreamento)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="walking-engine">Walking Engine</h2>
+<p><strong>Pacote:</strong> <code>aurea_walk</code>
+<strong>Arquivo:</strong> <code>src/edrom_motion/aurea_walk/src/walking_engine_node.cpp</code></p>
+<h3 id="launch">Launch</h3>
+<pre><code class="language-bash">ros2 launch aurea_walk walking.launch.py
+
+# Com teleop habilitado
+ros2 launch aurea_walk walking.launch.py teleop:=True
+</code></pre>
+<h3 id="estados-de-caminhada">Estados de Caminhada</h3>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IDLE</code></td>
+<td>Parado, sem movimento</td>
+</tr>
+<tr>
+<td><code>WALKING</code></td>
+<td>Caminhando</td>
+</tr>
+<tr>
+<td><code>IDLE_MARCH</code></td>
+<td>Marchando no lugar</td>
+</tr>
+<tr>
+<td><code>STOPPING</code></td>
+<td>Desacelerando</td>
+</tr>
+<tr>
+<td><code>HOMING</code></td>
+<td>Retornando à pose inicial</td>
+</tr>
+</tbody>
+</table>
+<h3 id="interface-ros2">Interface ROS2</h3>
+<table>
+<thead>
+<tr>
+<th>Direção</th>
+<th>Tópico/Serviço</th>
+<th>Tipo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscreve</td>
+<td><code>/cmd_vel</code></td>
+<td><code>geometry_msgs/Twist</code></td>
+</tr>
+<tr>
+<td>Subscreve</td>
+<td><code>/stop_walking</code></td>
+<td><code>std_msgs/Empty</code></td>
+</tr>
+<tr>
+<td>Publica</td>
+<td><code>/goal_joint_states</code></td>
+<td><code>sensor_msgs/JointState</code></td>
+</tr>
+<tr>
+<td>Serviço cliente</td>
+<td><code>/solve_ik</code></td>
+<td><code>aurea_walk/srv/SolveIK</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="parametros-principais">Parâmetros Principais</h3>
+<pre><code class="language-yaml"># Cinemática
+step_period: 0.6            # Tempo de um passo completo (s)
+com_height: 0.22            # Altura do centro de massa (m)
+step_height: 0.026          # Altura máxima do pé em swing (m)
+double_support_ratio: 0.15  # Proporção de suporte duplo
+feet_separation: 0.0425     # Distância lateral entre pés (m)
+
+# Controle
+update_frequency: 100.0     # Frequência da malha de controle (Hz)
+backlash_offset_hp: -0.1    # Compensação de folga no hip_pitch
+
+# Ganhos de compensação
+kp_gain_hip_roll: 5.0
+kp_gain_hip_pitch: -5.0     # Negativo: direção inversa
+kp_gain_knee: 5.0
+
+# Braços
+arm_swing_amplitude: 0.4    # Amplitude de balanço dos braços (rad)
+idle_shoulder_pitch: 0.7    # Pose idle: ombro pitch (rad)
+idle_shoulder_roll: -1.4    # Pose idle: ombro roll (rad)
+idle_elbow: -1.6            # Pose idle: cotovelo (rad)
+
+# Retorno à pose
+homing_duration: 2.0        # Duração do homing (s)
+</code></pre>
+<p><strong>Config:</strong> <code>src/edrom_motion/aurea_walk/configs/walking_params.yaml</code></p>
+<h3 id="fluxo-de-controle-100-hz">Fluxo de Controle (100 Hz)</h3>
+<pre><code>1. cmd_vel_callback() — recebe velocidade desejada (vx, vy, vtheta)
+2. main_loop():
+   a. Atualiza posição dos pés (ZMP + marcha oscilante)
+   b. Calcula posição alvo do torso
+   c. Requisita IK para perna direita e esquerda (/solve_ik)
+   d. Aguarda respostas do IK
+   e. Aplica compensação de gravidade (ganhos PID)
+   f. Adiciona balanço de braços sincronizado
+   g. Publica em /goal_joint_states
+</code></pre>
+<h3 id="comandos-de-teste">Comandos de Teste</h3>
+<pre><code class="language-bash"># Enviar velocidade de caminhada
+ros2 topic pub /cmd_vel geometry_msgs/msg/Twist \
+  &quot;{linear: {x: 0.1, y: 0.0, z: 0.0}, angular: {z: 0.3}}&quot;
+
+# Parar imediatamente
+ros2 topic pub /stop_walking std_msgs/msg/Empty &quot;{}&quot;
+</code></pre>
+<hr />
+<h2 id="cinematica-inversa-ik">Cinemática Inversa (IK)</h2>
+<p><strong>Arquivo:</strong> <code>src/edrom_motion/aurea_walk/src/ik_node.cpp</code></p>
+<p>Resolve 6 DOF de cada perna analiticamente usando a biblioteca Eigen3.</p>
+<h3 id="servico">Serviço</h3>
+<pre><code>Serviço: /solve_ik
+Tipo:    aurea_walk/srv/SolveIK
+
+Requisição:
+  geometry_msgs/Pose target_pose   # Posição/orientação alvo do pé
+  string leg_id                    # &quot;direita&quot; ou &quot;esquerda&quot;
+
+Resposta:
+  bool success
+  sensor_msgs/JointState result_joint_state
+</code></pre>
+<h3 id="exemplo-de-chamada">Exemplo de chamada</h3>
+<pre><code class="language-bash">ros2 service call /solve_ik aurea_walk/srv/SolveIK \
+  &quot;{leg_id: 'direita', target_pose: {position: {x: 0.0, y: -0.04, z: -0.22}, \
+  orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}&quot;
+</code></pre>
+<hr />
+<h2 id="kick-engine">Kick Engine</h2>
+<p><strong>Pacote:</strong> <code>aurea_kick</code>
+<strong>Arquivo:</strong> <code>src/edrom_motion/aurea_kick/src/kick_node.cpp</code></p>
+<p>Implementado como <strong>ROS2 Action</strong> (<code>aurea_kick::action::Kick</code>), permitindo feedback de progresso durante a execução.</p>
+<h3 id="fases-do-chute">Fases do Chute</h3>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Duração</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>0.8 s</td>
+<td>Deslocar ZMP para o pé de suporte</td>
+</tr>
+<tr>
+<td>B</td>
+<td>0.4 s</td>
+<td>Recuar o pé de chute</td>
+</tr>
+<tr>
+<td>C</td>
+<td>0.2 s</td>
+<td><strong>Chutar</strong> (movimento rápido)</td>
+</tr>
+<tr>
+<td>D</td>
+<td>0.4 s</td>
+<td>Voltar pé de chute</td>
+</tr>
+<tr>
+<td>E</td>
+<td>0.8 s</td>
+<td>Centralizar ZMP — retorno à postura neutra</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total:</strong> ~2.6 segundos por chute</p>
+<p><strong>Parâmetros:</strong></p>
+<pre><code class="language-yaml">x_amplitude: 0.08     # Distância de recuo/avanço do pé (m)
+z_height: 0.04        # Altura do pé durante o chute (m)
+
+kp_gain_hip_roll: 1.0
+kp_gain_hip_pitch: -10.0
+kp_gain_knee: 10.0
+backlash_hip_offset: -0.2
+</code></pre>
+<hr />
+<h2 id="imu-driver">IMU Driver</h2>
+<p><strong>Pacote:</strong> <code>edrom_imu_driver</code> (Python)</p>
+<p>Lê dados do IMU via comunicação serial com um Arduino.</p>
+<p><strong>Publicações:</strong></p>
+<ul>
+<li>Aceleração linear (m/s²)</li>
+<li>Velocidade angular (rad/s)</li>
+<li>Orientação (quaternion)</li>
+</ul>
+<p>Usado pelo <code>fall_interpreter.py</code> no módulo de comportamento para detectar quedas.</p>
+<hr />
+<h2 id="vision-controller-controle-de-cabeca">Vision Controller (Controle de Cabeça)</h2>
+<p><strong>Arquivo:</strong> <code>src/edrom_motion/vision_controller/vision_controller/search_and_track_node.py</code></p>
+<h3 id="estados">Estados</h3>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IDLE</code></td>
+<td>Cabeça parada</td>
+</tr>
+<tr>
+<td><code>SEARCHING</code></td>
+<td>Varre o campo procurando a bola</td>
+</tr>
+<tr>
+<td><code>TRACKING</code></td>
+<td>Rastreia a bola detectada</td>
+</tr>
+</tbody>
+</table>
+<h3 id="parametros">Parâmetros</h3>
+<pre><code class="language-yaml">image_width: 640
+image_height: 480
+kp_head_pan: 0.0007       # Ganho proporcional pan
+kp_head_tilt: 0.0007      # Ganho proporcional tilt
+pan_speed_rad_s: 0.8      # Velocidade de varredura
+pan_min_limit_rad: -1.3
+pan_max_limit_rad: 1.3
+tilt_initial_rad: 0.0
+tilt_min_limit_rad: -0.52
+tilt_max_limit_rad: 0.52
+</code></pre>
+<h3 id="algoritmo">Algoritmo</h3>
+<pre><code>Modo SEARCHING:
+  Varre head_pan de -1.3 até +1.3 rad
+  A cada extremo, incrementa head_tilt em 0.26 rad
+
+Modo TRACKING:
+  Erro pan  = center_x − bola_x
+  Erro tilt = center_y − bola_y
+  goal_pan  = atual_pan  + Kp × erro_pan
+  goal_tilt = atual_tilt + Kp × erro_tilt
+</code></pre>
+<h3 id="interface-ros2_1">Interface ROS2</h3>
+<table>
+<thead>
+<tr>
+<th>Direção</th>
+<th>Tópico</th>
+<th>Tipo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscreve</td>
+<td><code>vision2BhvTopic</code></td>
+<td><code>VisionData</code> (edrom_msgs)</td>
+</tr>
+<tr>
+<td>Publica</td>
+<td><code>/goal_joint_states</code></td>
+<td><code>sensor_msgs/JointState</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="gerador-de-trajetorias">Gerador de Trajetórias</h2>
+<p><strong>Arquivo:</strong> <code>src/edrom_motion/aurea_walk/src/trajectory_generator.cpp</code></p>
+<p>Gera trajetórias suaves entre poses usando:</p>
+<ul>
+<li>Splines cúbicas</li>
+<li>Interpolação de Bezier</li>
+<li>Sincronização temporal entre segmentos</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../simulation/" class="btn btn-neutral float-left" title="Simulation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../simulation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

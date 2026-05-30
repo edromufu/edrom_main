@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>URDF - EDROM Docs</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "URDF";
+        var mkdocs_page_input_path = "urdf/index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> EDROM Docs
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Installation</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../setting-docker/">ROS2 Docker</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../setting-webots/">Webots</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../bringup/">Bring UP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../lowlevel/">Low Level</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">URDF</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#arquivos">Arquivos</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#visualizacao-no-rviz2">Visualização no RViz2</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#estrutura-cinematica-20-dof">Estrutura Cinemática (20 DOF)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#cabeca-2-dof">Cabeça (2 DOF)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#bracos-3-dof-cada">Braços (3 DOF cada)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#pernas-6-dof-cada">Pernas (6 DOF cada)</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#mapeamento-completo-de-juntas">Mapeamento Completo de Juntas</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#propriedades-fisicas">Propriedades Físicas</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#configuracao-do-controlador">Configuração do Controlador</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../dynamixel/">Dynamixel</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../simulation/">Simulation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../motion/">Motion</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">EDROM Docs</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">URDF</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="urdf-modelo-do-robo-aurea">URDF — Modelo do Robô Aurea</h1>
+<p>O modelo cinemático e visual do Aurea é definido em URDF (Unified Robot Description Format),
+exportado do SolidWorks e utilizado tanto para visualização no RViz2 quanto para a simulação no Webots.</p>
+<h2 id="arquivos">Arquivos</h2>
+<table>
+<thead>
+<tr>
+<th>Arquivo</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/aurea_description/urdf/aurea_urdf_pkg.urdf</code></td>
+<td>URDF principal do Aurea (exportado SolidWorks, 1300+ linhas)</td>
+</tr>
+<tr>
+<td><code>src/aurea_description/config/joint_names_aurea_urdf_pkg.yaml</code></td>
+<td>Ordem das juntas para o controlador</td>
+</tr>
+<tr>
+<td><code>src/op3_description/urdf/robotis_op3.urdf.xacro</code></td>
+<td>URDF do OP3 (referência modular com xacro)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="visualizacao-no-rviz2">Visualização no RViz2</h2>
+<pre><code class="language-bash">ros2 launch aurea_description visualizar.launch.py
+</code></pre>
+<p><strong>Arquivo:</strong> <code>src/aurea_description/launch/visualizar.launch.py</code></p>
+<hr />
+<h2 id="estrutura-cinematica-20-dof">Estrutura Cinemática (20 DOF)</h2>
+<h3 id="cabeca-2-dof">Cabeça (2 DOF)</h3>
+<pre><code>base_link
+  └─ head_pan_link   (ID 1) ── rotação horizontal
+       └─ head_tilt_link  (ID 2) ── rotação vertical
+</code></pre>
+<h3 id="bracos-3-dof-cada">Braços (3 DOF cada)</h3>
+<pre><code>base_link
+  ├─ l_sho_pitch_link  (ID 7) ── pitch do ombro esquerdo
+  │    └─ l_sho_roll_link  (ID 5) ── roll do ombro esquerdo
+  │         └─ l_el_link  (ID 3) ── cotovelo esquerdo
+  │
+  └─ r_sho_pitch_link  (ID 8) ── pitch do ombro direito
+       └─ r_sho_roll_link  (ID 6) ── roll do ombro direito
+            └─ r_el_link  (ID 4) ── cotovelo direito
+</code></pre>
+<h3 id="pernas-6-dof-cada">Pernas (6 DOF cada)</h3>
+<pre><code>base_link
+  ├─ l_hip_yaw_link   (ID  9)
+  │    └─ l_hip_roll_link   (ID 11)
+  │         └─ l_hip_pitch_link  (ID 13)
+  │              └─ l_knee_link  (ID 15)
+  │                   └─ l_ank_pitch_link  (ID 17)
+  │                        └─ l_ank_roll_link  (ID 19)
+  │
+  └─ r_hip_yaw_link   (ID 10)
+       └─ r_hip_roll_link   (ID 12)
+            └─ r_hip_pitch_link  (ID 14)
+                 └─ r_knee_link  (ID 16)
+                      └─ r_ank_pitch_link  (ID 18)
+                           └─ r_ank_roll_link  (ID 20)
+</code></pre>
+<hr />
+<h2 id="mapeamento-completo-de-juntas">Mapeamento Completo de Juntas</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Nome da Junta</th>
+<th>ID</th>
+<th>Protocolo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>head_pan</code></td>
+<td>1</td>
+<td>1.0 (AX)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>head_tilt</code></td>
+<td>2</td>
+<td>1.0 (AX)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>l_sho_pitch</code></td>
+<td>7</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>l_sho_roll</code></td>
+<td>5</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>l_el</code></td>
+<td>3</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>r_sho_pitch</code></td>
+<td>8</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>r_sho_roll</code></td>
+<td>6</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>r_el</code></td>
+<td>4</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>r_hip_yaw</code></td>
+<td>10</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>r_hip_roll</code></td>
+<td>12</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>r_hip_pitch</code></td>
+<td>14</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>r_knee</code></td>
+<td>16</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>r_ank_pitch</code></td>
+<td>18</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>r_ank_roll</code></td>
+<td>20</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>l_hip_yaw</code></td>
+<td>9</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>l_hip_roll</code></td>
+<td>11</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>l_hip_pitch</code></td>
+<td>13</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>l_knee</code></td>
+<td>15</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>19</td>
+<td><code>l_ank_pitch</code></td>
+<td>17</td>
+<td>2.0 (MX)</td>
+</tr>
+<tr>
+<td>20</td>
+<td><code>l_ank_roll</code></td>
+<td>19</td>
+<td>2.0 (MX)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="propriedades-fisicas">Propriedades Físicas</h2>
+<ul>
+<li><strong>Base (tronco):</strong> massa 1.4383 kg</li>
+<li><strong>head_tilt:</strong> 0.06657 kg</li>
+<li>Todos os links incluem malhas <strong>STL</strong> para geometria visual e de colisão</li>
+</ul>
+<h2 id="configuracao-do-controlador">Configuração do Controlador</h2>
+<pre><code class="language-yaml"># src/aurea_description/config/joint_names_aurea_urdf_pkg.yaml
+controller_joint_names: [
+  '', 'head_pan', 'head_tilt',
+  'l_sho_pitch', 'l_sho_roll', 'l_el',
+  'r_sho_pitch', 'r_sho_roll', 'r_el',
+  'r_hip_yaw', 'r_hip_roll', 'r_hip_pitch', 'r_knee', 'r_ank_pitch', 'r_ank_roll',
+  'l_hip_yaw', 'l_hip_roll', 'l_hip_pitch', 'l_knee', 'l_ank_pitch', 'l_ank_roll'
+]
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../lowlevel/" class="btn btn-neutral float-left" title="Low Level"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../dynamixel/" class="btn btn-neutral float-right" title="Dynamixel">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../lowlevel/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../dynamixel/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
