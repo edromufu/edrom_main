@@ -25,7 +25,7 @@ class BodyAligner(Node):
         )
 
         # Publisher para rotação do corpo
-        self.body_rotation_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.body_rotation_pub = self.create_publisher(Twist, '/cmd_vel_align', 10)
 
         # Flags e variáveis internas
         self.flag = False

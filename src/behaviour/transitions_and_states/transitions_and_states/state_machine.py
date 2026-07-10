@@ -19,9 +19,9 @@ class StateMachine:
         Construtor da máquina de estados (Refatorada para Utility AI via Lista)
         """
         self.state = 'idle_march'
+        self.enter_time = time.time()
 
-        # Variáveis nativas do seu código original para tempo de estabilização
-        self.enter_time = None
+        # Variáveis nativas do código original para tempo de estabilização
         self.march_duration = 1.0
         self.idle_duration = 1.5
 
@@ -55,85 +55,79 @@ class StateMachine:
         self.state_msg.current_state = str(self.state)
         return self.state_msg
     
+    def change_state(self, new_state):
+        """
+        Método centralizador para transição de estados.
+        Garante que o relógio de estabilização seja resetado corretamente.
+        """
+        if self.state != new_state:
+            print(f'Transição feita: {self.state} -> {new_state}')
+            self.state = new_state
+            self.enter_time = time.time()
+
     def update_state(self):
         """
         Avalia todas as condições através da lista de controle.
-        O estado com maior prioridade descide a ação atual.
+        O estado com maior prioridade decide a ação atual.
         """
         control_list = []
         
+        # prioridades
         class PRIORITY:
             GETTING_UP = 100
+            KICK_IN_PROGRESS = 95  
             SEARCHING = 90
             STABILIZATION = 85
-            KICKING = 75
+            KICKING = 75           
             ALIGNING = 65
             WALKING = 60
-            KICK_DONE = 50
             POST_GETTING_UP = 40
+            IDLE = 0
 
-        #Adicionando a lista a condição de levantar
+        # 1. Avalia estabilização (mantém o robô preso ao estado pelo tempo mínimo necessário)
+        if self.state == 'idle_march' and (time.time() - self.enter_time) < self.march_duration:
+            control_list.append(('idle_march', PRIORITY.STABILIZATION))
+        elif self.state == 'idle' and (time.time() - self.enter_time) < self.idle_duration:
+            control_list.append(('idle', PRIORITY.STABILIZATION))
+
+        # 2. Condições absolutas de alta prioridade
         if self._getting_up_condition:
             control_list.append(('getting_up', PRIORITY.GETTING_UP))
 
-        #Adicionando a lista a condição de procurar a bola
+        if self._kick_done_condition:
+            control_list.append(('kicking', PRIORITY.KICK_IN_PROGRESS))
+
         if self._search_condition:
             control_list.append(('searching', PRIORITY.SEARCHING))
 
-        #Estabilização - a mesma coisa do codigo original, mas com o sistema de prioridade de lista.
-        # Mantemos o robô estabilizando dando uma prioridade alta temporária ao estado atual
-        if self.state == 'idle_march':
-            if self.enter_time is None:
-                self.enter_time = time.time()
-            if (time.time() - self.enter_time) < self.march_duration:
-                control_list.append(('idle_march', PRIORITY.STABILIZATION))
-            else:
-                self.enter_time = None  # Tempo acabou, a "trava" some da lista
-
-        elif self.state == 'idle':
-            if self.enter_time is None:
-                self.enter_time = time.time()
-            if (time.time() - self.enter_time) < self.idle_duration:
-                control_list.append(('idle', PRIORITY.STABILIZATION))
-            else:
-                self.enter_time = None
-
-        #Vendo se o robo está pronto para chutar, se não, ele vai para o estado de estabilização, exigindo pré-chute ou pré-alinhamento dependendo do estado atual, caso contrário, ele vai para o estado de chute.
-        if self._kick_condition:
-            if self.state in ['aligning', 'idle_march']:
-                control_list.append(('idle', PRIORITY.STABILIZATION))        # Exige pré-chute
-            elif self.state == 'walking':
-                control_list.append(('idle_march', PRIORITY.STABILIZATION))  # Exige pré-chute
-            else:
-                control_list.append(('kicking', PRIORITY.KICKING))
-
-        #Vendo se o robo precisa se alinhar, se não, ele vai para o estado de estabilização, exigindo pré-alinhamento dependendo do estado atual, caso contrário, ele vai para o estado de alinhamento.
-        if self._aligning_condition:
-            if self.state == 'walking':
-                control_list.append(('idle_march', PRIORITY.STABILIZATION))  # Exige pré-alinhamento
-            else:
-                control_list.append(('aligning', PRIORITY.ALIGNING))
-
-        #Andando :D
-        if self._walking_condition:
-            control_list.append(('walking', PRIORITY.WALKING))
-
-        #Caso tudo para o chute esteja pronto, adicione o chute a lista
-        if self._kick_done_condition:
-            control_list.append(('walking', PRIORITY.KICK_DONE))
-
-        #Caso eu caia, adicone a condição de levantar a lista
         if self.state == 'getting_up' and not self._getting_up_condition:
             control_list.append(('idle_march', PRIORITY.POST_GETTING_UP))
 
-        #So por segurança... nunca se sabe como esse tal dos computer funciona
-        if len(control_list) == 0:
-            control_list.append((self.state, 0))
+        # 3. Lógica de transição sequencial (Substitui os dicionários .get)
+        if self._kick_condition:
+            if self.state in ['walking', 'searching']:
+                control_list.append(('idle_march', PRIORITY.KICKING))
+            elif self.state in ['idle_march', 'aligning']:
+                control_list.append(('idle', PRIORITY.KICKING))
+            else:
+                control_list.append(('kicking', PRIORITY.KICKING))
 
+        elif self._aligning_condition:
+            if self.state in ['walking', 'searching']:
+                control_list.append(('idle_march', PRIORITY.ALIGNING))
+            else:
+                control_list.append(('aligning', PRIORITY.ALIGNING))
 
-        #----------------------------------------------------------
-        #Buscando o estado de maior prioridade na lista de controle
-        max_val = -9999
+        # 4. Ação padrão de movimentação
+        if self._walking_condition:
+            control_list.append(('walking', PRIORITY.WALKING))
+
+        # 5. Segurança Absoluta (Fallback)
+        # Se nenhuma condição for verdadeira, o robô retorna por padrão para 'idle_march'
+        control_list.append(('idle_march', PRIORITY.IDLE))
+
+        # SELECIONANDO MAIOR PRIORIDADE DA LISTA
+        max_val = -1
         novo_estado = self.state
 
         for estado, prioridade in control_list:
@@ -141,15 +135,8 @@ class StateMachine:
                 max_val = prioridade
                 novo_estado = estado
 
-        #----------------------------------------------------------
-        #Atualizando o estado
-        if novo_estado != self.state:
-            print(f'Transição feita: {self.state} -> {novo_estado}')
-            self.state = novo_estado
-            
-            # Se a prioridade forçou a saída da estabilização , reseta o relógio
-            if self.state not in ['idle_march', 'idle']:
-                self.enter_time = None
+        # Executa a transição de estado de forma centralizada
+        self.change_state(novo_estado)
 
 
     # ----- FUNÇÕES UPDATE CONDITION -----

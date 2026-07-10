@@ -36,7 +36,7 @@ class SearchingRoutine(Node):
         # Publisher para comandar o especialista da cabeça
         self.head_control_pub = self.create_publisher(String, '/head_control/state', 10)
         # Publisher para comandar o corpo
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel_search', 10)
 
         # --- Timer ---
         self.timer = self.create_timer(self.timer_period, self.control_loop)
@@ -56,9 +56,7 @@ class SearchingRoutine(Node):
 
     def control_loop(self):
         """Se a rotina estiver ativa, envia os comandos para os especialistas."""
-        if not self.is_active:
-            # Se a rotina não está ativa, não fazemos nada. Outra rotina (ex: walking) está no controle.
-            return
+
 
         # --- Comandos para os especialistas ---
 

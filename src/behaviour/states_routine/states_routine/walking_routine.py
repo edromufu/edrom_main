@@ -46,8 +46,6 @@ class WalkingRoutine(Node):
 
         self.timer_period = 0.05  # 20 Hz
 
-        # --- Subscribers ---
-        # Ouve as ordens da StateMachine principal
         self.state_sub = self.create_subscription(
             CurrentStateMsg, '/transitions_and_states/state_machine', self.state_callback, 10)
         
@@ -63,7 +61,7 @@ class WalkingRoutine(Node):
         # Comanda o especialista da cabeça
         self.head_control_pub = self.create_publisher(String, '/head_control/state', 10)
         # Comanda o corpo (motor de caminhada)
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel_walk', 10)
 
         # --- Timer ---
         self.timer = self.create_timer(self.timer_period, self.control_loop)
@@ -101,10 +99,6 @@ class WalkingRoutine(Node):
 
     def control_loop(self):
         """Se a rotina estiver ativa, executa a sub-rotina correspondente."""
-        if not self.is_active:
-            # Garante que nenhum comando de velocidade seja enviado se a rotina estiver inativa
-            self.cmd_vel_pub.publish(Twist())
-            return
 
         # --- Ações Comuns a Todos os Sub-estados Ativos ---
         # 1. Comanda o especialista da cabeça para ficar em modo de rastreamento
@@ -119,9 +113,6 @@ class WalkingRoutine(Node):
             self.execute_body_alignment()
         elif self.current_fsm_state == 'aligning_foot':
             self.execute_foot_alignment()
-        else:
-            # Estado desconhecido ou de transição, para por segurança
-            self.cmd_vel_pub.publish(Twist())
     
     def execute_walk_forward(self):
         """Comanda o robô para andar para frente."""

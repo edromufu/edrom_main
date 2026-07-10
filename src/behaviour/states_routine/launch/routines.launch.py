@@ -1,14 +1,21 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
+    config_file = os.path.join(
+    get_package_share_directory('states_routine'),
+    'config',
+    'twist_mux_params.yaml'
+    )
     return LaunchDescription([
-        Node(
-            package='states_routine',
-            executable='aligning_body_routine',
-            name='aligning_body_routine',
-            output='screen'
-        ),
+        # Node(
+        #     package='twist_mux',
+        #     executable='twist_mux',
+        #     name='twist_mux',
+        #     parameters=[config_file],
+        # ),
         Node(
             package='states_routine',
             executable='walking_routine',

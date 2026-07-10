@@ -75,4 +75,4 @@ class BehaviourParameters:
         self.yCenterBottomLimit = 6 * self.cameraHeight / 10
         self.yCenterTopLimit = 4 * self.cameraHeight / 10
 
-        self.closeSize = 80 * 80
+        self.closeSize = 40 * 40
