@@ -1,81 +1,51 @@
 #!/usr/bin/env python3
-#coding=utf-8
+"""Run ROS callbacks and Supervisor updates on the Webots controller thread."""
 
-'''
-NOTA: Como a simulação foi desenvolvida com base em uma em ROS1, os comentários são de partes 
-que não foram implementadas, assim ao realizar o ros2 launch, será executado apenas o que estiver funcionando
-
-Por hora apenas é executada a classe RobotSensors().
-'''
+import os
 
 import rclpy
 from rclpy.node import Node
 from controller import Supervisor
+
+from .field_bridge import FieldBridge
 from .sensors_update import RobotSensors
-#from .move_head import HeadMover
-#from .robot_3D_moves import Robot3DMover
-#from .sim_page_exec import RobotPagesExec
 
-#No ROS2, herda-se um nó para maior encapsulamento e trazer as funções naturais de um nó ROS2
+
 class BhvIndependentSim(Node):
-    
     def __init__(self):
-        super().__init__('bhv_simulator_node') 
-        """
-        Construtor:
-        - Faz a chamada de funções para definir as variáveis de node, field e ros de cada componente da simulação:
-            -> Motores da cabeça;
-            -> Acelerômetro;
-            -> Câmera.
-        """
+        super().__init__('bhv_simulator_node')
         self.general_supervisor = Supervisor()
+        self.timestep = int(self.general_supervisor.getBasicTimeStep())
+        self.field_bridge = FieldBridge(self, self.general_supervisor)
+        # Camera rendering is unnecessary for ground-truth trajectory tests.
+        sensors = self.declare_parameter('enable_sensors', os.getenv('BHV_SIM_ENABLE_SENSORS', 'false').lower() == 'true').value
+        self.robot_sensors = RobotSensors(self, self.general_supervisor) if sensors else None
 
-        self.robot_sensors = RobotSensors(self, self.general_supervisor)
-        #self.robot_head_requisitions = HeadMover(self, self.general_supervisor)
-        #self.robot_3D_move_requisitions = Robot3DMover(self.general_supervisor)
-        #self.robot_pages_requisitions = RobotPagesExec(self.general_supervisor)
-
-    
-    #Função para loopar os updates dos sensores durante a execução da simulação
     def start(self):
-        while self.general_supervisor.step(32) != -1 and rclpy.ok():
+        while rclpy.ok():
+            rclpy.spin_once(self, timeout_sec=0.0)
+            self.field_bridge.move(self.timestep / 1000.0)
+            if self.general_supervisor.step(self.timestep) == -1:
+                break
+            self.field_bridge.publish()
+            if self.robot_sensors is not None:
                 self.robot_sensors.callClock()
-                #self.robot_3D_move_requisitions.callClock()
-                #self.robot_head_requisitions.callClock()
-                #self.ballUpdate()
-    '''
-    def init_ball(self):
-        self.ball = self.general_supervisor.getFromDef('ball')
-        self.ball_trans_field = self.ball.getField("translation")
-    
-    def ballUpdate(self):
-        [x, y, z] = self.ball_trans_field.getSFVec3f()
 
-        if z < 2 and x <=0:
-            self.ball.addForce([0,0,0.005],False)
-        if z >= 2 and x <2.5:
-            self.ball.addForce([0.005,0,0],False)
-        if z >= -2 and x >=2.5:
-            self.ball.addForce([0,0,-0.005],False)
-        if z <= -2 and x >0:
-            self.ball.addForce([-0.005,0,0],False)
-    '''
-    
+
 def main(args=None):
     rclpy.init(args=args)
-    
-    simulator = BhvIndependentSim()
-    
+    simulator = None
     try:
+        simulator = BhvIndependentSim()
         simulator.start()
-        rclpy.spin(simulator)
-    except Exception as e:
-        simulator.get_logger().error(f'Erro na simulação: {str(e)}')
+    except KeyboardInterrupt:
+        pass
     finally:
-        simulator.destroy_node()
-        rclpy.shutdown()
+        if simulator is not None:
+            simulator.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
     main()
-

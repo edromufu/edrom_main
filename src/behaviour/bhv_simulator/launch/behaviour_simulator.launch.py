@@ -1,7 +1,9 @@
 import os
 from launch import LaunchDescription
-from launch.actions import SetEnvironmentVariable, ExecuteProcess
-from launch.substitutions import EnvironmentVariable
+from launch.actions import SetEnvironmentVariable, ExecuteProcess, DeclareLaunchArgument
+from launch.substitutions import EnvironmentVariable, LaunchConfiguration
+from launch.conditions import IfCondition
+from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 def generate_launch_description():
@@ -17,7 +19,7 @@ def generate_launch_description():
     python_path = SetEnvironmentVariable(
         'PYTHONPATH',
         [
-            EnvironmentVariable('WEBOTS_HOME', default_value=''), '/lib/controller/python310:',
+            EnvironmentVariable('WEBOTS_HOME', default_value='/usr/local/webots'), '/lib/controller/python:',
              EnvironmentVariable('PYTHONPATH', default_value='')
         ]
     )
@@ -25,11 +27,17 @@ def generate_launch_description():
     # Inicia o executável do Webots.
     # Webots irá abrir e executar o controlador "bhv_sim" definido no .wbt
     webots_process = ExecuteProcess(
-        cmd=['webots', world_file],
+        cmd=['webots', '--stdout', '--stderr', '--mode=realtime', world_file],
         output='screen'
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('planning', default_value='true'),
+        DeclareLaunchArgument('sensors', default_value='false'),
+        SetEnvironmentVariable('BHV_SIM_ENABLE_SENSORS', LaunchConfiguration('sensors')),
+        Node(package='bhv_simulator', executable='trajectory_planner',
+             condition=IfCondition(LaunchConfiguration('planning')),
+             parameters=[{'use_sim_time': True}], output='screen'),
         python_path,
         webots_process
     ])

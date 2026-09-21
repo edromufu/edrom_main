@@ -39,7 +39,7 @@ def generate_launch_description():
     )
     return LaunchDescription([
         webots,
-        #behaviour_launch,
+        behaviour_launch,
         my_robot_driver,
         vision_onnx_launch,
         launch.actions.RegisterEventHandler(

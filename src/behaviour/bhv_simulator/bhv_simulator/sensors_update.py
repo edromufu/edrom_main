@@ -33,6 +33,9 @@ class RobotSensors():
         """
         self.general_supervisor = supervisor
 
+        self.sim_hor_head_motor = self.sim_ver_head_motor = None
+        self.head_pos_publisher = self.accel_publisher = self.pubImage = None
+        self.timestep = int(supervisor.getBasicTimeStep())
         self.init_head()
         self.init_accel()
         self.init_cam()
@@ -94,7 +97,7 @@ class RobotSensors():
             self.node.get_logger().error("Device 'Accelerometer' não encontrado.")
             return
 
-        self.accel_sensor.enable(32)
+        self.accel_sensor.enable(self.timestep)
 
         # QoS para tópicos de sensor
         qos_profile = QoSProfile(
@@ -119,7 +122,7 @@ class RobotSensors():
             self.node.get_logger().error("Device 'Camera' não encontrado.")
             return
 
-        self.camera_sensor.enable(32)
+        self.camera_sensor.enable(self.timestep)
 
         qos_profile = QoSProfile(
             reliability=ReliabilityPolicy.BEST_EFFORT,
@@ -130,9 +133,9 @@ class RobotSensors():
 
         self.image_msg = visionSimImage()
         self.image_msg.encoding = 'bgra8'
-        self.image_msg.height = 416
-        self.image_msg.width = 416
-        self.image_msg.step = 1664
+        self.image_msg.height = self.camera_sensor.getHeight()
+        self.image_msg.width = self.camera_sensor.getWidth()
+        self.image_msg.step = self.image_msg.width * 4
     
     #Função chamada no loop para publicar continuamente a leitura do acelerômetro
     def accelUpdate(self):
