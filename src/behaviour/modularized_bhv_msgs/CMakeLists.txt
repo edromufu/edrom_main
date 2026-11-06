@@ -20,6 +20,9 @@ find_package(geometry_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StateMachineMsg.msg"
   "msg/CurrentStateMsg.msg"
+  "msg/GameControllerPlayer.msg"
+  "msg/GameControllerTeam.msg"
+  "msg/GameControllerMsg.msg"
   "srv/MoveRequest.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )
