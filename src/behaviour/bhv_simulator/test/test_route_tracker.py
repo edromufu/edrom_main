@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from bhv_simulator.trajectory_navigation import RouteTracker, path_velocity, ROBOT_RADIUS, MARGIN
 from bhv_simulator.field_geometry import integrate_velocity
-from bhv_simulator.planning.know import path_is_clear
+from behaviour.bhv_simulator.bhv_simulator.path_planning.hybridplanner import path_is_clear
 
 OBSTACLES = [dict(x=1.1, y=0., raio=.2), dict(x=2.1, y=.8, raio=.2), dict(x=2., y=-.9, raio=.2)]
 

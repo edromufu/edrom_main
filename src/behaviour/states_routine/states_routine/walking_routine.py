@@ -9,6 +9,9 @@ from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from edrom_msgs.msg import VisionData
 
+from nav_msgs.msg import Path
+from std_msgs.msg import Float64MultiArray
+
 class WalkingRoutine(Node):
     """
     Nó Gerente da Rotina de Caminhada e Alinhamento.
@@ -22,6 +25,8 @@ class WalkingRoutine(Node):
         # --- Variáveis de Controle ---
         self.is_active = False
         self.current_fsm_state = "" # Guarda o estado atual da FSM principal
+        self.planned_positions = []   # Array das posições (x, y)
+        self.planned_velocities = []  # Array das velocidades (dx, dy, psi)
 
         # --- Parâmetros ---
         self.declare_parameter('walk_speed_x', 0.1,)
@@ -46,6 +51,12 @@ class WalkingRoutine(Node):
 
         self.timer_period = 0.05  # 20 Hz
 
+        #importando as informações do path planner
+        self.pos_array_sub = self.create_subscription( 
+            Path, '/planning/positions_array', self.positions_callback, 10)
+        self.vel_array_sub = self.create_subscription(
+            Float64MultiArray, '/planning/velocities_array', self.velocities_callback, 10)
+
         self.state_sub = self.create_subscription(
             CurrentStateMsg, '/transitions_and_states/state_machine', self.state_callback, 10)
         
@@ -67,6 +78,17 @@ class WalkingRoutine(Node):
         self.timer = self.create_timer(self.timer_period, self.control_loop)
         
         self.get_logger().info("Rotina de Caminhada e Alinhamento pronta e ouvindo ordens.")
+
+    def positions_callback(self, msg: Path):
+        """Armazena as posições planificadas."""
+        self.planned_positions = [(p.pose.position.x, p.pose.position.y) for p in msg.poses]
+
+    def velocities_callback(self, msg: Float64MultiArray):
+        """Armazena as velocidades planificadas (dx, dy, psi)."""
+        data = msg.data
+        self.planned_velocities = [
+            (data[i], data[i + 1], data[i + 2]) for i in range(0, len(data) - 2, 3)
+        ]
 
     def state_callback(self, msg):
         """Ativa ou desativa a rotina e armazena o estado atual."""
@@ -115,11 +137,18 @@ class WalkingRoutine(Node):
             self.execute_foot_alignment()
     
     def execute_walk_forward(self):
-        """Comanda o robô para andar para frente."""
+        """Comanda o robô usando o array de velocidades (dx, dy, psi) gerado pelo Path Planning."""
         twist_command = Twist()
-        twist_command.linear.x = self.walk_speed_x
+        if self.planned_velocities:
+            dx, dy, psi = self.planned_velocities[0]
+            twist_command.linear.x = float(dx)
+            twist_command.linear.y = float(dy)
+            twist_command.angular.z = float(psi)
+        else:
+            #fallback caso o path planner ainda não tenha publicado um caminho
+            twist_command.linear.x = self.walk_speed_x
+
         self.cmd_vel_pub.publish(twist_command)
-        self.get_logger().info("Executando: Andar para frente.", throttle_duration_sec=1)
 
     def execute_body_alignment(self):
         """Comanda o robô para girar no eixo até alinhar o corpo com a cabeça."""
