@@ -58,7 +58,7 @@ def compute_simulated_velocities(path, initial_yaw, max_linear=0.2, max_angular=
     return velocities
 
 
-class PathPlannerRealNode(Node):
+class TrajectoryPlanner(Node):
     """
     Canal de entrada esperado (/planning/world_state - Float64MultiArray):
     [min_x, max_x, min_y, max_y,   # 0..3: Dimensões do campo (m)
@@ -210,7 +210,7 @@ class PathPlannerRealNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PathPlannerRealNode()
+    node = TrajectoryPlanner()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):

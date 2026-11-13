@@ -65,7 +65,8 @@ def compute_simulated_velocities(path, initial_yaw, max_linear=0.5, max_angular=
     return velocities
 
 
-class PathPlannerSimNode(Node):
+
+class SimulatedPathPlanner(Node):
     def __init__(self):
         super().__init__('path_planner_sim_node')
 
@@ -203,7 +204,7 @@ class PathPlannerSimNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = PathPlannerSimNode()
+    node = SimulatedPathPlanner()
     try:
         rclpy.spin(node)
     except (KeyboardInterrupt, ExternalShutdownException):
