@@ -2,12 +2,12 @@
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-from bhv_simulator import trajectory_planner
+from behaviour.bhv_simulator.bhv_simulator import trajectory_plannerasd
 
 
 def test_shutdown_does_not_publish(monkeypatch):
-    monkeypatch.setattr(trajectory_planner.rclpy, 'ok', lambda: False)
+    monkeypatch.setattr(trajectory_plannerasd.rclpy, 'ok', lambda: False)
     node = SimpleNamespace(inputs={}, path_pub=Mock(), velocity_pub=Mock())
-    trajectory_planner.TrajectoryPlanner.update(node)
+    trajectory_plannerasd.TrajectoryPlanner.update(node)
     node.path_pub.publish.assert_not_called()
     node.velocity_pub.publish.assert_not_called()
