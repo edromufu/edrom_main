@@ -14,15 +14,13 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Seu Nome',
-    maintainer_email='seu_email@email.com',
     description='Pacote de Path Planning',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'trajectory_planner = path_planning.trajectory_planner:main',
-            'simulated_path_planning = simulated_path_planning.sumulated_path_planning:main'
+            'simulated_path_planning = simulated_path_planning.simulated_path_planning:main'
         ],
     },
 )
