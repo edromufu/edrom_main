@@ -18,10 +18,10 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 0.6);
-  this->declare_parameter<double>("com_height", 0.22);
-  this->declare_parameter<double>("step_height", 0.026);
-  this->declare_parameter<double>("double_support_ratio", 0.15);
+  this->declare_parameter<double>("step_period", 0.3);
+  this->declare_parameter<double>("com_height", 0.24);
+  this->declare_parameter<double>("step_height", 0.048);
+  this->declare_parameter<double>("double_support_ratio", 0.1);
   this->declare_parameter<double>("feet_separation", 0.0425);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
   this->declare_parameter<std::string>("joint_command_topic", "/goal_joint_states");
@@ -31,7 +31,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.1); //-0.32
+  this->declare_parameter<double>("backlash_offset_hp", -0.22); //-0.32
   //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);
@@ -131,7 +131,7 @@ void WalkingEngineNode::start_new_step()
   torso_start_ = torso_;
   swing_start_ = *swing_foot_;
 
-  RCLCPP_INFO(this->get_logger(), "Iniciando novo passo. Estado: %d, Apoio: %s", current_state_, support_foot_->is_left ? "Esquerdo" : "Direito");
+  //RCLCPP_INFO(this->get_logger(), "Iniciando novo passo. Estado: %d, Apoio: %s", current_state_, support_foot_->is_left ? "Esquerdo" : "Direito");
 }
 
 void WalkingEngineNode::initialize_robot_model()
@@ -275,9 +275,9 @@ void WalkingEngineNode::run_forward_kinematics(
     }
 
     if(!unprocessed_links.empty()) {
-        RCLCPP_ERROR(this->get_logger(), "Erro de FK: Loop ou parente faltando no modelo do robô. Links não processados:");
+        //RCLCPP_ERROR(this->get_logger(), "Erro de FK: Loop ou parente faltando no modelo do robô. Links não processados:");
         for(const auto& name : unprocessed_links){
-            RCLCPP_ERROR(this->get_logger(), "- %s (pai: %s)", name.c_str(), robot_model_.at(name).parent_name.c_str());
+            //RCLCPP_ERROR(this->get_logger(), "- %s (pai: %s)", name.c_str(), robot_model_.at(name).parent_name.c_str());
         }
     }
 }
@@ -382,7 +382,7 @@ void WalkingEngineNode::stop_command_callback(const std_msgs::msg::Empty::Shared
   std::lock_guard<std::mutex> lock(stop_mutex_);
   
   if (current_state_ == WALKING || current_state_ == IDLE_MARCH) {
-    RCLCPP_INFO(this->get_logger(), "Comando de parada recebido. Finalizando o passo atual...");
+    //RCLCPP_INFO(this->get_logger(), "Comando de parada recebido. Finalizando o passo atual...");
     stop_requested_ = true;
   }
 }
@@ -416,7 +416,7 @@ void WalkingEngineNode::main_loop()
   }else if (current_state_ == STOPPING){
     // Se estávamos a parar, o último passo foi concluído.
       // Em vez de ir para IDLE, agora vamos para HOMING.
-      RCLCPP_INFO(this->get_logger(), "Parada concluída. Iniciando movimento para a pose inicial (Homing).");
+      //RCLCPP_INFO(this->get_logger(), "Parada concluída. Iniciando movimento para a pose inicial (Homing).");
       current_state_ = HOMING;
       
       // Guarda as posições atuais para iniciar a interpolação do homing
@@ -427,7 +427,7 @@ void WalkingEngineNode::main_loop()
 
   }else if (stop_now) {
       current_state_ = STOPPING;
-      RCLCPP_INFO(this->get_logger(), "Transição para o estado STOPPING.");
+      //RCLCPP_INFO(this->get_logger(), "Transição para o estado STOPPING.");
   }else if (current_state_ == IDLE) {
     if (should_walk) {
       current_state_ = WALKING;
@@ -599,7 +599,7 @@ void WalkingEngineNode::homing_loop()
 
   // Ao final do movimento, transita para o estado IDLE
   if (t_homing_ >= homing_duration_) {
-    RCLCPP_INFO(this->get_logger(), "Pose inicial alcançada. Entrando em estado IDLE.");
+    //RCLCPP_INFO(this->get_logger(), "Pose inicial alcançada. Entrando em estado IDLE.");
     current_state_ = IDLE;
     // Zera as poses para garantir consistência
     torso_ = torso_home_target;
@@ -625,11 +625,11 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         response->result_joint_state.position.end());
       ik_responses_received_++;
     } else {
-      RCLCPP_WARN(this->get_logger(), "IK para uma perna falhou, comando não será enviado.");
+      //RCLCPP_WARN(this->get_logger(), "IK para uma perna falhou, comando não será enviado.");
       ik_responses_received_ = -1;
     }
   } catch (const std::exception & e) {
-    RCLCPP_ERROR(this->get_logger(), "Exceção no callback do serviço de IK: %s", e.what());
+    //RCLCPP_ERROR(this->get_logger(), "Exceção no callback do serviço de IK: %s", e.what());
     ik_responses_received_ = -1;
   }
 
@@ -691,7 +691,7 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
         if (final_angles.count("r_hip_pitch")) final_angles["r_hip_pitch"] += backlash_offset_hp_;
         if (final_angles.count("l_hip_pitch")) final_angles["l_hip_pitch"] += backlash_offset_hp_;
 
-      RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Detalhes da Compensação (t=%.2f) ---", t_step_);
+      /*RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Detalhes da Compensação (t=%.2f) ---", t_step_);
       for (const auto& pair : gravity_offsets) { // Usa a variável correta
           std::string joint_name = pair.first;
           double raw_offset = pair.second;
@@ -704,8 +704,8 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
                   final_angles.at(joint_name)
               );
           }
-      }
-      RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Fim do Relatório ---");
+      }*/
+      //RCLCPP_INFO(this->get_logger(), "--- [DEPURAÇÃO] Fim do Relatório ---");
 
         combined_joint_state_.name.clear();
         combined_joint_state_.position.clear();

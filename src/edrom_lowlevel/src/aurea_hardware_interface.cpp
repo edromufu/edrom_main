@@ -24,7 +24,7 @@ hardware_interface::CallbackReturn AureaHardwareInterface::on_init(const hardwar
   for (size_t i = 0; i < info_.joints.size(); ++i) {
     motor_ids_[i] = std::stoi(info_.joints[i].parameters.at("id"));
     motor_protocols_[i] = std::stof(info_.joints[i].parameters.at("protocol"));
-    // O parâmetro 'inverted' é opcional, padrão para 'false'
+    // O parâmetro 'invertededrom_main' é opcional, padrão para 'false'
     if (info_.joints[i].parameters.count("inverted")) {
         motor_inversions_[i] = (info_.joints[i].parameters.at("inverted") == "true");
     }
