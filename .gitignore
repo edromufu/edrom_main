@@ -25,3 +25,8 @@ __pycache__/
 
 # Docs
 site/
+
+# Claude
+.claude/
+CLAUDE.md
+.mcp.json

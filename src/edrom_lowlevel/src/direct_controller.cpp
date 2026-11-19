@@ -33,6 +33,7 @@ DirectController::DirectController() : Node("direct_controller")
 
   groupSyncWriteV1_ = new dynamixel::GroupSyncWrite(portHandler_, packetHandlerV1_, ADDR_AX_GOAL_POSITION, LEN_AX_GOAL_POSITION);
   groupSyncWriteV2_ = new dynamixel::GroupSyncWrite(portHandler_, packetHandlerV2_, ADDR_MX_GOAL_POSITION, LEN_MX_GOAL_POSITION);
+  groupSyncReadV2_ = new dynamixel::GroupSyncRead(portHandler_, packetHandlerV2_, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION);
 
   if (!portHandler_->openPort()) {
     RCLCPP_FATAL(this->get_logger(), "Falha ao abrir a porta %s", usb_port.c_str());
@@ -53,8 +54,38 @@ DirectController::DirectController() : Node("direct_controller")
   }
   RCLCPP_INFO(this->get_logger(), "Torque habilitado em todos os motores.");
 
+  RCLCPP_INFO(this->get_logger(), "--- Verificando resposta individual dos motores (ping) ---");
+  for (const auto &pair : motors_) {
+    const auto &name = pair.first;
+    const auto &config = pair.second;
+    dynamixel::PacketHandler *handler = (config.protocol == 1.0) ? packetHandlerV1_ : packetHandlerV2_;
+    uint8_t dxl_error = 0;
+    int comm_result = handler->ping(portHandler_, config.id, &dxl_error);
+    if (comm_result != COMM_SUCCESS) {
+      RCLCPP_ERROR(this->get_logger(), "Motor '%s' (ID %d) NAO respondeu ao ping, excluido do feedback: %s",
+        name.c_str(), config.id, handler->getTxRxResult(comm_result));
+      continue;
+    }
+
+    if (dxl_error != 0) {
+      RCLCPP_ERROR(this->get_logger(), "Motor '%s' (ID %d) respondeu com erro de hardware: %s",
+        name.c_str(), config.id, handler->getRxPacketError(dxl_error));
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Motor '%s' (ID %d) OK", name.c_str(), config.id);
+    }
+
+    // Motor respondeu (com ou sem erro de hardware), entao entra no feedback
+    if (config.protocol == 2.0) {
+      groupSyncReadV2_->addParam(config.id);
+    }
+  }
+
   subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
     "/goal_joint_states", 10, std::bind(&DirectController::jointStateCallback, this, std::placeholders::_1));
+
+  feedback_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/feedback", 10);
+  feedback_timer_ = this->create_wall_timer(
+    std::chrono::milliseconds(20), std::bind(&DirectController::feedbackTimerCallback, this));
 }
 
 // Destrutor: Desliga o torque e fecha a porta serial por segurança
@@ -123,6 +154,43 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
   if(param_added_v2) groupSyncWriteV2_->txPacket();
 }
 
+// Timer: Lê a posição atual dos motores MX-106 via GroupSyncRead e publica em /feedback
+void DirectController::feedbackTimerCallback()
+{
+  int comm_result = groupSyncReadV2_->txRxPacket();
+  if (comm_result != COMM_SUCCESS) {
+    RCLCPP_WARN(this->get_logger(), "Falha no GroupSyncRead: %s", packetHandlerV2_->getTxRxResult(comm_result));
+    return;
+  }
+
+  sensor_msgs::msg::JointState feedback_msg;
+  feedback_msg.header.stamp = this->get_clock()->now();
+
+  for (const auto &pair : motors_) {
+    const auto &joint_name = pair.first;
+    const auto &config = pair.second;
+
+    if (config.protocol != 2.0) continue;
+
+    if (!groupSyncReadV2_->isAvailable(config.id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION)) {
+      continue;
+    }
+
+    uint32_t raw_position = groupSyncReadV2_->getData(config.id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION);
+    double position = value_to_rad(raw_position, config.protocol);
+
+    position -= config.calibration_offset;
+    if (config.inverted) {
+      position *= -1.0;
+    }
+
+    feedback_msg.name.push_back(joint_name);
+    feedback_msg.position.push_back(position);
+  }
+
+  feedback_publisher_->publish(feedback_msg);
+}
+
 // Função auxiliar para conversão
 int DirectController::rad_to_value(double rad, float protocol)
 {
@@ -130,6 +198,16 @@ int DirectController::rad_to_value(double rad, float protocol)
     return static_cast<int>((rad + M_PI) * (4095.0 / (2.0 * M_PI)));
   } else { // AX-12A (0 a 1023 para 300 graus)
     return static_cast<int>((rad + 150.0 * M_PI / 180.0) * (1023.0 / (300.0 * M_PI / 180.0)));
+  }
+}
+
+// Função auxiliar para conversão inversa (valor bruto do motor -> radianos)
+double DirectController::value_to_rad(int value, float protocol)
+{
+  if (protocol == 2.0) { // MX-106 (0 a 4095 para 360 graus)
+    return static_cast<double>(value) * (2.0 * M_PI / 4095.0) - M_PI;
+  } else { // AX-12A (0 a 1023 para 300 graus)
+    return static_cast<double>(value) * (300.0 * M_PI / 180.0 / 1023.0) - 150.0 * M_PI / 180.0;
   }
 }
 

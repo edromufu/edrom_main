@@ -18,6 +18,8 @@
   <exec_depend>rosidl_default_runtime</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>dynamixel_sdk</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
 

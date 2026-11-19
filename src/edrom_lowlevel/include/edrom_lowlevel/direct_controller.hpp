@@ -11,6 +11,8 @@
 #define ADDR_MX_TORQUE_ENABLE           64
 #define ADDR_MX_GOAL_POSITION           116
 #define LEN_MX_GOAL_POSITION            4
+#define ADDR_MX_PRESENT_POSITION        132
+#define LEN_MX_PRESENT_POSITION         4
 
 #define ADDR_AX_TORQUE_ENABLE           24
 #define ADDR_AX_GOAL_POSITION           30
@@ -31,17 +33,22 @@ public:
 
 private:
   void jointStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
+  void feedbackTimerCallback();
   int rad_to_value(double rad, float protocol);
+  double value_to_rad(int value, float protocol);
 
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr subscription_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr feedback_publisher_;
+  rclcpp::TimerBase::SharedPtr feedback_timer_;
   std::map<std::string, MotorConfig> motors_;
 
   dynamixel::PortHandler *portHandler_;
   dynamixel::PacketHandler *packetHandlerV1_;
   dynamixel::PacketHandler *packetHandlerV2_;
-  
+
   dynamixel::GroupSyncWrite *groupSyncWriteV1_;
   dynamixel::GroupSyncWrite *groupSyncWriteV2_;
+  dynamixel::GroupSyncRead *groupSyncReadV2_;
 };
 
 #endif // DIRECT_CONTROLLER_HPP_

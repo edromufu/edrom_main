@@ -10,7 +10,14 @@ from launch.conditions import IfCondition
 
 def generate_launch_description():
     pkg_dir = get_package_share_directory('aurea_walk')
-    
+    urdf_path = os.path.join(
+        get_package_share_directory('aurea_description'),
+        'urdf',
+        'aurea_urdf_pkg.urdf'
+    )
+    with open(urdf_path, 'r') as f:
+        robot_description = f.read()
+
     #... (suas linhas de config comentadas)
 
     # --- 1. Declara o argumento 'teleop' ---
@@ -21,7 +28,16 @@ def generate_launch_description():
         description='Se True, inicia a ponte de teleoperação para o chute.'
     )
 
-    # --- 2. Nós existentes ---
+    # --- 2. robot_state_publisher ---
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[{'robot_description': robot_description}]
+    )
+
+    # --- 3. Nós existentes ---
     walking_engine_node = Node(
         package='aurea_walk',
         executable='walking_engine_node',
@@ -42,7 +58,7 @@ def generate_launch_description():
         output='screen'
     )
 
-    # --- 3. Nó da Ponte de Teleop (Condicional) ---
+    # --- 4. Nó da Ponte de Teleop (Condicional) ---
     # Este nó só será iniciado se o argumento 'teleop' for 'True'
     teleop_bridge_node = Node(
         package='aurea_kick',
@@ -54,13 +70,14 @@ def generate_launch_description():
         )
     )
 
-    # --- 4. Retorna a lista de todos os componentes ---
+    # --- 5. Retorna a lista de todos os componentes ---
     return LaunchDescription([
-        declare_teleop_arg,     # Adiciona o argumento à descrição
-        
-        walking_engine_node,    # Nó de caminhada
-        ik_node,                # Nó de IK
-        kick_node,              # Nó de chute
-        
-        teleop_bridge_node      # Nó da ponte de teleop (só inicia se teleop:=True)
+        declare_teleop_arg,             # Adiciona o argumento à descrição
+
+        robot_state_publisher_node,     # Publica tf/tf_static a partir dos joint_states
+        walking_engine_node,            # Nó de caminhada
+        ik_node,                        # Nó de IK
+        kick_node,                      # Nó de chute
+
+        teleop_bridge_node              # Nó da ponte de teleop (só inicia se teleop:=True)
     ])
