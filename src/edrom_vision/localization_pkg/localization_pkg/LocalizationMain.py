@@ -162,22 +162,26 @@ class Localization(Node):
 
     # --- Loop de Processamento (Lógica do Gol CORRIGIDA) ---
     def processing_loop(self):
-        if not self.landmark_buffer:
-            return
-
-        vision_msg = self.landmark_buffer.popleft()
-        vision_time = Time.from_msg(vision_msg.header.stamp)
+        # A odometria é aplicada mesmo sem landmarks: andando "às cegas" as
+        # partículas precisam se mover e espalhar, senão a variância continua
+        # baixa e a localização parece confiável quando não é.
+        vision_msg = self.landmark_buffer.popleft() if self.landmark_buffer else None
+        vision_time = Time.from_msg(vision_msg.header.stamp) if vision_msg is not None else None
 
         while self.odom_buffer:
             odom_time = Time.from_msg(self.odom_buffer[0][0])
-            if odom_time < vision_time:
+            if vision_time is None or odom_time < vision_time:
                 _ , odom_data = self.odom_buffer.popleft()
                 if self.localization_state != 'INICIALIZANDO':
                     erro_pos, erro_ang = self.desvioPos, self.desvioAngle
                     self.particleFilter.predict(odom_data, (erro_pos, erro_pos, erro_ang), self.limit)
             else:
                 break
-        
+
+        if vision_msg is None:
+            self.particleFilter.estimate()
+            return
+
         observed_landmarks = [
             (lm.distance_m * 100.0, self.vision_to_filter_id_map.get(lm.id), np.rad2deg(lm.angle_rad))
             for lm in vision_msg.landmarks if self.vision_to_filter_id_map.get(lm.id) is not None
