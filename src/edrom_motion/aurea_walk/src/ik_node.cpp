@@ -25,9 +25,9 @@ private:
     const std::shared_ptr<aurea_walk::srv::SolveIK::Request> request,
     std::shared_ptr<aurea_walk::srv::SolveIK::Response> response)
   {
-    RCLCPP_INFO(this->get_logger(), "Requisição de IK recebida para a perna %s", request->leg_id.c_str());
+    //RCLCPP_INFO(this->get_logger(), "Requisição de IK recebida para a perna %s", request->leg_id.c_str());
 
-    Eigen::Vector3d p_body = {0.0, 0.0, 0.22};
+    Eigen::Vector3d p_body = {0.0, 0.0, 0.23};
     Eigen::Quaterniond R_body = Eigen::Quaterniond::Identity();
     Eigen::Vector3d p_foot_target = {
       request->target_pose.position.x, request->target_pose.position.y, request->target_pose.position.z
@@ -83,10 +83,10 @@ private:
   // Publica a mensagem COMPLETA para o RViz.
   joint_state_pub_->publish(std::move(joint_state_msg));
 
-  RCLCPP_INFO(this->get_logger(), "Solução encontrada. Estado completo do robô foi publicado.");
-    } else {
+  //RCLCPP_INFO(this->get_logger(), "Solução encontrada. Estado completo do robô foi publicado.");
+    } /*else {
       RCLCPP_WARN(this->get_logger(), "Não foi possível encontrar uma solução de IK.");
-    }
+    }*/
   }
 
   std::shared_ptr<aurea_walk::IKSolver> ik_solver_;

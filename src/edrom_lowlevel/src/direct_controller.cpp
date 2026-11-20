@@ -83,9 +83,15 @@ DirectController::DirectController() : Node("direct_controller")
   subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
     "/goal_joint_states", 10, std::bind(&DirectController::jointStateCallback, this, std::placeholders::_1));
 
+<<<<<<< HEAD
   feedback_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/feedback", 10);
   feedback_timer_ = this->create_wall_timer(
     std::chrono::milliseconds(20), std::bind(&DirectController::feedbackTimerCallback, this));
+=======
+  //feedback_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/feedback", 10);
+  //feedback_timer_ = this->create_wall_timer(
+    //std::chrono::milliseconds(20), std::bind(&DirectController::feedbackTimerCallback, this));
+>>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 }
 
 // Destrutor: Desliga o torque e fecha a porta serial por segurança
@@ -109,7 +115,7 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
   
   bool param_added_v1 = false;
   bool param_added_v2 = false;
-  RCLCPP_INFO(this->get_logger(), "--- Nova Mensagem Recebida ---");    
+  //RCLCPP_INFO(this->get_logger(), "--- Nova Mensagem Recebida ---");    
   for (size_t i = 0; i < msg->name.size(); ++i) {
     const std::string &joint_name = msg->name[i];
     auto it = motors_.find(joint_name);
@@ -120,7 +126,7 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
     double target_pos = msg->position[i];
 
     if (joint_name == "r_hip_roll" || joint_name == "l_hip_roll") {
-      RCLCPP_INFO(this->get_logger(), "Processando %s: Posição inicial = %.3f", joint_name.c_str(), target_pos);
+      //RCLCPP_INFO(this->get_logger(), "Processando %s: Posição inicial = %.3f", joint_name.c_str(), target_pos);
     }
 
     if (config.inverted) {
@@ -131,7 +137,7 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
 
     
     if (joint_name == "r_hip_roll" || joint_name == "l_hip_roll") {
-      RCLCPP_INFO(this->get_logger(), "-> Posição FINAL para %s = %.3f (após offset de %.3f)", joint_name.c_str(), target_pos, config.calibration_offset);
+      //RCLCPP_INFO(this->get_logger(), "-> Posição FINAL para %s = %.3f (após offset de %.3f)", joint_name.c_str(), target_pos, config.calibration_offset);
     }
 
     int goal_value = rad_to_value(target_pos, config.protocol);
@@ -155,6 +161,10 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
 }
 
 // Timer: Lê a posição atual dos motores MX-106 via GroupSyncRead e publica em /feedback
+<<<<<<< HEAD
+=======
+/*
+>>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 void DirectController::feedbackTimerCallback()
 {
   int comm_result = groupSyncReadV2_->txRxPacket();
@@ -179,17 +189,28 @@ void DirectController::feedbackTimerCallback()
     uint32_t raw_position = groupSyncReadV2_->getData(config.id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION);
     double position = value_to_rad(raw_position, config.protocol);
 
+<<<<<<< HEAD
     position -= config.calibration_offset;
     if (config.inverted) {
       position *= -1.0;
     }
+=======
+    if (config.inverted) {
+      position *= -1.0;
+    }
+    position -= config.calibration_offset;
+>>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 
     feedback_msg.name.push_back(joint_name);
     feedback_msg.position.push_back(position);
   }
 
   feedback_publisher_->publish(feedback_msg);
+<<<<<<< HEAD
 }
+=======
+}*/
+>>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 
 // Função auxiliar para conversão
 int DirectController::rad_to_value(double rad, float protocol)
