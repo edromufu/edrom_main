@@ -40,7 +40,7 @@ class NeckInterpreter(Node):
         )
 
         # Variáveis de código
-        self.horHeadPosition = 'none'
+        self.horHeadPosition = 'Center'
         self.verAngleAccomplished = False
 
 
@@ -59,21 +59,29 @@ class NeckInterpreter(Node):
         -> Input:
             - msg: Mensagem recebida do tópico de posições dos motores da cabeça.
         """
-        hor_motor_value = msg.position[0]
-        ver_motor_value = msg.position[1]
+        # /goal_joint_states também é publicado pelo walking engine e pelo chute
+        # (juntas das pernas), então os motores da cabeça são buscados pelo nome.
+        try:
+            hor_motor_value = msg.position[msg.name.index('head_pan')]
+            ver_motor_value = msg.position[msg.name.index('head_tilt')]
+        except (ValueError, IndexError):
+            return
 
-        # Lógica de interpretação dos valores
-        if (hor_motor_value < self.parameters.lookingLeftRad) and (hor_motor_value > self.parameters.lookingRightRad):
-            self.horHeadPosition = 'Center'
-        elif hor_motor_value > self.parameters.lookingLeftRad:
+        # Interpretação horizontal com histerese: sai do centro acima de
+        # headOutOfCenterRad e só volta ao centro abaixo de headBackToCenterRad
+        if self.horHeadPosition == 'Center':
+            limit = self.parameters.headOutOfCenterRad
+        else:
+            limit = self.parameters.headBackToCenterRad
+
+        if hor_motor_value > limit:
             self.horHeadPosition = 'Left'
-        else:
+        elif hor_motor_value < -limit:
             self.horHeadPosition = 'Right'
-
-        if ver_motor_value < self.parameters.minVerRad2Kick:
-            self.verAngleAccomplished = True
         else:
-            self.verAngleAccomplished = False
+            self.horHeadPosition = 'Center'
+
+        self.verAngleAccomplished = ver_motor_value < self.parameters.minVerRad2Kick
 
 def main(args=None):
     # Inicializa a biblioteca rclpy

@@ -17,6 +17,12 @@ class BehaviourParameters:
         self.lookingRightRad = -1
         self.minVerRad2Kick = -1.22
 
+        # Limiares (rad) do pan da cabeça para considerar o corpo desalinhado.
+        # Histerese: entra em 'aligning' acima de headOutOfCenterRad e só
+        # volta para 'Center' abaixo de headBackToCenterRad.
+        self.headOutOfCenterRad = 0.25
+        self.headBackToCenterRad = 0.12
+
         self.maxSpeedLinearX = 0.05
         self.maxSpeedAngularZ = 0.03
 
