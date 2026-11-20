@@ -208,12 +208,14 @@ class ParticleFilter():
                 if best_prob_for_obs < 0.001 and best_prob_for_obs > 1e-300: 
                     total_prob *= PROB_MISS_PENALTY # Penaliza em 50%
 
-            # 3. Integração do IMU
-            imu_error = particle[2] - imu_yaw_deg
-            imu_error = (imu_error + 180) % 360 - 180
-            
-            # Usando um desvio padrão de 20 graus (20.0) para ser mais restritivo que o 30.0 anterior
-            prob_imu = np.exp(-(imu_error ** 2) / (2 * (20.0) ** 2)) 
+            # 3. Integração do IMU (apenas se o yaw for absoluto no campo)
+            if imu_yaw_deg is None:
+                prob_imu = 1.0
+            else:
+                imu_error = particle[2] - imu_yaw_deg
+                imu_error = (imu_error + 180) % 360 - 180
+                # Desvio padrão de 20 graus
+                prob_imu = np.exp(-(imu_error ** 2) / (2 * (20.0) ** 2))
             
             self.weights[i] = total_prob * prob_imu
 

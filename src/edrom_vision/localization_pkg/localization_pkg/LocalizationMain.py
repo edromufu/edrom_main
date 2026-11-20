@@ -30,6 +30,13 @@ class Localization(Node):
         # Lado de início: 'LEFT', 'RIGHT', ou 'BOTH'
         self.start_side = self.declare_parameter('loc.start_side', 'LEFT').get_parameter_value().string_value
         self.get_logger().info(f"Inicialização do lado: {self.start_side}")
+
+        # O peso pela IMU compara o heading da partícula com o yaw ABSOLUTO da
+        # IMU. Só faz sentido se o yaw da IMU estiver no referencial do campo
+        # (simulação). No robô real o MPU-6050 não tem magnetômetro: o zero do
+        # yaw é a posição ao ligar e ele deriva -> use False e mande o yaw da
+        # IMU como dtheta na odometria.
+        self.use_imu_abs_yaw = self.declare_parameter('loc.use_imu_abs_yaw', True).get_parameter_value().bool_value
         
         # --- Parâmetros de Ruído (Otimização Sugerida) ---
         self.desvioPos = 2.0      # Incerteza da odometria em cm
@@ -189,7 +196,8 @@ class Localization(Node):
         
         if observed_landmarks:
             self.particleFilter.update(observed_landmarks, self.sensor_noise_dist, self.sensor_noise_angle, 
-                                       self.head_angles_deg[0], self.camRange, self.imu_yaw_deg)
+                                       self.head_angles_deg[0], self.camRange,
+                                       self.imu_yaw_deg if self.use_imu_abs_yaw else None)
         
         # --- MÁQUINA DE ESTADOS LÓGICOS ---
 
