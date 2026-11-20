@@ -56,7 +56,8 @@ class SearchingRoutine(Node):
 
     def control_loop(self):
         """Se a rotina estiver ativa, envia os comandos para os especialistas."""
-
+        if not self.is_active:
+            return
 
         # --- Comandos para os especialistas ---
 

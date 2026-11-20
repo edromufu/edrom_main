@@ -121,6 +121,8 @@ class WalkingRoutine(Node):
 
     def control_loop(self):
         """Se a rotina estiver ativa, executa a sub-rotina correspondente."""
+        if not self.is_active:
+            return
 
         # --- Ações Comuns a Todos os Sub-estados Ativos ---
         # 1. Comanda o especialista da cabeça para ficar em modo de rastreamento
