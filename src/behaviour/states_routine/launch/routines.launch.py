@@ -10,12 +10,15 @@ def generate_launch_description():
     'twist_mux_params.yaml'
     )
     return LaunchDescription([
-        # Node(
-        #     package='twist_mux',
-        #     executable='twist_mux',
-        #     name='twist_mux',
-        #     parameters=[config_file],
-        # ),
+        # Multiplexa /cmd_vel_search, /cmd_vel_walk e /cmd_vel_align para o
+        # /cmd_vel consumido pelo walking engine
+        Node(
+            package='twist_mux',
+            executable='twist_mux',
+            name='twist_mux',
+            parameters=[config_file],
+            remappings=[('/cmd_vel_out', '/cmd_vel')],
+        ),
         Node(
             package='states_routine',
             executable='walking_routine',
@@ -44,6 +47,12 @@ def generate_launch_description():
             package='states_routine',
             executable='getting_up_routine',
             name='getting_up_routine',
+            output='screen'
+        ),
+        Node(
+            package='states_routine',
+            executable='aligning_body_routine',
+            name='aligning_body_routine',
             output='screen'
         ),
         Node(
