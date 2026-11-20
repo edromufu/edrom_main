@@ -30,6 +30,13 @@ class Localization(Node):
         # Lado de início: 'LEFT', 'RIGHT', ou 'BOTH'
         self.start_side = self.declare_parameter('loc.start_side', 'LEFT').get_parameter_value().string_value
         self.get_logger().info(f"Inicialização do lado: {self.start_side}")
+
+        # O peso pela IMU compara o heading da partícula com o yaw ABSOLUTO da
+        # IMU. Só faz sentido se o yaw da IMU estiver no referencial do campo
+        # (simulação). No robô real o MPU-6050 não tem magnetômetro: o zero do
+        # yaw é a posição ao ligar e ele deriva -> use False e mande o yaw da
+        # IMU como dtheta na odometria.
+        self.use_imu_abs_yaw = self.declare_parameter('loc.use_imu_abs_yaw', True).get_parameter_value().bool_value
         
         # --- Parâmetros de Ruído (Otimização Sugerida) ---
         self.desvioPos = 2.0      # Incerteza da odometria em cm
@@ -162,22 +169,26 @@ class Localization(Node):
 
     # --- Loop de Processamento (Lógica do Gol CORRIGIDA) ---
     def processing_loop(self):
-        if not self.landmark_buffer:
-            return
-
-        vision_msg = self.landmark_buffer.popleft()
-        vision_time = Time.from_msg(vision_msg.header.stamp)
+        # A odometria é aplicada mesmo sem landmarks: andando "às cegas" as
+        # partículas precisam se mover e espalhar, senão a variância continua
+        # baixa e a localização parece confiável quando não é.
+        vision_msg = self.landmark_buffer.popleft() if self.landmark_buffer else None
+        vision_time = Time.from_msg(vision_msg.header.stamp) if vision_msg is not None else None
 
         while self.odom_buffer:
             odom_time = Time.from_msg(self.odom_buffer[0][0])
-            if odom_time < vision_time:
+            if vision_time is None or odom_time < vision_time:
                 _ , odom_data = self.odom_buffer.popleft()
                 if self.localization_state != 'INICIALIZANDO':
                     erro_pos, erro_ang = self.desvioPos, self.desvioAngle
                     self.particleFilter.predict(odom_data, (erro_pos, erro_pos, erro_ang), self.limit)
             else:
                 break
-        
+
+        if vision_msg is None:
+            self.particleFilter.estimate()
+            return
+
         observed_landmarks = [
             (lm.distance_m * 100.0, self.vision_to_filter_id_map.get(lm.id), np.rad2deg(lm.angle_rad))
             for lm in vision_msg.landmarks if self.vision_to_filter_id_map.get(lm.id) is not None
@@ -185,7 +196,8 @@ class Localization(Node):
         
         if observed_landmarks:
             self.particleFilter.update(observed_landmarks, self.sensor_noise_dist, self.sensor_noise_angle, 
-                                       self.head_angles_deg[0], self.camRange, self.imu_yaw_deg)
+                                       self.head_angles_deg[0], self.camRange,
+                                       self.imu_yaw_deg if self.use_imu_abs_yaw else None)
         
         # --- MÁQUINA DE ESTADOS LÓGICOS ---
 

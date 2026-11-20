@@ -1,20 +1,30 @@
 #!/bin/bash
-# Este script é chamado pelo Webots e executa o nó ROS 2 com o ambiente correto.
+# Webots can start this controller without inheriting a sourced ROS terminal.
+set -e
 
-# Define o caminho do seu workspace
-WORKSPACE_DIR="/home/vtr_caixeta/edrom_main"
-
-# Carrega o ambiente principal do ROS 2
-source /opt/ros/humble/setup.bash
-
-# Carrega o ambiente do seu workspace específico
-if [ -f "${WORKSPACE_DIR}/install/setup.bash" ]; then
-    source "${WORKSPACE_DIR}/install/setup.bash"
+CONTROLLER_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+ROS_SETUP="/opt/ros/${ROS_DISTRO:-humble}/setup.bash"
+if [ -f "$ROS_SETUP" ]; then
+    source "$ROS_SETUP"
 fi
 
-# ADICIONA EXPLICITAMENTE O CAMINHO DOS PACOTES PYTHON
-# Esta é a correção para o PackageNotFoundError
-export PYTHONPATH="${WORKSPACE_DIR}/install/bhv_simulator/lib/python3.10/site-packages:${PYTHONPATH}"
+# Locate this workspace from either the source or installed controller path.
+SEARCH_DIR="$CONTROLLER_DIR"
+while [ "$SEARCH_DIR" != / ]; do
+    if [ -f "$SEARCH_DIR/install/setup.bash" ]; then
+        source "$SEARCH_DIR/install/setup.bash"
+        break
+    fi
+    SEARCH_DIR="$(dirname "$SEARCH_DIR")"
+done
 
+# Webots normally supplies WEBOTS_HOME; retain the launch default for diagnostics.
+export WEBOTS_HOME="${WEBOTS_HOME:-/usr/local/webots}"
+CONTROLLER_PYTHON="$WEBOTS_HOME/lib/controller/python"
+export PYTHONPATH="$CONTROLLER_PYTHON${PYTHONPATH:+:$PYTHONPATH}"
 
-exec ros2 run bhv_simulator bhv_sim "$@"
+if [ "${1:-}" = --check-imports ]; then
+    exec /usr/bin/python3 -c 'from controller import Supervisor; from bhv_simulator.bhv_sim import BhvIndependentSim; print("Controlador Webots e módulos ROS carregados com sucesso.")'
+fi
+
+exec /usr/bin/python3 -m bhv_simulator.bhv_sim "$@"

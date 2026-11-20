@@ -94,7 +94,7 @@ def generate_launch_description():
     ld.add_action(walking_launch)
     ld.add_action(direct_control_launch)
     ld.add_action(behaviour_launch)
-    ld.add_action(vision_launch)
+    #ld.add_action(vision_launch)
 
     # Adiciona nós individuais
     ld.add_action(head_controller_node)

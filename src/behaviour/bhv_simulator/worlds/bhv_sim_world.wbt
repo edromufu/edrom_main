@@ -25,9 +25,7 @@ TexturedBackgroundLight {
   texture "noon_park_empty"
 }
 DEF Ball Ball {
-  hidden linearVelocity_0 -0.01669166953166171 9.464310147054993e-06 -0.0013577073358713935
-  hidden angularVelocity_0 -0.02455951805267025 1.513668992220765e-05 0.30193507955418375
-  translation 0.5595361056918366 0.05491364571919435 0.04372399227715246
+  translation 0 0.055 -3
   rotation -0.19929952974344187 -0.7456703005462825 -0.6358108998179093 2.3513435334229795
   color 1 0.08 0.58
   radius 0.055
@@ -466,11 +464,20 @@ DEF Goal1 Solid {
 }
 DEF Robot3D Transform {
   translation 0 0.25723 0
-  rotation 0 1 0 -1.8325412287183438
+  rotation 0 1 0 0
   children [
+    Transform {
+      translation 0 0.45 -0.17
+      children [
+        Shape {
+          appearance PBRAppearance { baseColor 0 0.8 1 metalness 0 }
+          geometry Box { size 0.035 0.02 0.3 }
+        }
+      ]
+    }
     DEF Supervisor Robot {
       translation 2.2048086278455736e-09 0.002072751531877526 1.7486555250278583e-07
-      rotation -0.015257419918318083 -1.0694887193935207e-16 -0.9998835987940978 -3.1415926535897927
+      rotation 0 0 1 3.141592653589793
       children [
         DEF HorizontalMotor Transform {
           translation 0 -0.31 -0.03
@@ -576,12 +583,47 @@ DEF Robot3D Transform {
           }
         ]
       }
-      physics Physics {
-      }
       controller "bhv_sim"
       supervisor TRUE
-      linearVelocity 8.5265787985248e-17 -3.240609314447952e-06 6.429199562477401e-17
-      angularVelocity 2.7595691808490024e-16 -3.40049210774992e-18 -2.6529780501673075e-16
     }
   ]
+}
+
+DEF Obstacle1 Solid {
+  rotation 1 0 0 -1.5707963267948966
+  translation 0 0.35 -1.1
+  name "obstacle_1"
+  children [
+    Shape {
+      appearance PBRAppearance { baseColor 1 0.25 0 roughness 1 metalness 0 }
+      geometry Cylinder { radius 0.2 height 0.7 }
+    }
+  ]
+  boundingObject Cylinder { radius 0.2 height 0.7 }
+}
+
+DEF Obstacle2 Solid {
+  rotation 1 0 0 -1.5707963267948966
+  translation -0.8 0.35 -2.1
+  name "obstacle_2"
+  children [
+    Shape {
+      appearance PBRAppearance { baseColor 1 0.25 0 roughness 1 metalness 0 }
+      geometry Cylinder { radius 0.2 height 0.7 }
+    }
+  ]
+  boundingObject Cylinder { radius 0.2 height 0.7 }
+}
+
+DEF Obstacle3 Solid {
+  rotation 1 0 0 -1.5707963267948966
+  translation 0.9 0.35 -2.0
+  name "obstacle_3"
+  children [
+    Shape {
+      appearance PBRAppearance { baseColor 1 0.25 0 roughness 1 metalness 0 }
+      geometry Cylinder { radius 0.2 height 0.7 }
+    }
+  ]
+  boundingObject Cylinder { radius 0.2 height 0.7 }
 }

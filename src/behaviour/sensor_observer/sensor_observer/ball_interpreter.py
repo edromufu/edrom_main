@@ -76,7 +76,8 @@ class BallInterpreter(Node):
         if (self.countFound > self.parameters.timerCountLimit):
             self.ballFound = False
             self.ballClose = False
-            self.ballRelativePosition = 'nenhuma'
+            # ballRelativePosition NÃO é resetada: guarda onde a bola foi vista
+            # por último, usada para decidir o lado de início da busca
 
         if(msg.found):
             #Reseta o contador de informar que a bola foi perdida, pois encontrou :)

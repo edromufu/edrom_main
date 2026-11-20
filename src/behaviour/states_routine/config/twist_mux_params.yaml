@@ -1,0 +1,15 @@
+twist_mux:
+  ros__parameters:
+    topics:
+      search:
+        topic: "/cmd_vel_search"
+        timeout: 0.5
+        priority: 10
+      walk:
+        topic: "/cmd_vel_walk"
+        timeout: 0.5
+        priority: 20
+      align:
+        topic: "/cmd_vel_align"
+        timeout: 0.5
+        priority: 50

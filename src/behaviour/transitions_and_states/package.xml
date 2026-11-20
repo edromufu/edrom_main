@@ -6,6 +6,9 @@
   <description>TODO: Package description</description>
   <maintainer email="victorvasconcelos676@gmail.com">vtr_caixeta</maintainer>
   <license>TODO: License declaration</license>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>modularized_bhv_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

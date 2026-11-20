@@ -138,8 +138,13 @@ class ParticleFilter():
         self.mean[0:2] = np.average(pos[:, 0:2], weights=self.weights, axis=0)
         self.mean[2] = (mean_angle + 360) % 360 # Garante resultado positivo
 
-        self.var = np.average((pos - self.mean)**2, weights=self.weights, axis=0)
-        # A variância do ângulo precisa de tratamento especial, mas por enquanto isso é suficiente
+        self.var[0:2] = np.average((pos[:, 0:2] - self.mean[0:2])**2, weights=self.weights, axis=0)
+
+        # Variância circular do ângulo (graus^2): a diferença simples quebra na
+        # volta 359° -> 0° (partículas em 359° e 1° pareceriam muito espalhadas)
+        R = min(np.hypot(mean_sin, mean_cos), 1.0)
+        std_angle_rad = np.sqrt(-2.0 * np.log(max(R, 1e-12)))
+        self.var[2] = np.rad2deg(std_angle_rad) ** 2
         
     # Lógica principal de atualização de pesos
     # NO ARQUIVO: ParticleFilter.py
@@ -203,12 +208,14 @@ class ParticleFilter():
                 if best_prob_for_obs < 0.001 and best_prob_for_obs > 1e-300: 
                     total_prob *= PROB_MISS_PENALTY # Penaliza em 50%
 
-            # 3. Integração do IMU
-            imu_error = particle[2] - imu_yaw_deg
-            imu_error = (imu_error + 180) % 360 - 180
-            
-            # Usando um desvio padrão de 20 graus (20.0) para ser mais restritivo que o 30.0 anterior
-            prob_imu = np.exp(-(imu_error ** 2) / (2 * (20.0) ** 2)) 
+            # 3. Integração do IMU (apenas se o yaw for absoluto no campo)
+            if imu_yaw_deg is None:
+                prob_imu = 1.0
+            else:
+                imu_error = particle[2] - imu_yaw_deg
+                imu_error = (imu_error + 180) % 360 - 180
+                # Desvio padrão de 20 graus
+                prob_imu = np.exp(-(imu_error ** 2) / (2 * (20.0) ** 2))
             
             self.weights[i] = total_prob * prob_imu
 

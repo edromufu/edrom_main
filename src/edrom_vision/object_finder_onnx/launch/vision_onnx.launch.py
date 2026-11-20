@@ -82,8 +82,6 @@ def generate_launch_description():
                 {'vision.img_output': LaunchConfiguration('img_output')}
                 # Note que os parâmetros de câmera e brilho não são necessários aqui
             ],
-            remappings=[
-                ('/camera/image', '/AUREA/CAM/image_color')
-            ]
+            
         )
     ])

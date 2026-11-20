@@ -31,11 +31,11 @@ class Visao(Node):
         if self.use_simulation:
             self.get_logger().info('>> RODANDO ONNX EM MODO SIMULAÇÃO <<')
             self.bridge = CvBridge()
-            self.processed_image_publisher = self.create_publisher(ROS_Image, 'processed_image_topic', 10)
+            self.processed_image_publisher = self.create_publisher(ROS_Image, 'vision2BhvTopic', 10)
             self.camera_subscriber = self.create_subscription(ROS_Image, '/camera/image', self.image_callback, 10)
         else:
             self.get_logger().info('>> RODANDO ONNX EM MODO REAL <<')
-            self.publisher = self.create_publisher(VisionData, 'self_parameters_vision2BhvTopic', 100)
+            self.publisher = self.create_publisher(VisionData, 'vision2BhvTopic1', 100)
             self.camera_idx = self.declare_parameter('vision.camera_idx', 0).get_parameter_value().integer_value
             self.initialize_webcam_and_loop()
 
@@ -69,7 +69,7 @@ class Visao(Node):
         start_time = time.time()
 
         self.classes, self.scores, self.boxes, self.inference_frame = ri.detect_model(self.model, frame)  # Simplificado
-        
+        self.get_logger().info(f'Classes: {self.classes}, Scores: {self.scores}, Boxes: {self.boxes}')
         # Calcula o FPS
         end_time = time.time()
         self.fps = 1 / (end_time - start_time)

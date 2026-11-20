@@ -23,6 +23,7 @@ setup(
     #tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'gc_reader = transitions_and_states.gc_reader:main',
             'state_machine_receiver = transitions_and_states.state_machine_receiver:main',
             'behaviour_node = transitions_and_states.behaviour_node:main',
         ],

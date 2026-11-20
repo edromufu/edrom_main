@@ -1,0 +1,9 @@
+uint8 team_number
+string field_colour
+string goalkeeper_colour
+uint8 goalkeeper
+uint8 score
+uint8 penalty_shot
+uint16 single_shots
+uint16 message_budget
+GameControllerPlayer[] players

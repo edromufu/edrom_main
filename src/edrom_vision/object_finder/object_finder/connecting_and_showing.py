@@ -50,7 +50,7 @@ class Visao(Node):
         if self.use_simulation:
             self.get_logger().info('>> RODANDO EM MODO SIMULAÇÃO <<')
             self.bridge = CvBridge()
-            self.processed_image_publisher = self.create_publisher(ROS_Image, 'processed_image_topic', 10)
+            self.processed_image_publisher = self.create_publisher(ROS_Image, 'vision_debug', 10)
             self.camera_subscriber = self.create_subscription(
                 ROS_Image, '/camera/image', self.image_callback, 10
             )
@@ -217,7 +217,7 @@ class Visao(Node):
 
         if self.use_simulation:
             try:
-                processed_image_msg = self.bridge.imgmsg_to_imgmsg(self.inference_frame, "bgr8")
+                processed_image_msg = self.bridge.cv2_to_imgmsg(self.inference_frame, "bgr8")
                 self.processed_image_publisher.publish(processed_image_msg)
             except Exception as e:
                 self.get_logger().error(f'Falha ao publicar imagem processada: {e}')
