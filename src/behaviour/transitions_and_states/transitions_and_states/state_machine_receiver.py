@@ -51,8 +51,9 @@ class StateMachineReceiver(Node):
         self.create_subscription(GameControllerMsg, '/gc/state', self.game_controller_callback, 10)
 
         self.get_logger().info("StateMachineReceiver iniciado e aguardando mensagens...")
-        # Timer para tentar atualizar o estado periodicamente
-
+        # O ros_packer só publica quando alguma variável muda. Sem este timer,
+        # estados temporizados (idle_march/idle) nunca expirariam sozinhos.
+        self.create_timer(0.1, self.update_state)  # 10 Hz
 
 
     def game_controller_callback(self, msg):
