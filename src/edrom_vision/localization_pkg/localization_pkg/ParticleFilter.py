@@ -138,8 +138,13 @@ class ParticleFilter():
         self.mean[0:2] = np.average(pos[:, 0:2], weights=self.weights, axis=0)
         self.mean[2] = (mean_angle + 360) % 360 # Garante resultado positivo
 
-        self.var = np.average((pos - self.mean)**2, weights=self.weights, axis=0)
-        # A variância do ângulo precisa de tratamento especial, mas por enquanto isso é suficiente
+        self.var[0:2] = np.average((pos[:, 0:2] - self.mean[0:2])**2, weights=self.weights, axis=0)
+
+        # Variância circular do ângulo (graus^2): a diferença simples quebra na
+        # volta 359° -> 0° (partículas em 359° e 1° pareceriam muito espalhadas)
+        R = min(np.hypot(mean_sin, mean_cos), 1.0)
+        std_angle_rad = np.sqrt(-2.0 * np.log(max(R, 1e-12)))
+        self.var[2] = np.rad2deg(std_angle_rad) ** 2
         
     # Lógica principal de atualização de pesos
     # NO ARQUIVO: ParticleFilter.py
