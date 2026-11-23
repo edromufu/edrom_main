@@ -15,7 +15,6 @@
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>soccer_vision_2d_msgs</exec_depend>
-  <exec_depend>edrom_msgs</exec_depend>
   <exec_depend>soccer_ipm</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
 

@@ -11,6 +11,9 @@
   <build_depend>ament_python</build_depend>
   <build_depend>rclpy</build_depend>
   <build_depend>geometry_msgs</build_depend>
+
+  <exec_depend>soccer_vision_2d_msgs</exec_depend>
+  <exec_depend>object_finder</exec_depend>
   
 
   <test_depend>ament_copyright</test_depend>

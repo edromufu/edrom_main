@@ -71,9 +71,14 @@ class BehaviourParameters:
         # Tópico do ROS
         self.vision2BhvTopic = '/vision/vision_inference'
 
-        # Parâmetros da câmera
+        # Parâmetros da câmera (resolução da imagem original, como a câmera entrega)
         self.cameraWidth = 640
         self.cameraHeight = 480
+        # Rotação física da câmera (graus, horário). Os tópicos *_in_image vêm na
+        # imagem original; o ball_interpreter desfaz essa rotação antes de aplicar
+        # os limiares abaixo, que são em coordenadas da imagem em pé.
+        # Deve bater com o image_rotation do object_finder/vision.launch.py
+        self.imageRotation = 180
 
         # Parâmetros de interpretação da câmera
         self.xCenterLeftLimit = 4 * self.cameraWidth / 10

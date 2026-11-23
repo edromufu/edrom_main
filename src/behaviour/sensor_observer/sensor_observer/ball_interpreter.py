@@ -10,7 +10,8 @@ Retorna infos booleanos sobre a bola
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
-from edrom_msgs.msg import VisionData
+from soccer_vision_2d_msgs.msg import BallArray
+from object_finder.rotacao import melhor_bola_em_pe
 
 from transitions_and_states.behaviour_parameters import BehaviourParameters
 
@@ -29,11 +30,11 @@ class BallInterpreter(Node):
 
         #Variaveis do ROS
         self.create_subscription(
-            VisionData,
-            'vision2BhvTopic',
+            BallArray,
+            'balls_in_image',
             self.callback_vision,
             10
-        )        
+        )
         #Variaveis de código
         self.ballRelativePosition = 'none'
         self.ballClose = False
@@ -53,7 +54,7 @@ class BallInterpreter(Node):
         return self.ballRelativePosition, self.ballClose, self.ballFound   
 
     #Callback do tópico de infos da bola do ROS
-    def callback_vision(self, general):    
+    def callback_vision(self, ball_array):
         """
         -> Funcao:
         Avaliar a bola atraves de:
@@ -64,12 +65,18 @@ class BallInterpreter(Node):
             * Os dados so sao interpretados, ou seja, a posicao relativa so e atualizada
             * se a bola estiver sendo encontrada (para ter uma especie de 'visto por ultimo')  
         -> Input:
-            - general: Variavel associada a mensagem recebida no topico do ROS, contem as
-            informacoes de todos os objetos, e separada somente para a bola nesse caso.   
+            - ball_array: soccer_vision_2d_msgs/BallArray (coordenadas da imagem
+            original da camera). Usa a bola de maior confianca, convertida para
+            a imagem em pe, referencial dos limiares do BehaviourParameters.
         """
 
-        #Captura das informacoes da bola de dentro da mensagem completa
-        msg = general.ball
+        #Bola de maior confianca, em coordenadas da imagem em pe (ou None)
+        bola = melhor_bola_em_pe(
+            ball_array.balls,
+            self.parameters.imageRotation,
+            self.parameters.cameraWidth,
+            self.parameters.cameraHeight,
+        )
 
         #Contador para informar que a bola foi perdida apos um numero de vezes sem encontra-la
         self.countFound += 1
@@ -79,14 +86,16 @@ class BallInterpreter(Node):
             # ballRelativePosition NÃO é resetada: guarda onde a bola foi vista
             # por último, usada para decidir o lado de início da busca
 
-        if(msg.found):
+        if bola is not None:
+            x, y, largura, altura = bola
+
             #Reseta o contador de informar que a bola foi perdida, pois encontrou :)
             self.ballFound = True
             self.countFound = 0
 
             #Módulo de verificacao da proximidade da bola, serve para resetar
             #a interpretacao apenas apos um numero definido de medidas desfavoraveis
-            if (msg.roi_width*msg.roi_height < self.parameters.closeSize):
+            if (largura*altura < self.parameters.closeSize):
                 self.countDistance += 1
                 if (self.countDistance > self.parameters.timerCountLimit):
                     self.ballClose = False
@@ -96,17 +105,17 @@ class BallInterpreter(Node):
 
             #Módulo de verificacao da posicao relativa da bola
             #Interpretacao horizontal
-            if(msg.x < self.parameters.xCenterLeftLimit):
+            if(x < self.parameters.xCenterLeftLimit):
                 analysisX = self.parameters.left
-            elif(msg.x > self.parameters.xCenterRightLimit):
+            elif(x > self.parameters.xCenterRightLimit):
                 analysisX = self.parameters.right
             else:
                 analysisX = self.parameters.center
             
             #Interpretacao vertical
-            if(msg.y > self.parameters.yCenterBottomLimit): #Deve ser maior por conta da referência ([0,0] no canto superior esquerdo)
+            if(y > self.parameters.yCenterBottomLimit): #Deve ser maior por conta da referência ([0,0] no canto superior esquerdo)
                 analysisY = self.parameters.bottom
-            elif(msg.y < self.parameters.yCenterTopLimit):
+            elif(y < self.parameters.yCenterTopLimit):
                 analysisY = self.parameters.top
             else:
                 analysisY = self.parameters.center
