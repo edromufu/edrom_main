@@ -1,4 +1,8 @@
-"""Inicia a câmera (mesma config do vision.launch) e o aruco_record."""
+"""Inicia a câmera (mesma config do vision.launch) e o aruco_record.
+
+Varredura automática da cabeça (robô na first pose, modo POSE do botão 2):
+    ros2 launch ipm_calibrator aruco_record.launch.py varredura:=True imu_topic:=/imu/data_raw
+"""
 
 import os
 
@@ -25,6 +29,12 @@ def generate_launch_description():
             description='Rotação (graus, sentido horário: 0, 90, 180 ou 270) da janela, '
                         'para compensar a câmera montada girada (mesmo do vision.launch)',
         ),
+        DeclareLaunchArgument(
+            'varredura', default_value='False',
+            description='Comanda a cabeça por uma grade pan x tilt e grava em cada pose'),
+        DeclareLaunchArgument(
+            'imu_topic', default_value='/imu/data_raw',
+            description='Tópico do IMU da cabeça (sensor_msgs/Imu)'),
         Node(
             package='usb_cam',
             executable='usb_cam_node_exe',
@@ -43,6 +53,8 @@ def generate_launch_description():
             parameters=[{
                 'image_rotation': ParameterValue(
                     LaunchConfiguration('image_rotation'), value_type=int),
+                'varredura': ParameterValue(LaunchConfiguration('varredura'), value_type=bool),
+                'imu_topic': LaunchConfiguration('imu_topic'),
             }],
             remappings=[
                 ('image_raw', '/camera/image_raw'),

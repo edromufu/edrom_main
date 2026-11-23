@@ -30,3 +30,5 @@ site/
 .claude/
 CLAUDE.md
 .mcp.json
+# Gravações do ipm_calibrator
+src/edrom_utils/ipm_calibrator/dados/
