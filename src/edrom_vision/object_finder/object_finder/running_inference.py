@@ -2,31 +2,9 @@
 # coding=utf-8
 
 from ultralytics import YOLO
-import os
-import cv2
-import numpy as np
 import time
-from ament_index_python.packages import get_package_share_directory
 
 size = 320
-
-def set_model_input(is_simulation=False):
-
-    try:
-        package_share_path = get_package_share_directory('object_finder')
-        model_base_path = os.path.join(package_share_path, 'modelo')
-        model_path = os.path.join(model_base_path, 'best.pt') # Carrega o modelo .pt padrão
-        print(f"Tentando carregar o modelo de: {model_path}")
-        if not os.path.exists(model_path):
-            print(f"!!!!!! ATENÇÃO: O arquivo do modelo não foi encontrado em {model_path}. !!!!!!")
-            return None
-
-        model = YOLO(model_path)
-        return model
-
-    except Exception as e:
-        print(f"Ocorreu um erro ao carregar o modelo: {e}")
-        return None
 
 def detect_model(model, current_frame):
     """

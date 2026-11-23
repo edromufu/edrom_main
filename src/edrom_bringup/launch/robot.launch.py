@@ -13,8 +13,8 @@ def generate_launch_description():
 
     # --- Declaração de Argumentos de Lançamento ---
     # Mantemos apenas os argumentos que o modo autônomo realmente precisa.
-    camera_idx_arg = DeclareLaunchArgument(
-        'camera_idx', default_value='2', description='Index of the camera device'
+    video_device_arg = DeclareLaunchArgument(
+        'video_device', default_value='/dev/video0', description='Dispositivo da câmera USB (usb_cam)'
     )
     img_output_arg = DeclareLaunchArgument(
         'img_output', default_value='False', description='Whether vision node should display image output'
@@ -68,7 +68,7 @@ def generate_launch_description():
         ),
         # Argumento 'simulation' REMOVIDO
         launch_arguments={
-            'camera_idx': LaunchConfiguration('camera_idx'),
+            'video_device': LaunchConfiguration('video_device'),
             'img_output': LaunchConfiguration('img_output'),
         }.items()
     )
@@ -85,7 +85,7 @@ def generate_launch_description():
     ld = LaunchDescription()
 
     # Adiciona os argumentos declarados
-    ld.add_action(camera_idx_arg)
+    ld.add_action(video_device_arg)
     ld.add_action(img_output_arg)
     ld.add_action(imu_connected_arg)
     # Argumentos 'simulation' e 'teleop' REMOVIDOS

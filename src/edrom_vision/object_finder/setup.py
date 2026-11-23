@@ -20,9 +20,12 @@ setup(
         # Instala o nosso launch file unificado
         (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
         
-        # Instala o modelo .pt para a simulação
-        (os.path.join('share', package_name, 'modelo'), glob('modelo/*.pt') + glob('modelo/*.onnx')),
+        # Instala o modelo .pt 
+        (os.path.join('share', package_name, 'modelo'), glob('modelo/*.pt')),
         (os.path.join('share', package_name, 'resource'), glob('resource/*')),
+
+        # Instala a config da câmera (usb_cam.yaml) e os arquivos de calibração
+        (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
     
     # install_requires lista as dependências de Python que o pip deve instalar.
@@ -31,7 +34,7 @@ setup(
     zip_safe=True,
     description='Pacote de detecção de objetos para a EDROM',
     long_description='Este programa detecta bola, robôs e outros elementos do campo de futebol de robôs.',
-    license='BSD',
+    license='MIT',
     
     entry_points={
         'console_scripts': [

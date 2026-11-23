@@ -4,86 +4,103 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from launch.conditions import IfCondition, UnlessCondition
+from ament_index_python.packages import get_package_share_directory
+import os
+import yaml
 
 def generate_launch_description():
 
-    # --- Argumento de Controle Principal ---
-    # Este argumento decide se estamos em modo de simulação ou real.
-    sim_mode_arg = DeclareLaunchArgument(
-        'sim_mode',
-        default_value='False',
-        description='Defina como "True" para rodar em modo de simulação'
+    # Configuração da câmera (mesmo arquivo usado pelo camera_calibrator)
+    usb_cam_params = os.path.join(
+        get_package_share_directory("object_finder"), "config", "usb_cam.yaml"
     )
+    with open(usb_cam_params) as f:
+        usb_cam_cfg = next(iter(yaml.safe_load(f).values()))["ros__parameters"]
 
-    # --- Argumentos para Ambos os Modos ---
-    output_img_arg = DeclareLaunchArgument(
-        'img_output',
-        default_value='True', # Mudei o padrão para True, pois é mais útil para debug
-        description='Exibe a janela com a imagem processada'
-    )
-
-    # --- Argumentos Específicos do Robô Real ---
-    camera_idx_arg = DeclareLaunchArgument(
-        'camera_idx',
-        default_value='2',
-        description='Índice da webcam (ex: 0, 1, ...)'
-    )
-    ajuste_arg = DeclareLaunchArgument(
-        'ajuste',
-        default_value='False',
-        description='Habilita o ajuste manual de brilho no início'
-    )
-    bright_arg = DeclareLaunchArgument(
-        'brilho',
-        default_value='4',
-        description='Valor inicial de brilho da câmera'
-    )
-    
-    # --- Definição do Nó ---
     return LaunchDescription([
-        sim_mode_arg,
-        output_img_arg,
-        camera_idx_arg,
-        ajuste_arg,
-        bright_arg,
 
-        # --- NÓ PARA O ROBÔ REAL ---
-        # Este nó só será lançado se 'sim_mode' for 'False' (padrão)
-        Node(
-            package='object_finder',
-            # namespace='EDROM', # O namespace pode ser útil, mantido
-            executable='finder', # Assumindo que o executável se chama 'finder'
-            name='vision',
-            output='screen',
-            emulate_tty=True,
-            condition=UnlessCondition(LaunchConfiguration('sim_mode')),
-            parameters=[
-                {'use_simulation': False}, # Parâmetro do nosso script unificado
-                {'vision.img_output': LaunchConfiguration('img_output')},
-                {'vision.camera_idx': LaunchConfiguration('camera_idx')},
-                {'vision.ajuste': LaunchConfiguration('ajuste')},
-                {'vision.brilho': LaunchConfiguration('brilho')}
-            ]
+        DeclareLaunchArgument(
+            "video_device",
+            default_value=usb_cam_cfg["video_device"],
+            description="Dispositivo da câmera USB",
+        ),  
+
+        DeclareLaunchArgument(
+            "camera_name",
+            default_value=usb_cam_cfg["camera_name"],
+            description="Câmera usada (verri ou milare): escolhe o arquivo de calibração",
         ),
 
-        # --- NÓ PARA A SIMULAÇÃO ---
-        # Este nó só será lançado se 'sim_mode' for 'True'
+        DeclareLaunchArgument(
+            "camera_info_url",
+            default_value=[
+                "package://object_finder/config/",
+                LaunchConfiguration("camera_name"),
+                "_camera-info.yaml",
+            ],
+            description="URL do YAML de calibração intrínseca da câmera",
+        ),
+
+        DeclareLaunchArgument(
+            "image_rotation",
+            default_value="180",
+            description="Rotação (graus, sentido horário: 0, 90, 180 ou 270) aplicada "
+                        "à imagem antes do YOLO, para compensar a câmera montada girada",
+        ),
+
+        DeclareLaunchArgument(
+            "img_output",
+            default_value="True",
+            description="Mostra a janela com a inferência (False no robô sem display)",
+        ),
+
+        Node(
+            package="usb_cam",
+            executable="usb_cam_node_exe",
+            name="usb_cam",
+            namespace="camera",
+            output="screen",
+            # usb_cam.yaml primeiro; o dict abaixo sobrescreve com os argumentos do launch
+            parameters=[usb_cam_params, {
+                "use_sim_time": False,
+                "camera_name": LaunchConfiguration("camera_name"),
+                "video_device": LaunchConfiguration("video_device"),
+                "camera_info_url": LaunchConfiguration("camera_info_url"),
+            }],
+        ),
+
         Node(
             package='object_finder',
-            # namespace='EDROM',
-            executable='finder',
+            executable='finder', 
             name='vision',
             output='screen',
-            emulate_tty=True,
-            condition=IfCondition(LaunchConfiguration('sim_mode')),
-            parameters=[
-                {'use_simulation': True}, # Parâmetro do nosso script unificado
-                {'vision.img_output': LaunchConfiguration('img_output')}
-                # Note que os parâmetros de câmera e brilho não são necessários aqui
-            ],
+            parameters=[{
+                "use_sim_time": False,
+                "image_rotation": ParameterValue(
+                    LaunchConfiguration("image_rotation"), value_type=int),
+                "img_output": ParameterValue(
+                    LaunchConfiguration("img_output"), value_type=bool),
+            }],
+        ),
+        
+        Node(
+            package='soccer_ipm',
+            executable='ipm',
+            name='soccer_ipm_node',
+            output='screen',
+            parameters=[{
+                "use_sim_time": False,
+                "output_frame": "base_footprint",
+                "balls.ball_diameter": 0.14,
+                # Distorção da lente corrigida nos pontos detectados (K e D do camera_info)
+                "use_distortion": True,
+                "goalposts.footpoint_out_of_image_threshold": 0.8,
+                "robots.footpoint_out_of_image_threshold": 0.8,
+            }],
             remappings=[
-                ('/camera/image', '/AUREA/CAM/image_color')
-            ]
-        )
+                ("camera_info", "/camera/camera_info"),
+            ],
+        ),
     ])

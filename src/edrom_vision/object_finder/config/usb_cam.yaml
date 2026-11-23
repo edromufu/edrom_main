@@ -1,0 +1,9 @@
+/**:
+  ros__parameters:
+    camera_name: "milare"          # verri ou milare: define o arquivo de calibração salvo
+    video_device: "/dev/video0"
+    image_width: 640              # mesma resolução do vision.launch
+    image_height: 480
+    framerate: 30.0
+    pixel_format: "yuyv2rgb"
+    frame_id: "camera_optical_frame"
