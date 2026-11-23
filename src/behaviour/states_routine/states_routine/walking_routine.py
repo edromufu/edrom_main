@@ -7,11 +7,7 @@ from modularized_bhv_msgs.msg import CurrentStateMsg
 from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
-from soccer_vision_2d_msgs.msg import BallArray
-from object_finder.rotacao import ROTACAO_CAMERA, melhor_bola_em_pe
-
-from nav_msgs.msg import Path
-from std_msgs.msg import Float64MultiArray
+from edrom_msgs.msg import VisionData
 
 class WalkingRoutine(Node):
     """
@@ -26,8 +22,6 @@ class WalkingRoutine(Node):
         # --- Variáveis de Controle ---
         self.is_active = False
         self.current_fsm_state = "" # Guarda o estado atual da FSM principal
-        self.planned_positions = []   # Array das posições (x, y)
-        self.planned_velocities = []  # Array das velocidades (dx, dy, psi)
 
         # --- Parâmetros ---
         self.declare_parameter('walk_speed_x', 0.1,)
@@ -36,10 +30,6 @@ class WalkingRoutine(Node):
         self.declare_parameter('kp_foot_forward', 0.001,)
         self.declare_parameter('kicking_hotspot_x', 320.0, )
         self.declare_parameter('kicking_hotspot_y', 400.0, )
-        # Imagem original da câmera e sua rotação física (o hotspot é na imagem em pé)
-        self.declare_parameter('image_width', 640)
-        self.declare_parameter('image_height', 480)
-        self.declare_parameter('image_rotation', ROTACAO_CAMERA)
 
         # Obtém os valores dos parâmetros
         self.walk_speed_x = self.get_parameter('walk_speed_x').get_parameter_value().double_value
@@ -48,9 +38,6 @@ class WalkingRoutine(Node):
         self.kp_foot_forward = self.get_parameter('kp_foot_forward').get_parameter_value().double_value
         self.kicking_hotspot_x = self.get_parameter('kicking_hotspot_x').get_parameter_value().double_value
         self.kicking_hotspot_y = self.get_parameter('kicking_hotspot_y').get_parameter_value().double_value
-        self.image_width = self.get_parameter('image_width').get_parameter_value().integer_value
-        self.image_height = self.get_parameter('image_height').get_parameter_value().integer_value
-        self.image_rotation = self.get_parameter('image_rotation').get_parameter_value().integer_value
         
         # --- Variáveis de Sensores ---
         self.head_pan_angle = 0.0
@@ -59,12 +46,8 @@ class WalkingRoutine(Node):
 
         self.timer_period = 0.05  # 20 Hz
 
-        #importando as informações do path planner
-        self.pos_array_sub = self.create_subscription( 
-            Path, '/planning/positions_array', self.positions_callback, 10)
-        self.vel_array_sub = self.create_subscription(
-            Float64MultiArray, '/planning/velocities_array', self.velocities_callback, 10)
-
+        # --- Subscribers ---
+        # Ouve as ordens da StateMachine principal
         self.state_sub = self.create_subscription(
             CurrentStateMsg, '/transitions_and_states/state_machine', self.state_callback, 10)
         
@@ -74,29 +57,18 @@ class WalkingRoutine(Node):
             
         # Ouve os dados da visão para o alinhamento do pé
         self.vision_sub = self.create_subscription(
-            BallArray, 'balls_in_image', self.vision_callback, 10)
+            VisionData, 'vision2BhvTopic', self.vision_callback, 10)
 
         # --- Publishers ---
         # Comanda o especialista da cabeça
         self.head_control_pub = self.create_publisher(String, '/head_control/state', 10)
         # Comanda o corpo (motor de caminhada)
-        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel_walk', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
 
         # --- Timer ---
         self.timer = self.create_timer(self.timer_period, self.control_loop)
         
         self.get_logger().info("Rotina de Caminhada e Alinhamento pronta e ouvindo ordens.")
-
-    def positions_callback(self, msg: Path):
-        """Armazena as posições planificadas."""
-        self.planned_positions = [(p.pose.position.x, p.pose.position.y) for p in msg.poses]
-
-    def velocities_callback(self, msg: Float64MultiArray):
-        """Armazena as velocidades planificadas (dx, dy, psi)."""
-        data = msg.data
-        self.planned_velocities = [
-            (data[i], data[i + 1], data[i + 2]) for i in range(0, len(data) - 2, 3)
-        ]
 
     def state_callback(self, msg):
         """Ativa ou desativa a rotina e armazena o estado atual."""
@@ -121,16 +93,17 @@ class WalkingRoutine(Node):
             # Ignora a mensagem se 'head_pan' não for encontrado ou a lista for curta
             pass
 
-    def vision_callback(self, msg: BallArray):
-        """Armazena a posição da bola na imagem em pé (bola de maior confiança)."""
-        bola = melhor_bola_em_pe(
-            msg.balls, self.image_rotation, self.image_width, self.image_height)
-        if bola is not None:
-            self.ball_x, self.ball_y = float(bola[0]), float(bola[1])
+    def vision_callback(self, msg: VisionData):
+        """Armazena a posição da bola na imagem."""
+        if msg.ball.found:
+            self.ball_x = float(msg.ball.x)
+            self.ball_y = float(msg.ball.y)
 
     def control_loop(self):
         """Se a rotina estiver ativa, executa a sub-rotina correspondente."""
         if not self.is_active:
+            # Garante que nenhum comando de velocidade seja enviado se a rotina estiver inativa
+            self.cmd_vel_pub.publish(Twist())
             return
 
         # --- Ações Comuns a Todos os Sub-estados Ativos ---
@@ -146,20 +119,16 @@ class WalkingRoutine(Node):
             self.execute_body_alignment()
         elif self.current_fsm_state == 'aligning_foot':
             self.execute_foot_alignment()
+        else:
+            # Estado desconhecido ou de transição, para por segurança
+            self.cmd_vel_pub.publish(Twist())
     
     def execute_walk_forward(self):
-        """Comanda o robô usando o array de velocidades (dx, dy, psi) gerado pelo Path Planning."""
+        """Comanda o robô para andar para frente."""
         twist_command = Twist()
-        if self.planned_velocities:
-            dx, dy, psi = self.planned_velocities[0]
-            twist_command.linear.x = float(dx)
-            twist_command.linear.y = float(dy)
-            twist_command.angular.z = float(psi)
-        else:
-            #fallback caso o path planner ainda não tenha publicado um caminho
-            twist_command.linear.x = self.walk_speed_x
-
+        twist_command.linear.x = self.walk_speed_x
         self.cmd_vel_pub.publish(twist_command)
+        self.get_logger().info("Executando: Andar para frente.", throttle_duration_sec=1)
 
     def execute_body_alignment(self):
         """Comanda o robô para girar no eixo até alinhar o corpo com a cabeça."""
