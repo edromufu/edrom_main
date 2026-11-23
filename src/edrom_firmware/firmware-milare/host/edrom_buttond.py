@@ -5,18 +5,17 @@ Roda no boot do PC (systemd), lê o ESP32 pela USB e inicia/para o bringup,
 sem precisar de SSH, teclado ou cabo de rede.
 
 Botões:
-  1         -> modo JOGO: bringup completo (DESATIVADO por padrão,
-               ligue com EDROM_JOGO_ENABLED=1)
+  1         -> ANDAR: /cmd_vel x = WALK_SPEED (0.10 m/s) para frente
+               (só com o modo POSE rodando)
   2         -> modo POSE: walking.launch.py + direct_control.launch.py
                (vai para a first pose, sem visão/comportamento)
-  3         -> comando livre (EDROM_BTN3_CMD)
-  4         -> para o que estiver rodando
+  3         -> PARAR DE ANDAR: /cmd_vel = 0 e, HALT_DELAY_S (1.5 s) depois,
+               /stop_walking (volta para a pose inicial)
+  4         -> para o que estiver rodando (mata os launches)
   5         -> reinicia o modo atual
   segurar 4 -> para tudo e desliga o PC
 
-Só um modo roda por vez: apertar 1 com o POSE rodando (ou 2 com o JOGO)
-para o modo atual e inicia o outro, para não haver dois direct_controller
-na mesma porta dos motores.
+O modo JOGO (bringup completo) existe mas está sem botão até o novo bringup.
 
 Configuração por variáveis de ambiente (veja edrom-buttons.service):
   EDROM_BTN_PORT     porta serial do ESP32 (padrão /dev/edrom_buttons)
@@ -60,6 +59,10 @@ LOG_DIR = os.environ.get('EDROM_LOG_DIR', os.path.join(WS, 'logs_robot'))
 CUSTOM_CMDS = {
     3: os.environ.get('EDROM_BTN3_CMD', ''),
 }
+
+WALK_SPEED = float(os.environ.get('EDROM_WALK_SPEED', '0.10'))   # m/s
+HALT_DELAY_S = float(os.environ.get('EDROM_HALT_DELAY', '1.5'))   # s
+HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ros_cmd_helper.py')
 
 ROS_ENV = f'source /opt/ros/humble/setup.bash && source {WS}/install/setup.bash'
 STOP_TIMEOUT_S = 10.0
@@ -171,6 +174,53 @@ class Robot:
         self.procs = []
 
 
+class RosBridge:
+    """Processo ros_cmd_helper.py sempre aberto, para publicar sem atraso."""
+
+    def __init__(self):
+        self.proc = None
+
+    def send(self, cmd):
+        if DRY_RUN:
+            log(f'[TESTE] publicaria: {cmd}')
+            return
+        if self.proc is None or self.proc.poll() is not None:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            logf = open(os.path.join(LOG_DIR, 'ros_bridge.log'), 'a')
+            self.proc = subprocess.Popen(
+                f'{ROS_ENV} && exec python3 -u {HELPER}', shell=True,
+                executable='/bin/bash', cwd=WS, stdin=subprocess.PIPE,
+                stdout=logf, stderr=subprocess.STDOUT, text=True,
+                start_new_session=True)
+            logf.close()
+            log('ponte ROS iniciada')
+        try:
+            self.proc.stdin.write(cmd + '\n')
+            self.proc.stdin.flush()
+            log(f'enviado: {cmd}')
+        except (BrokenPipeError, OSError) as e:
+            log(f'ponte ROS caiu ({e}); tente de novo')
+            self.proc = None
+
+    def close(self):
+        if self.proc and self.proc.poll() is None:
+            try:
+                os.killpg(self.proc.pid, signal.SIGINT)
+                self.proc.wait(timeout=3)
+            except Exception:
+                try:
+                    os.killpg(self.proc.pid, signal.SIGKILL)
+                except Exception:
+                    pass
+
+
+def walking_ready(robot):
+    if robot.running() and robot.mode == 'pose':
+        return True
+    log('walking não está rodando: aperte 2 (modo pose) antes')
+    return False
+
+
 def run_custom(n):
     cmd = CUSTOM_CMDS.get(n)
     if not cmd:
@@ -190,7 +240,7 @@ def uptime_s():
         return float(f.read().split()[0])
 
 
-def handle(line, robot, connected_at, pins, accepted):
+def handle(line, robot, bridge, connected_at, pins, accepted):
     parts = line.split()
     if len(parts) == 3 and parts[0] == 'HELLO':
         # estado bruto dos pinos (1 = solto, 0 = em GND); loga quando muda
@@ -212,7 +262,11 @@ def handle(line, robot, connected_at, pins, accepted):
     if kind == 'BTN':
         log(f'botão {n}')
         if n == 1:
-            robot.start('jogo')
+            if walking_ready(robot):
+                bridge.send(f'VEL {WALK_SPEED}')
+        elif n == 3:
+            if walking_ready(robot):
+                bridge.send(f'HALT {HALT_DELAY_S}')
         elif n == 2:
             robot.start('pose')
         elif n == 4:
@@ -250,8 +304,10 @@ def open_port():
 
 def main():
     robot = Robot()
+    bridge = RosBridge()
 
     def on_exit(*_):
+        bridge.close()
         robot.stop()
         sys.exit(0)
 
@@ -278,7 +334,7 @@ def main():
             while True:
                 raw = ser.readline()
                 if raw:
-                    handle(raw.decode(errors='ignore').strip(), robot, connected_at, pins, accepted)
+                    handle(raw.decode(errors='ignore').strip(), robot, bridge, connected_at, pins, accepted)
                 now = time.time()
                 if now - last_tx > 0.5:
                     ser.write(f'S {robot.state()}\n'.encode())

@@ -35,16 +35,16 @@ direct_controller:
     r_el:  {id: 17, protocol: 2.0, inverted: false, calibration_offset: 0.0} 
 
 
-    r_hip_yaw:    {id: 11, protocol: 2.0, inverted: false, calibration_offset: 0.0}
-    r_hip_roll:   {id: 9,  protocol: 2.0, inverted: false, calibration_offset: 0.0} # 0.02
-    r_hip_pitch:  {id: 7,  protocol: 2.0, inverted: true,  calibration_offset: 0.0}
+    r_hip_yaw:    {id: 11, protocol: 2.0, inverted: false, calibration_offset: -0.0400}
+    r_hip_roll:   {id: 9,  protocol: 2.0, inverted: false, calibration_offset: 0.0800} # 0.02
+    r_hip_pitch:  {id: 7,  protocol: 2.0, inverted: true,  calibration_offset: 0.0600}
     r_knee:       {id: 5,  protocol: 2.0, inverted: false,  calibration_offset: 0.0}
     r_ank_roll:   {id: 3,  protocol: 2.0, inverted: false, calibration_offset: 0.0}
     r_ank_pitch:  {id: 1,  protocol: 2.0, inverted: true,  calibration_offset: 0.0}
 
-    l_hip_yaw:    {id: 10, protocol: 2.0, inverted: false, calibration_offset: -0.0}
-    l_hip_roll:   {id: 8,  protocol: 2.0, inverted: false, calibration_offset: -0.0}
-    l_hip_pitch:  {id: 6,  protocol: 2.0, inverted: false, calibration_offset: 0.1} # 0.04
-    l_knee:       {id: 4,  protocol: 2.0, inverted: true,  calibration_offset: 0.0} # -0.15
-    l_ank_roll:   {id: 2,  protocol: 2.0, inverted: false, calibration_offset: 0.0}
+    l_hip_yaw:    {id: 10, protocol: 2.0, inverted: false, calibration_offset: -0.0600}
+    l_hip_roll:   {id: 8,  protocol: 2.0, inverted: false, calibration_offset: -0.0400}
+    l_hip_pitch:  {id: 6,  protocol: 2.0, inverted: false, calibration_offset: 0.0500} # 0.04
+    l_knee:       {id: 4,  protocol: 2.0, inverted: true,  calibration_offset: -0.1200} # -0.15
+    l_ank_roll:   {id: 2,  protocol: 2.0, inverted: false, calibration_offset: -0.0300}
     l_ank_pitch:  {id: 0,  protocol: 2.0, inverted: true,  calibration_offset: 0.0}
