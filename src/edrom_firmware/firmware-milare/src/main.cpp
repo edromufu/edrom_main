@@ -1,6 +1,6 @@
-// EDROM - Painel de botões (ESP32)
+// EDROM - Painel de botões + IMU MPU-6050 (ESP32)
 //
-// Protocolo serial em texto simples (115200 baud), sem micro-ROS, para que
+// Protocolo serial em texto simples (SERIAL_BAUD), sem micro-ROS, para que
 // funcione assim que o robô liga, antes de qualquer coisa do ROS estar no ar.
 //
 // ESP32 -> PC:
@@ -8,6 +8,13 @@
 //                       pinos: 1 = solto, 0 = em GND), p.ex. "HELLO EDROM_BTN 11111"
 //   "BTN <n>"           botão n (1..5) pressionado
 //   "HOLD <n>"          botão n segurado por HOLD_MS
+//   "IMU <seq> <t_us> <ax> <ay> <az> <gx> <gy> <gz>"   a cada IMU_PERIOD_US
+//                       amostra BRUTA do MPU-6050 (contagens int16, ±2 g e
+//                       ±500 °/s). seq vai de 0 a 65535 (detecta perdas) e
+//                       t_us é o micros() da leitura (uint32, dá a volta em
+//                       ~71 min). Nenhum filtro roda aqui: calibração do giro,
+//                       filtros e comparação ficam no PC (imu_ros_arduino).
+//   "IMUSTAT <OK|ERR> <who_am_i>"   a cada 1 s (MPU respondendo ou não)
 //
 // PC -> ESP32 (estado do robô, mostrado no LED onboard):
 //   "S IDLE"   robô parado, pronto      -> LED pisca lento (1 s)
@@ -16,6 +23,16 @@
 //   "S ERR"    bringup morreu sozinho   -> LED pisca rápido (80 ms)
 //   sem mensagem do PC por 3 s          -> LED apagado com flash curto a cada 2 s
 #include <Arduino.h>
+#include <Wire.h>
+
+// 115200 não comporta 200 amostras/s de IMU em texto (~13 kB/s).
+// O host (host/edrom_buttond.py, EDROM_BTN_BAUD) tem que usar o mesmo valor.
+static const uint32_t SERIAL_BAUD = 460800;
+
+// MPU-6050 no I2C padrão do ESP32: SDA = GPIO21, SCL = GPIO22
+static const uint8_t MPU_ADDR = 0x68;
+static const uint32_t IMU_PERIOD_US = 5000;      // 200 Hz
+static const uint32_t IMU_RETRY_MS = 1000;       // tenta reiniciar o MPU se ele sumir
 
 // Botões entre o pino e GND (usa pull-up interno).
 // Botões NORMALMENTE FECHADOS (NF/NC): em repouso o pino está em GND (LOW) e
@@ -44,6 +61,67 @@ uint32_t lastHostMsg = 0;
 uint32_t lastHello = 0;
 char rxBuf[32];
 uint8_t rxLen = 0;
+
+bool imuOk = false;
+uint8_t imuWhoAmI = 0;
+uint16_t imuSeq = 0;
+uint32_t imuNextUs = 0;
+uint32_t imuLastTry = 0;
+
+static bool mpuWrite(uint8_t reg, uint8_t value) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(reg);
+  Wire.write(value);
+  return Wire.endTransmission(true) == 0;
+}
+
+// Lê n bytes a partir de reg. false se o MPU não respondeu.
+static bool mpuRead(uint8_t reg, uint8_t* buf, uint8_t n) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom(MPU_ADDR, n, (uint8_t)true) != n) return false;
+  for (uint8_t i = 0; i < n; i++) buf[i] = Wire.read();
+  return true;
+}
+
+static bool imuInit() {
+  uint8_t who = 0;
+  if (!mpuRead(0x75, &who, 1)) return false;   // WHO_AM_I (0x68; clones: 0x70, 0x72, 0x98)
+  imuWhoAmI = who;
+  return mpuWrite(0x6B, 0x01)      // PWR_MGMT_1: acorda, clock do PLL do giro X
+      && mpuWrite(0x1A, 0x03)      // CONFIG: DLPF ~44 Hz (reduz vibração dos servos)
+      && mpuWrite(0x19, 0x04)      // SMPLRT_DIV: 1 kHz / (1 + 4) = 200 Hz
+      && mpuWrite(0x1B, 0x08)      // GYRO_CONFIG: ±500 °/s (numa queda passa de 250 °/s)
+      && mpuWrite(0x1C, 0x00);     // ACCEL_CONFIG: ±2 g
+}
+
+static int16_t be16(const uint8_t* p) { return (int16_t)((p[0] << 8) | p[1]); }
+
+static void updateImu(uint32_t nowMs) {
+  if (!imuOk) {
+    if (nowMs - imuLastTry < IMU_RETRY_MS) return;
+    imuLastTry = nowMs;
+    imuOk = imuInit();
+    imuNextUs = micros();
+    return;
+  }
+  uint32_t nowUs = micros();
+  if ((int32_t)(nowUs - imuNextUs) < 0) return;
+  // Mantém a grade de 200 Hz; se atrasou muito (ex.: I2C lento), reancora
+  imuNextUs += IMU_PERIOD_US;
+  if ((int32_t)(nowUs - imuNextUs) > (int32_t)IMU_PERIOD_US) imuNextUs = nowUs + IMU_PERIOD_US;
+
+  uint8_t b[14];
+  uint32_t t = micros();
+  if (!mpuRead(0x3B, b, 14)) {   // ACCEL_XOUT_H .. GYRO_ZOUT_L (temperatura no meio)
+    imuOk = false;
+    imuLastTry = nowMs;
+    return;
+  }
+  Serial.printf("IMU %u %lu %d %d %d %d %d %d\n", imuSeq++, (unsigned long)t,
+                be16(b), be16(b + 2), be16(b + 4), be16(b + 8), be16(b + 10), be16(b + 12));
+}
 
 static void handleLine(const char* line) {
   if (strncmp(line, "S ", 2) != 0) return;
@@ -99,7 +177,13 @@ void setup() {
     lastState[i] = digitalRead(BTN_PINS[i]);
     lastChange[i] = millis();
   }
-  Serial.begin(115200);
+  Serial.begin(SERIAL_BAUD);
+  Wire.begin();             // SDA 21, SCL 22
+  Wire.setClock(400000);    // 14 bytes em ~0,4 ms
+  Wire.setTimeOut(5);       // MPU desconectado não pode travar os botões
+  imuOk = imuInit();
+  imuLastTry = millis();
+  imuNextUs = micros();
 }
 
 void loop() {
@@ -130,9 +214,11 @@ void loop() {
     for (int i = 0; i < 5; i++) mask[i] = digitalRead(BTN_PINS[i]) ? '1' : '0';
     mask[5] = '\0';
     Serial.printf("HELLO EDROM_BTN %s\n", mask);
+    Serial.printf("IMUSTAT %s 0x%02X\n", imuOk ? "OK" : "ERR", imuWhoAmI);
   }
 
+  updateImu(now);
   readHost();
   updateLed(now);
-  delay(2);
+  delay(1);
 }

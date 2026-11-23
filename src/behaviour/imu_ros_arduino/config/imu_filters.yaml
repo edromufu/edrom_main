@@ -1,0 +1,60 @@
+# Parâmetros do nó imu_filters (também lidos pelo ipm_filter_eval).
+# Números reais precisam de ponto decimal (1.0, não 1): o ROS checa o tipo.
+imu_filters:
+  ros__parameters:
+    udp_host: "127.0.0.1"
+    udp_port: 5600                 # mesmo de EDROM_IMU_UDP do edrom_buttond.py
+    filters: ["acc", "complementary", "mahony", "ekf"]
+    filter: "ekf"                  # alimenta /behaviour/imu_* e o TF da câmera
+    publish_rate_hz: 100.0
+    stamp_offset_ms: 0.0           # use o valor do ipm_filter_eval --search-offset
+    publish_tf: true
+    base_frame: "base_footprint"
+    camera_frame: "camera_optical_frame"   # frame_id do usb_cam.yaml
+    imu_frame: "imu_link"
+    joint_states_topic: "/joint_states_feedback"
+    head_pan_joint: "head_pan"
+    head_tilt_joint: "head_tilt"
+    record: false
+
+    # Montagem do MPU-6050 no tronco: eixos do corpo (x frente, y esquerda,
+    # z cima) em função dos eixos do sensor. Confira com o robô em pé e parado:
+    # /imu/acc/rpy deve dar ~0 e, inclinando para frente, pitch > 0;
+    # tombando para a direita, roll > 0.
+    axes: ["x", "y", "z"]
+
+    gyro_calib:
+      samples: 400
+      max_std_dps: 0.5
+      max_accel_dev_g: 0.05
+      timeout_s: 10.0
+    max_dt: 0.05
+
+    complementary:
+      tau: 0.5
+    mahony:
+      kp: 1.0
+      ki: 0.02
+      integral_limit: 0.1
+      accel_dev_scale: 0.05
+      accel_reject: 0.3
+    ekf:
+      gyro_noise: 0.002
+      bias_noise: 0.0001
+      accel_noise: 0.05
+      accel_dev_scale: 0.05
+      accel_reject: 0.3
+
+    # Cadeia da câmera (veja camera_model.py). VALORES APROXIMADOS: meça no
+    # robô ou use ipm_filter_eval --fit para pivot_height e camera_mount_rpy.
+    camera:
+      pivot_height: 0.30
+      neck_offset: [0.0, 0.0, 0.20]
+      camera_offset: [0.03, 0.0, 0.05]
+      camera_mount_rpy: [3.14159265, 0.0, 0.0]   # câmera de cabeça para baixo (image_rotation 180)
+      pan_sign: 1.0
+      tilt_sign: 1.0
+      pan_offset: 0.0
+      tilt_offset: 0.0
+      fixed_pan: 0.0
+      fixed_tilt: 0.0

@@ -55,13 +55,16 @@ def generate_launch_description():
             output="screen"
         ),
 
-        # Leitura do IMU (condicional)
-        Node(
-            package="imu_ros_arduino",
-            executable="imu_read",
-            name="imu_ros_arduino",
-            output="screen",
+        # IMU (condicional): o MPU-6050 está no ESP32 dos botões; o
+        # edrom_buttond.py repassa as amostras por UDP e o imu_filters filtra
+        # no PC e publica /behaviour/imu_* e o TF da câmera.
+        # (imu_port não é mais usado: a serial é do edrom_buttond.py)
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(os.path.join(
+                get_package_share_directory('imu_ros_arduino'),
+                'launch',
+                'imu_filters.launch.py'
+            )),
             condition=IfCondition(imu_connected),
-            parameters=[{"port": imu_port}]
         )
     ])

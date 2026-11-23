@@ -17,8 +17,19 @@ Botões:
 
 O modo JOGO (bringup completo) existe mas está sem botão até o novo bringup.
 
+IMU: o mesmo ESP32 lê o MPU-6050 e manda amostras brutas ("IMU ...").
+Este daemon é o único dono da serial, então repassa cada linha IMU por UDP
+local (EDROM_IMU_UDP), acrescentando o instante de chegada no PC em ns
+(time.time_ns(), mesmo relógio dos stamps do ROS):
+    "IMU <seq> <t_us> <ax> <ay> <az> <gx> <gy> <gz> <pc_ns>"
+O nó imu_filters (pacote imu_ros_arduino) recebe, filtra e publica no ROS.
+Uma thread só lê a serial, para o repasse não parar enquanto um launch
+está sendo parado.
+
 Configuração por variáveis de ambiente (veja edrom-buttons.service):
   EDROM_BTN_PORT     porta serial do ESP32 (padrão /dev/edrom_buttons)
+  EDROM_BTN_BAUD     baud da serial (padrão 460800, igual ao firmware)
+  EDROM_IMU_UDP      destino host:porta das amostras da IMU (padrão 127.0.0.1:5600)
   EDROM_WS           workspace (padrão ~/edrom_main)
   EDROM_LAUNCH       comando ros2 launch do modo JOGO
   EDROM_POSE_LAUNCHES  comandos do modo POSE, separados por ';'
@@ -26,14 +37,21 @@ Configuração por variáveis de ambiente (veja edrom-buttons.service):
 """
 import datetime
 import os
+import queue
 import signal
+import socket
 import subprocess
 import sys
+import threading
 import time
 
 import serial
 
 PORT = os.environ.get('EDROM_BTN_PORT', '/dev/edrom_buttons')
+BAUD = int(os.environ.get('EDROM_BTN_BAUD', '460800'))
+_imu_host, _imu_port = os.environ.get('EDROM_IMU_UDP', '127.0.0.1:5600').rsplit(':', 1)
+IMU_UDP = (_imu_host, int(_imu_port))
+IMU_ERR_LOG_S = 30.0   # repete o aviso de IMU com erro no máximo a cada 30 s
 WS = os.path.expanduser(os.environ.get('EDROM_WS', '~/edrom_main'))
 LAUNCH = os.environ.get(
     'EDROM_LAUNCH',
@@ -290,10 +308,63 @@ def handle(line, robot, bridge, connected_at, pins, accepted):
         subprocess.call(['sudo', '-n', '/usr/bin/systemctl', 'poweroff'])
 
 
+class SerialReader(threading.Thread):
+    """Lê a serial sem parar: linhas IMU vão direto para o UDP, o resto
+    (botões, HELLO, IMUSTAT) vai para a fila da thread principal.
+    Em erro de serial coloca None na fila e termina."""
+
+    def __init__(self, ser, lines):
+        super().__init__(daemon=True)
+        self.ser = ser
+        self.lines = lines
+        self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.n_imu = 0
+
+    def run(self):
+        buf = b''
+        try:
+            while True:
+                chunk = self.ser.read(self.ser.in_waiting or 1)
+                if not chunk:
+                    continue
+                now_ns = time.time_ns()
+                buf += chunk
+                *done, buf = buf.split(b'\n')
+                if len(buf) > 512:   # lixo sem '\n' (ex.: boot do ESP32 em outro baud)
+                    buf = b''
+                for raw in done:
+                    raw = raw.strip()
+                    if raw.startswith(b'IMU '):
+                        self.n_imu += 1
+                        try:
+                            self.udp.sendto(raw + b' %d' % now_ns, IMU_UDP)
+                        except OSError:
+                            pass   # ninguém escutando ainda: descarta
+                    elif raw:
+                        self.lines.put(raw.decode(errors='ignore'))
+        except (serial.SerialException, OSError) as e:
+            self.lines.put(None)
+            log(f'leitura da serial falhou ({e})')
+        finally:
+            self.udp.close()
+
+
+def handle_imustat(parts, imu_state):
+    # "IMUSTAT OK 0x68" / "IMUSTAT ERR 0x00": loga quando muda (erro: no máximo a cada 30 s)
+    status = ' '.join(parts[1:])
+    now = time.time()
+    if status != imu_state['status'] or (
+            parts[1:2] == ['ERR'] and now - imu_state['logged_at'] > IMU_ERR_LOG_S):
+        log(f'IMU: {status}' + ('  (MPU-6050 não responde no I2C: SDA=21, SCL=22)'
+                                if parts[1:2] == ['ERR'] else ''))
+        imu_state['status'] = status
+        imu_state['logged_at'] = now
+
+
 def open_port():
     ser = serial.Serial()
     ser.port = PORT
-    ser.baudrate = 115200
+    ser.baudrate = BAUD
     ser.timeout = 0.2
     # Evita resetar o ESP32 ao abrir a porta
     ser.dtr = False
@@ -325,16 +396,27 @@ def main():
             time.sleep(1.0)
             continue
 
-        log('ESP32 conectado')
+        log(f'ESP32 conectado ({BAUD} baud); IMU -> udp://{IMU_UDP[0]}:{IMU_UDP[1]}')
         connected_at = time.time()
         pins = ['']
         accepted = set()
+        imu_state = {'status': '', 'logged_at': 0.0}
         last_tx = 0.0
+        lines = queue.Queue()
+        reader = SerialReader(ser, lines)
+        reader.start()
         try:
             while True:
-                raw = ser.readline()
-                if raw:
-                    handle(raw.decode(errors='ignore').strip(), robot, bridge, connected_at, pins, accepted)
+                try:
+                    line = lines.get(timeout=0.2)
+                except queue.Empty:
+                    line = ''
+                if line is None:
+                    raise serial.SerialException('thread de leitura parou')
+                if line.startswith('IMUSTAT'):
+                    handle_imustat(line.split(), imu_state)
+                elif line:
+                    handle(line, robot, bridge, connected_at, pins, accepted)
                 now = time.time()
                 if now - last_tx > 0.5:
                     ser.write(f'S {robot.state()}\n'.encode())
@@ -345,6 +427,7 @@ def main():
                 ser.close()
             except Exception:
                 pass
+            reader.join(timeout=2.0)
             time.sleep(1.0)
 
 
