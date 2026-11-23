@@ -2,8 +2,8 @@
 // Sem micro-ROS. Use: pio run -e test -t upload && pio device monitor -e test
 #include <Arduino.h>
 
-static const uint8_t BTN_PINS[5] = {25, 26, 27, 16, 17};
-static const char* BTN_NAMES[5] = {"D25", "D26", "D27", "RX2", "TX2"};
+static const uint8_t BTN_PINS[5] = {25, 26, 27, 17, 16};
+static const char* BTN_NAMES[5] = {"D25", "D26", "D27", "TX2", "RX2"};
 static const uint32_t DEBOUNCE_MS = 40;
 
 bool lastState[5];

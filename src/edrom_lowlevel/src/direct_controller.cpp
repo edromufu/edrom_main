@@ -83,15 +83,9 @@ DirectController::DirectController() : Node("direct_controller")
   subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
     "/goal_joint_states", 10, std::bind(&DirectController::jointStateCallback, this, std::placeholders::_1));
 
-<<<<<<< HEAD
-  feedback_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/feedback", 10);
-  feedback_timer_ = this->create_wall_timer(
-    std::chrono::milliseconds(20), std::bind(&DirectController::feedbackTimerCallback, this));
-=======
   //feedback_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/feedback", 10);
   //feedback_timer_ = this->create_wall_timer(
     //std::chrono::milliseconds(20), std::bind(&DirectController::feedbackTimerCallback, this));
->>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 }
 
 // Destrutor: Desliga o torque e fecha a porta serial por segurança
@@ -161,10 +155,7 @@ void DirectController::jointStateCallback(const sensor_msgs::msg::JointState::Sh
 }
 
 // Timer: Lê a posição atual dos motores MX-106 via GroupSyncRead e publica em /feedback
-<<<<<<< HEAD
-=======
 /*
->>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 void DirectController::feedbackTimerCallback()
 {
   int comm_result = groupSyncReadV2_->txRxPacket();
@@ -189,28 +180,17 @@ void DirectController::feedbackTimerCallback()
     uint32_t raw_position = groupSyncReadV2_->getData(config.id, ADDR_MX_PRESENT_POSITION, LEN_MX_PRESENT_POSITION);
     double position = value_to_rad(raw_position, config.protocol);
 
-<<<<<<< HEAD
-    position -= config.calibration_offset;
-    if (config.inverted) {
-      position *= -1.0;
-    }
-=======
     if (config.inverted) {
       position *= -1.0;
     }
     position -= config.calibration_offset;
->>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 
     feedback_msg.name.push_back(joint_name);
     feedback_msg.position.push_back(position);
   }
 
   feedback_publisher_->publish(feedback_msg);
-<<<<<<< HEAD
-}
-=======
 }*/
->>>>>>> 168875c3116e74c2f9202e5ed3447cf5534d93ee
 
 // Função auxiliar para conversão
 int DirectController::rad_to_value(double rad, float protocol)

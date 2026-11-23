@@ -1,0 +1,30 @@
+[Unit]
+Description=EDROM - botoes do robo (inicia/para o bringup)
+After=network.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@WS@
+ExecStart=/usr/bin/python3 -u @SCRIPT@
+Restart=always
+RestartSec=2
+# Ao parar o serviço, o daemon recebe SIGTERM e encerra o bringup com Ctrl+C
+KillMode=mixed
+TimeoutStopSec=20
+
+Environment=EDROM_BTN_PORT=/dev/edrom_buttons
+Environment=EDROM_WS=@WS@
+# Botão 1 (modo JOGO) desativado até o novo bringup; descomente para ativar:
+#Environment=EDROM_JOGO_ENABLED=1
+Environment="EDROM_LAUNCH=ros2 launch edrom_bringup robot.launch.py camera_idx:='0' img_output:=False teleop:=False"
+# Botão 2 (modo POSE): launches separados por ';'
+Environment="EDROM_POSE_LAUNCHES=ros2 launch aurea_walk walking.launch.py teleop:=False; ros2 launch edrom_lowlevel direct_control.launch.py"
+# Comando opcional para o botão 3:
+#Environment="EDROM_BTN3_CMD=ros2 topic pub --once /robot_command std_msgs/msg/String '{data: calibrar}'"
+# Se o robô usa variáveis de rede do ROS, coloque aqui (o serviço não lê o ~/.bashrc):
+#Environment=ROS_DOMAIN_ID=0
+#Environment=RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+
+[Install]
+WantedBy=multi-user.target
