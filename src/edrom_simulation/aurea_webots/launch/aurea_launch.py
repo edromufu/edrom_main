@@ -29,19 +29,10 @@ def generate_launch_description():
             'launch',
             'behaviour.launch.py'
         )))
-
-    vision_onnx_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            get_package_share_directory('object_finder_onnx'),
-            'launch',
-            'vision_onnx.launch.py'
-        ))
-    )
     return LaunchDescription([
         webots,
         behaviour_launch,
         my_robot_driver,
-        vision_onnx_launch,
         launch.actions.RegisterEventHandler(
             event_handler=launch.event_handlers.OnProcessExit(
                 target_action=webots,
