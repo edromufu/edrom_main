@@ -127,8 +127,9 @@ void WalkingEngineNode::start_new_step()
     swing_foot_ = &left_foot_;
   } else {
     support_foot_ = &left_foot_;
+    swing_foot_ = &right_foot_;
   }
-  
+
   geometry_msgs::msg::Twist command_to_use;
   // Se o estado for de caminhada normal, usa o comando recebido.
   // Se for de marcha no lugar, usa um comando zerado para não sair do lugar.
