@@ -90,6 +90,7 @@ class ImuReader(Node):
 
                                 # Publicando o valor de roll
                                 self.roll_msg.x = rollC
+                                
                                 self.roll_pub.publish(self.roll_msg)
                         except (ValueError, IndexError) as e:
                             self.get_logger().warning(f"Dados do serial inválidos: {e}")

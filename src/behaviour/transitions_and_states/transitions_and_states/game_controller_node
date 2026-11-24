@@ -14,9 +14,7 @@ class GCReceiver(Node):
         self.pub_raw = self.create_publisher(String, '/gc/raw', 10)
         self.pub_state = self.create_publisher(UInt8, '/gc/state', 10)
         self.pub_phase = self.create_publisher(UInt8, '/gc/game_phase', 10)
-        self.pub_secs_remaining = self.create_publisher(Int16, '/gc/secs_remaining', 10)
-        self.pub_team0_score = self.create_publisher(Int32, '/gc/team0/score', 10)
-        self.pub_team1_score = self.create_publisher(Int32, '/gc/team1/score', 10)
+
 
         # Socket UDP broadcast 3838
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -58,9 +56,6 @@ class GCReceiver(Node):
                 self.pub_raw.publish(String(data=json.dumps(msg)))
                 self.pub_state.publish(UInt8(data=int(parsed.state)))
                 self.pub_phase.publish(UInt8(data=int(parsed.gamePhase)))
-                self.pub_secs_remaining.publish(Int16(data=int(parsed.secsRemaining)))
-                self.pub_team0_score.publish(Int32(data=int(parsed.teams[0].score)))
-                self.pub_team1_score.publish(Int32(data=int(parsed.teams[1].score)))
             except Exception as e:
                 self.get_logger().warn(f'Erro recebendo/parsing GC: {e}')
 
