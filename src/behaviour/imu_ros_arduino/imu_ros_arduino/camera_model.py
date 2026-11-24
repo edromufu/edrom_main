@@ -1,18 +1,17 @@
-"""Pose da câmera em base_footprint a partir de roll/pitch da IMU e da cabeça.
+"""Pose da câmera em base_footprint a partir de roll/pitch da IMU DA CABEÇA.
 
 Cadeia (REP-103, x frente, y esquerda, z cima):
   base_footprint   no chão, alinhado à gravidade, yaw = yaw do tronco
-  -> pivô do tronco: (0, 0, pivot_height), gira com Ry(pitch) Rx(roll) da IMU
-  -> pescoço (pan):  neck_offset no tronco, gira Rz(pan)
-  -> tilt:           gira Ry(tilt)   (tilt > 0 olha para baixo)
+  -> pescoço:        (0, 0, pivot_height) + neck_offset (tronco considerado em pé)
+  -> orientação da cabeça: Rz(pan) Ry(pitch) Rx(roll), com roll/pitch da IMU
+     (o tilt já está no pitch; o yaw só vem do pan, a IMU não mede yaw)
   -> câmera:         camera_offset na cabeça, rotação fixa camera_mount_rpy
   -> óptico:         z para frente, x para a direita, y para baixo (o que o
                      camera_info / IPM usam)
 
-A IMU é considerada presa ao tronco (o eixo do corpo já mapeado por 'axes').
-Qualquer desalinhamento fixo IMU/câmera entra em camera_mount_rpy.
-Com a câmera montada de cabeça para baixo (image_rotation 180 na visão),
-camera_mount_rpy[0] = pi.
+A IMU é considerada presa à cabeça (eixos já mapeados por 'axes'). O
+desalinhamento fixo IMU/câmera entra em camera_mount_rpy. Com a câmera montada
+de cabeça para baixo (image_rotation 180 na visão), camera_mount_rpy[0] = pi.
 """
 import math
 
@@ -24,11 +23,8 @@ CAMERA_DEFAULTS = {
     'camera.camera_offset': [0.03, 0.0, 0.05],  # m, eixo do tilt -> câmera (na cabeça)
     'camera.camera_mount_rpy': [math.pi, 0.0, 0.0],  # rad
     'camera.pan_sign': 1.0,
-    'camera.tilt_sign': 1.0,
     'camera.pan_offset': 0.0,                  # rad
-    'camera.tilt_offset': 0.0,                 # rad
     'camera.fixed_pan': 0.0,                   # rad, usado sem joint_states
-    'camera.fixed_tilt': 0.0,                  # rad, usado sem joint_states
 }
 
 # Eixos do frame óptico escritos no frame da câmera (x frente, y esq., z cima)
@@ -83,25 +79,15 @@ class CameraModel:
         self.cam = np.asarray(p['camera.camera_offset'], float)
         self.R_mount = rpy_matrix(*[float(v) for v in p['camera.camera_mount_rpy']])
         self.pan_sign = float(p['camera.pan_sign'])
-        self.tilt_sign = float(p['camera.tilt_sign'])
         self.pan_offset = float(p['camera.pan_offset'])
-        self.tilt_offset = float(p['camera.tilt_offset'])
-
-    def head_angles(self, pan, tilt):
-        """pan/tilt NaN ou None -> valores fixos do config."""
-        if pan is None or not math.isfinite(pan):
-            pan = float(self.p['camera.fixed_pan'])
-        if tilt is None or not math.isfinite(tilt):
-            tilt = float(self.p['camera.fixed_tilt'])
-        return pan, tilt
 
     def pose(self, roll, pitch, pan=None, tilt=None):
-        """-> (R, t): frame óptico em base_footprint (p_base = R p_opt + t)."""
-        pan, tilt = self.head_angles(pan, tilt)
-        R_torso = rot_y(pitch) @ rot_x(roll)
-        R_head = R_torso @ rot_z(self.pan_sign * pan + self.pan_offset) \
-            @ rot_y(self.tilt_sign * tilt + self.tilt_offset)
-        t = self.pivot + R_torso @ self.neck + R_head @ self.cam
+        """-> (R, t): frame óptico em base_footprint (p_base = R p_opt + t).
+        roll/pitch: IMU da cabeça. tilt é ignorado (já está no roll/pitch)."""
+        if pan is None or not math.isfinite(pan):
+            pan = float(self.p['camera.fixed_pan'])
+        R_head = rot_z(self.pan_sign * pan + self.pan_offset) @ rot_y(pitch) @ rot_x(roll)
+        t = self.pivot + self.neck + R_head @ self.cam   # tronco considerado em pé
         R = R_head @ self.R_mount @ R_LINK_OPTICAL
         return R, t
 

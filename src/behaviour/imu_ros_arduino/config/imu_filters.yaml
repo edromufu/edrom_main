@@ -4,8 +4,8 @@ imu_filters:
   ros__parameters:
     udp_host: "127.0.0.1"
     udp_port: 5600                 # mesmo de EDROM_IMU_UDP do edrom_buttond.py
-    filters: ["acc", "complementary", "mahony", "ekf"]
-    filter: "ekf"                  # alimenta /behaviour/imu_* e o TF da câmera
+    filters: ["mahony", "ekf"]
+    filter: "ekf"                 # alimenta /behaviour/imu_* e o TF da câmera
     publish_rate_hz: 100.0
     stamp_offset_ms: 0.0           # use o valor do ipm_filter_eval --search-offset
     publish_tf: true
@@ -53,8 +53,5 @@ imu_filters:
       camera_offset: [0.03, 0.0, 0.05]
       camera_mount_rpy: [3.14159265, 0.0, 0.0]   # câmera de cabeça para baixo (image_rotation 180)
       pan_sign: 1.0
-      tilt_sign: 1.0
       pan_offset: 0.0
-      tilt_offset: 0.0
       fixed_pan: 0.0
-      fixed_tilt: 0.0
