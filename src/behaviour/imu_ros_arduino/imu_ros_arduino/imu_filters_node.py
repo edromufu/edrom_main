@@ -25,6 +25,7 @@ from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
 from std_srvs.srv import Trigger
+from tf2_msgs.msg import TFMessage
 from tf2_ros import TransformBroadcaster
 
 from imu_ros_arduino.attitude import (
@@ -93,6 +94,8 @@ class ImuFiltersNode(Node):
         self.gyro_pub = self.create_publisher(Vector3, params['legacy_gyro_topic'], sensor_qos)
         self.roll_pub = self.create_publisher(Vector3, params['legacy_roll_topic'], sensor_qos)
         self.tf_pub = TransformBroadcaster(self) if params['publish_tf'] else None
+        self.tf_per_filter = {n: self.create_publisher(TFMessage, f'/{n}/tf', 10)
+                              for n in self.filter_names}
 
         self.pan = self.tilt = float('nan')
         if params['joint_states_topic']:
@@ -217,16 +220,20 @@ class ImuFiltersNode(Node):
         self.roll_pub.publish(Vector3(x=roll / DEG, y=pitch / DEG, z=0.0))
 
         if self.tf_pub:
-            R, t = self.camera.pose(roll, pitch, self.pan, self.tilt)
-            tf = TransformStamped()
-            tf.header.stamp = stamp
-            tf.header.frame_id = self.p['base_frame']
-            tf.child_frame_id = self.p['camera_frame']
-            tf.transform.translation = Vector3(x=t[0], y=t[1], z=t[2])
-            q = matrix_to_quaternion(R)
-            r = tf.transform.rotation
-            r.x, r.y, r.z, r.w = q
-            self.tf_pub.sendTransform(tf)
+            # Um TF por filtro em /<filtro>/tf (cada soccer_ipm lê o seu); o escolhido também vai em /tf
+            for name, (r_, p_) in angles.items():
+                R, t = self.camera.pose(r_, p_, self.pan, self.tilt)
+                tf = TransformStamped()
+                tf.header.stamp = stamp
+                tf.header.frame_id = self.p['base_frame']
+                tf.child_frame_id = self.p['camera_frame']
+                tf.transform.translation = Vector3(x=t[0], y=t[1], z=t[2])
+                q = matrix_to_quaternion(R)
+                r = tf.transform.rotation
+                r.x, r.y, r.z, r.w = q
+                self.tf_per_filter[name].publish(TFMessage(transforms=[tf]))
+                if name == self.selected:
+                    self.tf_pub.sendTransform(tf)
 
     def log_stats(self):
         st = self.stats

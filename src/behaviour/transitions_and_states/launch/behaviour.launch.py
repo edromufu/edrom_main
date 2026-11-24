@@ -15,7 +15,7 @@ def generate_launch_description():
     # Argumentos
     imu_connected_arg = DeclareLaunchArgument(
         "imu_connected",
-        default_value="false"
+        default_value="true"
     )
     imu_port_arg = DeclareLaunchArgument(
         "imu_port",
