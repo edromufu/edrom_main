@@ -21,6 +21,7 @@ imu_filters:
     # /imu/acc/rpy deve dar ~0 e, inclinando para frente, pitch > 0;
     # tombando para a direita, roll > 0.
     axes: ["x", "y", "z"]
+    imu2_axes: ["x", "y", "z"]     # ajustar conforme a montagem da IMU2
 
     gyro_calib:
       samples: 400

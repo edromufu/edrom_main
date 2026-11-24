@@ -273,13 +273,19 @@ class EspClock:
         return t_us, t_us * 1000 + self.mins[0][1], restarted
 
 
+IMU_TAGS = {b'IMU': 0, b'IMU2': 1}   # tag da linha -> índice da IMU
+
+
 def parse_udp_line(line):
-    """b'IMU seq t_us ax ay az gx gy gz pc_ns' -> tupla de ints, ou None."""
+    """b'IMU|IMU2 seq t_us ax ay az gx gy gz pc_ns' -> (idx, seq, ..., pc_ns), ou None.
+
+    idx = 0 para IMU (0x68) e 1 para IMU2 (0x69).
+    """
     parts = line.split()
-    if len(parts) != 10 or parts[0] != b'IMU':
+    if len(parts) != 10 or parts[0] not in IMU_TAGS:
         return None
     try:
-        return tuple(int(v) for v in parts[1:])
+        return (IMU_TAGS[parts[0]],) + tuple(int(v) for v in parts[1:])
     except ValueError:
         return None
 
