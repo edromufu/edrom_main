@@ -10,10 +10,7 @@ Publica:
   TF base_footprint -> camera_optical_frame (filtro escolhido), usado pelo soccer_ipm
 Serviço:
   ~/recalibrate_gyro (std_srvs/Trigger): recalibra o bias com o robô parado
-
-Com record:=true grava as amostras brutas em CSV (para ipm_filter_eval).
 """
-import os
 import socket
 import threading
 import time
@@ -32,8 +29,6 @@ from imu_ros_arduino.attitude import (
     DEFAULTS, DEG, EspClock, FILTER_NAMES, GRAVITY, ImuPipeline, parse_udp_line)
 from imu_ros_arduino.camera_model import (
     CAMERA_DEFAULTS, CameraModel, matrix_to_quaternion, rpy_matrix)
-
-CSV_HEADER = 'stamp_ns,t_esp_us,seq,ax,ay,az,gx,gy,gz,head_pan,head_tilt\n'
 
 
 def stamp_msg(ns):
@@ -61,9 +56,6 @@ class ImuFiltersNode(Node):
             'legacy_accel_topic': '/behaviour/imu_accel',
             'legacy_gyro_topic': '/behaviour/imu_gyro',
             'legacy_roll_topic': '/behaviour/imu_roll',
-            'record': False,
-            'record_dir': os.path.join(
-                os.path.expanduser(os.environ.get('EDROM_WS', '~/edrom_main')), 'logs_robot', 'imu'),
         }
         params = {}
         for name, default in {**DEFAULTS, **CAMERA_DEFAULTS, **node_defaults}.items():
@@ -101,14 +93,6 @@ class ImuFiltersNode(Node):
         if params['joint_states_topic']:
             self.create_subscription(JointState, params['joint_states_topic'], self.on_joints, 10)
         self.create_service(Trigger, '~/recalibrate_gyro', self.on_recalibrate)
-
-        self.csv = None
-        if params['record']:
-            os.makedirs(params['record_dir'], exist_ok=True)
-            path = os.path.join(params['record_dir'], f'imu_{time.strftime("%Y%m%d_%H%M%S")}.csv')
-            self.csv = open(path, 'w', buffering=1)
-            self.csv.write(CSV_HEADER)
-            self.get_logger().info(f'gravando amostras brutas em {path}')
 
         self.stats = {'n': 0, 'lost': 0, 'last_seq': None, 't0': time.time()}
         self.create_timer(10.0, self.log_stats)
@@ -170,10 +154,6 @@ class ImuFiltersNode(Node):
             self.recalib.clear()
             self.pipeline.recalibrate()
             self.get_logger().info('recalibrando o giro: deixe o robô parado')
-
-        if self.csv:
-            self.csv.write(f'{stamp_ns},{t_us},{seq},{ax},{ay},{az},{gx},{gy},{gz},'
-                           f'{self.pan:.5f},{self.tilt:.5f}\n')
 
         out = self.pipeline.process(t_us, (ax, ay, az), (gx, gy, gz))
         if out is None or stamp_ns - self.last_pub_ns < self.pub_period_ns:
@@ -251,8 +231,6 @@ class ImuFiltersNode(Node):
         st.update(n=0, lost=0, t0=time.time())
 
     def destroy_node(self):
-        if self.csv:
-            self.csv.close()
         self.sock.close()
         super().destroy_node()
 

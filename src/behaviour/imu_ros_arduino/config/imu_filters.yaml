@@ -1,4 +1,4 @@
-# Parâmetros do nó imu_filters (também lidos pelo ipm_filter_eval).
+# Parâmetros do nó imu_filters.
 # Números reais precisam de ponto decimal (1.0, não 1): o ROS checa o tipo.
 imu_filters:
   ros__parameters:
@@ -7,7 +7,7 @@ imu_filters:
     filters: ["mahony", "ekf"]
     filter: "ekf"                 # alimenta /behaviour/imu_* e o TF da câmera
     publish_rate_hz: 100.0
-    stamp_offset_ms: 0.0           # use o valor do ipm_filter_eval --search-offset
+    stamp_offset_ms: 0.0           # atraso da IMU em relação à câmera (ms)
     publish_tf: true
     base_frame: "base_footprint"
     camera_frame: "camera_optical_frame"   # frame_id do usb_cam.yaml
@@ -15,7 +15,6 @@ imu_filters:
     joint_states_topic: "/joint_states_feedback"
     head_pan_joint: "head_pan"
     head_tilt_joint: "head_tilt"
-    record: false
 
     # Montagem do MPU-6050 no tronco: eixos do corpo (x frente, y esquerda,
     # z cima) em função dos eixos do sensor. Confira com o robô em pé e parado:
@@ -30,8 +29,6 @@ imu_filters:
       timeout_s: 10.0
     max_dt: 0.05
 
-    complementary:
-      tau: 0.5
     mahony:
       kp: 1.0
       ki: 0.02
@@ -46,7 +43,7 @@ imu_filters:
       accel_reject: 0.3
 
     # Cadeia da câmera (veja camera_model.py). VALORES APROXIMADOS: meça no
-    # robô ou use ipm_filter_eval --fit para pivot_height e camera_mount_rpy.
+    # robô e ajuste pivot_height e camera_mount_rpy com pontos conhecidos no chão.
     camera:
       pivot_height: 0.30
       neck_offset: [0.0, 0.0, 0.20]

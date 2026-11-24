@@ -1,8 +1,6 @@
 """Estimação de atitude (roll/pitch) a partir das amostras brutas do MPU-6050.
 
-Usado tanto pelo nó online (imu_filters_node) quanto pela avaliação offline
-(ipm_eval), para que os dois produzam exatamente os mesmos ângulos a partir
-das mesmas amostras.
+Usado pelo nó imu_filters_node.
 
 Convenção (REP-103): corpo com x para frente, y para a esquerda, z para cima.
 roll/pitch de Euler ZYX; parado e nivelado o acelerômetro mede +1 g em z e a
@@ -10,8 +8,6 @@ gravidade vista no corpo é [-sin(pitch), sin(roll) cos(pitch), cos(roll) cos(pi
 Yaw não é observável sem magnetômetro e não é estimado.
 
 Filtros (todos recebem o giro já sem o bias da calibração inicial):
-  acc            só acelerômetro, sem suavização (linha de base)
-  complementary  complementar linear com constante de tempo tau
   mahony         Mahony em quaternion, com estimativa de bias (porte do firmware antigo)
   ekf            EKF [roll, pitch, bias_x, bias_y] (porte do firmware antigo)
 Mahony e EKF descartam / desconfiam do acelerômetro com a mesma regra quando
@@ -28,7 +24,7 @@ GYRO_LSB_PER_DPS = 65.5        # ±500 °/s
 GRAVITY = 9.80665
 DEG = math.pi / 180.0
 
-FILTER_NAMES = ('acc', 'complementary', 'mahony', 'ekf')
+FILTER_NAMES = ('mahony', 'ekf')
 
 # Parâmetros padrão (mesmos nomes dos parâmetros ROS do nó e do YAML)
 DEFAULTS = {
@@ -40,7 +36,6 @@ DEFAULTS = {
     'gyro_calib.max_accel_dev_g': 0.05,   # | |a| - 1 g | máximo durante a calibração
     'gyro_calib.timeout_s': 10.0,         # depois disso usa a janela mais parada vista
     'max_dt': 0.05,                       # s, limita dt após perdas de amostra
-    'complementary.tau': 0.5,             # s
     'mahony.kp': 1.0,                     # 1/s
     'mahony.ki': 0.02,
     'mahony.integral_limit': 0.1,         # rad/s
@@ -84,36 +79,6 @@ def trust_factor(norm_g, dev_scale, reject):
         return 0.0
     k = dev / dev_scale
     return 1.0 / (1.0 + k * k)
-
-
-class AccelOnly:
-    def __init__(self, p):
-        self.roll = self.pitch = 0.0
-
-    def begin(self, a):
-        self.roll, self.pitch = accel_tilt(*a)
-
-    def update(self, g, a, dt):
-        self.roll, self.pitch = accel_tilt(*a)
-        return True
-
-
-class Complementary:
-    def __init__(self, p):
-        self.tau = p['complementary.tau']
-        self.roll = self.pitch = 0.0
-
-    def begin(self, a):
-        self.roll, self.pitch = accel_tilt(*a)
-
-    def update(self, g, a, dt):
-        alpha = self.tau / (self.tau + dt) if dt > 0 else 1.0
-        r_acc, p_acc = accel_tilt(*a)
-        r = self.roll + g[0] * dt
-        p = self.pitch + g[1] * dt
-        self.roll = wrap(r + (1.0 - alpha) * wrap(r_acc - r))
-        self.pitch = p + (1.0 - alpha) * (p_acc - p)
-        return True
 
 
 class Mahony:
@@ -261,8 +226,6 @@ class Ekf:
 
 
 FILTER_CLASSES = {
-    'acc': AccelOnly,
-    'complementary': Complementary,
     'mahony': Mahony,
     'ekf': Ekf,
 }
