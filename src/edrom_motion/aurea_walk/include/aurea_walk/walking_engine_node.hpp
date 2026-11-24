@@ -4,11 +4,16 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <atomic>
 #include <mutex>
 #include <string>
 #include "std_msgs/msg/empty.hpp" 
 #include "aurea_walk/srv/solve_ik.hpp" 
 #include "aurea_walk/trajectory_generator.hpp"
+#include "aurea_walk/torso_orientation_controller.hpp"
+#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <sensor_msgs/msg/imu.hpp>
+#include <rcl_interfaces/msg/set_parameters_result.hpp>
 
 using SolveIK = aurea_walk::srv::SolveIK; 
 struct LinkData {
@@ -62,6 +67,30 @@ private:
   std::map<std::string, double> calculate_gravity_compensation_for_support_leg(
   const std::map<std::string, double>& base_joint_angles, bool is_left_support);
   void homing_loop();
+
+  // --- CONTROLADOR DE INCLINAÇÃO DO TORSO (tese Maximo, 4.4.2) ---
+  void declare_torso_params();
+  aurea_walk::TorsoControllerParams read_torso_params();
+  rcl_interfaces::msg::SetParametersResult on_params_changed(
+    const std::vector<rclcpp::Parameter> & params);
+  void support_leg_weights(double & w_left, double & w_right) const;
+  std::map<std::string, double> compute_torso_offsets();
+  void rpy_callback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
+  void gyro_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
+
+  aurea_walk::TorsoOrientationController torso_ctrl_;
+  std::mutex imu_mutex_;
+  aurea_walk::ImuSample imu_sample_;
+  rclcpp::Time last_rpy_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time last_gyro_time_{0, 0, RCL_ROS_TIME};
+  double imu_timeout_{0.1};
+  aurea_walk::TorsoOrientationController::Status last_torso_status_{
+    aurea_walk::TorsoOrientationController::Status::DISABLED};
+  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr rpy_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr gyro_sub_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr torso_debug_pub_;
+  OnSetParametersCallbackHandle::SharedPtr param_cb_handle_;
+  std::atomic<bool> torso_params_dirty_{false};
   // --- ESTRUTURAS DE DADOS DO MODELO DO ROBÔ ---
   std::map<std::string, LinkData> robot_model_;
   std::map<std::string, std::string> joint_to_link_map_;

@@ -1,0 +1,36 @@
+# Controlador de inclinação do torso (Maximo, 2017, seção 4.4.2)
+# Carregado só no walking_engine_node (walking.launch.py). Todos os valores
+# (menos os tópicos) podem ser trocados com o robô andando:
+#   ros2 param set /walking_engine_node torso_controller.enabled true
+#   ros2 param set /walking_engine_node torso_controller.kp_hip_pitch 0.2
+walking_engine_node:
+  ros__parameters:
+    torso_controller:
+      enabled: false              # liga/desliga geral (desligado = correção vai a 0 suavemente)
+
+      rpy_topic: "/imu/ekf/rpy"   # Vector3Stamped em graus (x roll, y pitch)
+      gyro_topic: "/imu/data_raw" # Imu; usa angular_velocity x (p) e y (q), rad/s
+      imu_timeout: 0.1            # s sem IMU -> desativa sozinho
+
+      roll_ref_deg: 0.0           # inclinação desejada do torso andando
+      pitch_ref_deg: 0.0
+      deadband_deg: 0.5           # erros menores que isso são ignorados
+      fall_angle_deg: 35.0        # acima disso está caindo: não corrige
+
+      max_offset: 0.15            # rad, saturação por junta (~8.6°)
+      max_offset_rate: 1.0        # rad/s, liga/desliga/troca de perna sem tranco
+
+      # Ganhos COM SINAL. Δθ = kp·(ângulo − ref) + kv·giro, por junta.
+      # Começam em zero: o sinal certo precisa ser testado no robô (ver README).
+      # roll -> quadril e tornozelo (roll)
+      kp_hip_roll: 0.0
+      kv_hip_roll: 0.0
+      kp_ank_roll: 0.0
+      kv_ank_roll: 0.0
+      # pitch -> quadril, joelho e tornozelo (pitch)
+      kp_hip_pitch: 0.0
+      kv_hip_pitch: 0.0
+      kp_knee: 0.0
+      kv_knee: 0.0
+      kp_ank_pitch: 0.0
+      kv_ank_pitch: 0.0

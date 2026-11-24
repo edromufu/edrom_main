@@ -31,7 +31,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.22); //-0.32
+  this->declare_parameter<double>("backlash_offset_hp", -0.0); //-0.32
   //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);
@@ -93,6 +93,22 @@ WalkingEngineNode::WalkingEngineNode()
     std::chrono::duration<double>(update_period_),
     std::bind(&WalkingEngineNode::main_loop, this));
   
+  // Controlador de inclinação do torso
+  declare_torso_params();
+  torso_ctrl_.set_params(read_torso_params());
+  rpy_sub_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>(
+    this->get_parameter("torso_controller.rpy_topic").as_string(), rclcpp::SensorDataQoS(),
+    std::bind(&WalkingEngineNode::rpy_callback, this, std::placeholders::_1));
+  gyro_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
+    this->get_parameter("torso_controller.gyro_topic").as_string(), rclcpp::SensorDataQoS(),
+    std::bind(&WalkingEngineNode::gyro_callback, this, std::placeholders::_1));
+  torso_debug_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
+    "~/torso_offsets", 10);
+  param_cb_handle_ = this->add_on_set_parameters_callback(
+    std::bind(&WalkingEngineNode::on_params_changed, this, std::placeholders::_1));
+  RCLCPP_INFO(this->get_logger(), "Controlador de torso: %s",
+    torso_ctrl_.params().enabled ? "LIGADO" : "desligado (torso_controller.enabled)");
+
   RCLCPP_INFO(this->get_logger(), "Walking Engine (C++) com marcha no lugar inicializado.");
 }
 
@@ -111,7 +127,6 @@ void WalkingEngineNode::start_new_step()
     swing_foot_ = &left_foot_;
   } else {
     support_foot_ = &left_foot_;
-    swing_foot_ = &right_foot_;
   }
   
   geometry_msgs::msg::Twist command_to_use;
@@ -688,6 +703,14 @@ void WalkingEngineNode::ik_response_callback(rclcpp::Client<SolveIK>::SharedFutu
                 final_angles[pair.first] += pair.second;
             }
         }
+        // Compensação de inclinação do torso (Δθ_o), somada à IK e à gravidade
+        const auto torso_offsets = compute_torso_offsets();
+        for (const auto & pair : torso_offsets) {
+            if (final_angles.count(pair.first)) {
+                final_angles[pair.first] += pair.second;
+            }
+        }
+
         if (final_angles.count("r_hip_pitch")) final_angles["r_hip_pitch"] += backlash_offset_hp_;
         if (final_angles.count("l_hip_pitch")) final_angles["l_hip_pitch"] += backlash_offset_hp_;
 
@@ -741,4 +764,159 @@ int main(int argc, char * argv[])
   rclcpp::spin(std::make_shared<WalkingEngineNode>());
   rclcpp::shutdown();
   return 0;
+}
+
+// ============================================================================
+// Controlador de inclinação do torso
+// ============================================================================
+
+void WalkingEngineNode::declare_torso_params()
+{
+  // Liga/desliga geral. Pode ser trocado em tempo real:
+  //   ros2 param set /walking_engine_node torso_controller.enabled false
+  this->declare_parameter<bool>("torso_controller.enabled", false);
+  this->declare_parameter<std::string>("torso_controller.rpy_topic", "/imu/ekf/rpy");
+  this->declare_parameter<std::string>("torso_controller.gyro_topic", "/imu/data_raw");
+  this->declare_parameter<double>("torso_controller.imu_timeout", 0.1);
+  this->declare_parameter<double>("torso_controller.roll_ref_deg", 0.0);
+  this->declare_parameter<double>("torso_controller.pitch_ref_deg", 0.0);
+  this->declare_parameter<double>("torso_controller.deadband_deg", 0.5);
+  this->declare_parameter<double>("torso_controller.max_offset", 0.15);
+  this->declare_parameter<double>("torso_controller.max_offset_rate", 1.0);
+  this->declare_parameter<double>("torso_controller.fall_angle_deg", 35.0);
+  for (const char * j : {"hip_roll", "ank_roll", "hip_pitch", "knee", "ank_pitch"}) {
+    this->declare_parameter<double>(std::string("torso_controller.kp_") + j, 0.0);
+    this->declare_parameter<double>(std::string("torso_controller.kv_") + j, 0.0);
+  }
+}
+
+aurea_walk::TorsoControllerParams WalkingEngineNode::read_torso_params()
+{
+  auto d = [this](const std::string & n) {
+      return this->get_parameter("torso_controller." + n).as_double();
+    };
+  const double deg = M_PI / 180.0;
+  aurea_walk::TorsoControllerParams p;
+  p.enabled = this->get_parameter("torso_controller.enabled").as_bool();
+  p.roll_ref = d("roll_ref_deg") * deg;
+  p.pitch_ref = d("pitch_ref_deg") * deg;
+  p.deadband = d("deadband_deg") * deg;
+  p.max_offset = d("max_offset");
+  p.max_offset_rate = d("max_offset_rate");
+  p.fall_angle = d("fall_angle_deg") * deg;
+  p.kp_hip_roll = d("kp_hip_roll");   p.kv_hip_roll = d("kv_hip_roll");
+  p.kp_ank_roll = d("kp_ank_roll");   p.kv_ank_roll = d("kv_ank_roll");
+  p.kp_hip_pitch = d("kp_hip_pitch"); p.kv_hip_pitch = d("kv_hip_pitch");
+  p.kp_knee = d("kp_knee");           p.kv_knee = d("kv_knee");
+  p.kp_ank_pitch = d("kp_ank_pitch"); p.kv_ank_pitch = d("kv_ank_pitch");
+  imu_timeout_ = d("imu_timeout");
+  return p;
+}
+
+rcl_interfaces::msg::SetParametersResult WalkingEngineNode::on_params_changed(
+  const std::vector<rclcpp::Parameter> & params)
+{
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+  bool touches_torso = false;
+  for (const auto & p : params) {
+    if (p.get_name().rfind("torso_controller.", 0) == 0) {
+      touches_torso = true;
+      if (p.get_name().find("_topic") != std::string::npos) {
+        result.successful = false;
+        result.reason = "tópicos da IMU só mudam reiniciando o nó";
+        return result;
+      }
+    }
+  }
+  if (touches_torso) {
+    // Os valores novos só ficam visíveis depois deste callback: relê no próximo ciclo
+    torso_params_dirty_ = true;
+  }
+  return result;
+}
+
+void WalkingEngineNode::rpy_callback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+{
+  std::lock_guard<std::mutex> lock(imu_mutex_);
+  imu_sample_.roll = msg->vector.x * M_PI / 180.0;   // tópico em graus
+  imu_sample_.pitch = msg->vector.y * M_PI / 180.0;
+  last_rpy_time_ = this->now();
+}
+
+void WalkingEngineNode::gyro_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
+{
+  std::lock_guard<std::mutex> lock(imu_mutex_);
+  imu_sample_.roll_rate = msg->angular_velocity.x;   // p, rad/s
+  imu_sample_.pitch_rate = msg->angular_velocity.y;  // q, rad/s
+  last_gyro_time_ = this->now();
+}
+
+// Participação de cada perna: perna de apoio = 1, balanço = 0, e interpolação
+// linear nas fases de duplo apoio (mesma lógica da compensação de gravidade)
+void WalkingEngineNode::support_leg_weights(double & w_left, double & w_right) const
+{
+  const double ds_time = ds_ratio_ * T_ / 2.0;
+  double w_support = 1.0;  // peso da perna de apoio atual
+  if (ds_time > 1e-9 && t_step_ < ds_time) {
+    w_support = t_step_ / ds_time;                       // assumindo o apoio
+  } else if (ds_time > 1e-9 && t_step_ > T_ - ds_time) {
+    w_support = 1.0 - (t_step_ - (T_ - ds_time)) / ds_time;  // passando o apoio
+  }
+  const bool left_support = support_foot_->is_left;
+  w_left = left_support ? w_support : 1.0 - w_support;
+  w_right = 1.0 - w_left;
+}
+
+std::map<std::string, double> WalkingEngineNode::compute_torso_offsets()
+{
+  if (torso_params_dirty_.exchange(false)) {
+    torso_ctrl_.set_params(read_torso_params());
+    RCLCPP_INFO(this->get_logger(), "Controlador de torso: parâmetros atualizados (%s)",
+      torso_ctrl_.params().enabled ? "ligado" : "desligado");
+  }
+
+  aurea_walk::ImuSample sample;
+  bool imu_valid;
+  {
+    std::lock_guard<std::mutex> lock(imu_mutex_);
+    sample = imu_sample_;
+    const rclcpp::Time now = this->now();
+    imu_valid = last_rpy_time_.nanoseconds() > 0 && last_gyro_time_.nanoseconds() > 0 &&
+      (now - last_rpy_time_).seconds() < imu_timeout_ &&
+      (now - last_gyro_time_).seconds() < imu_timeout_;
+  }
+
+  const bool active_state =
+    current_state_ == WALKING || current_state_ == IDLE_MARCH || current_state_ == STOPPING;
+  double w_left, w_right;
+  support_leg_weights(w_left, w_right);
+
+  auto offsets = torso_ctrl_.compute(
+    sample, imu_valid, active_state, w_left, w_right, update_period_);
+
+  // Avisa mudanças de status (ex.: IMU parou de publicar com o controle ligado)
+  const auto status = torso_ctrl_.status();
+  if (status != last_torso_status_) {
+    if (status == aurea_walk::TorsoOrientationController::Status::IMU_INVALID ||
+      status == aurea_walk::TorsoOrientationController::Status::FALLING)
+    {
+      RCLCPP_WARN(this->get_logger(), "Controlador de torso: %s (correção indo a zero)",
+        aurea_walk::TorsoOrientationController::status_name(status));
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Controlador de torso: %s",
+        aurea_walk::TorsoOrientationController::status_name(status));
+    }
+    last_torso_status_ = status;
+  }
+
+  // Tópico de depuração: deslocamentos aplicados (rad), para plotar no rqt_plot
+  sensor_msgs::msg::JointState dbg;
+  dbg.header.stamp = this->now();
+  for (const auto & pair : offsets) {
+    dbg.name.push_back(pair.first);
+    dbg.position.push_back(pair.second);
+  }
+  torso_debug_pub_->publish(dbg);
+  return offsets;
 }

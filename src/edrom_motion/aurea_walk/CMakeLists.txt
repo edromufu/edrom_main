@@ -42,7 +42,8 @@ target_link_libraries(ik_node
   ${PROJECT_NAME}__rosidl_typesupport_cpp
 )
 
-add_executable(walking_engine_node src/walking_engine_node.cpp src/trajectory_generator.cpp)
+add_executable(walking_engine_node src/walking_engine_node.cpp src/trajectory_generator.cpp
+  src/torso_orientation_controller.cpp)
 target_include_directories(walking_engine_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>

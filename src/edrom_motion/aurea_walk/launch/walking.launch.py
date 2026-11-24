@@ -2,6 +2,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 # Imports necessários para a lógica condicional
 from launch.actions import DeclareLaunchArgument
@@ -38,11 +39,23 @@ def generate_launch_description():
     )
 
     # --- 3. Nós existentes ---
+    # Controlador de inclinação do torso: parâmetros em configs/torso_controller.yaml,
+    # liga/desliga na subida com torso_control:=true|false (padrão: desligado)
+    declare_torso_arg = DeclareLaunchArgument(
+        'torso_control',
+        default_value='false',
+        description='Liga o controlador de inclinação do torso (IMU)'
+    )
     walking_engine_node = Node(
         package='aurea_walk',
         executable='walking_engine_node',
         name='walking_engine_node',
-        output='screen'
+        output='screen',
+        parameters=[
+            os.path.join(pkg_dir, 'configs', 'torso_controller.yaml'),
+            {'torso_controller.enabled': ParameterValue(
+                LaunchConfiguration('torso_control'), value_type=bool)},
+        ]
     )
     
     ik_node = Node(
@@ -73,6 +86,7 @@ def generate_launch_description():
     # --- 5. Retorna a lista de todos os componentes ---
     return LaunchDescription([
         declare_teleop_arg,             # Adiciona o argumento à descrição
+        declare_torso_arg,
 
         robot_state_publisher_node,     # Publica tf/tf_static a partir dos joint_states
         walking_engine_node,            # Nó de caminhada
