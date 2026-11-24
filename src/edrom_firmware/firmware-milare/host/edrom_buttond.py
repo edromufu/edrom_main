@@ -22,6 +22,7 @@ Este daemon é o único dono da serial, então repassa cada linha IMU por UDP
 local (EDROM_IMU_UDP), acrescentando o instante de chegada no PC em ns
 (time.time_ns(), mesmo relógio dos stamps do ROS):
     "IMU <seq> <t_us> <ax> <ay> <az> <gx> <gy> <gz> <pc_ns>"
+As linhas "IMU2 ..." (segundo MPU-6050, 0x69) vão do mesmo jeito, mesma porta.
 O nó imu_filters (pacote imu_ros_arduino) recebe, filtra e publica no ROS.
 Uma thread só lê a serial, para o repasse não parar enquanto um launch
 está sendo parado.
@@ -334,7 +335,7 @@ class SerialReader(threading.Thread):
                     buf = b''
                 for raw in done:
                     raw = raw.strip()
-                    if raw.startswith(b'IMU '):
+                    if raw.startswith(b'IMU ') or raw.startswith(b'IMU2 '):
                         self.n_imu += 1
                         try:
                             self.udp.sendto(raw + b' %d' % now_ns, IMU_UDP)
@@ -351,7 +352,8 @@ class SerialReader(threading.Thread):
 
 def handle_imustat(parts, imu_state):
     # "IMUSTAT OK 0x68" / "IMUSTAT ERR 0x00": loga quando muda (erro: no máximo a cada 30 s)
-    status = ' '.join(parts[1:])
+    # Firmware com 2 IMUs: "IMUSTAT OK 0x68 OK 0x68" (os 2 últimos campos são da IMU2, 0x69)
+    status = ' '.join(parts[1:3])
     now = time.time()
     if status != imu_state['status'] or (
             parts[1:2] == ['ERR'] and now - imu_state['logged_at'] > IMU_ERR_LOG_S):
@@ -359,6 +361,13 @@ def handle_imustat(parts, imu_state):
                                 if parts[1:2] == ['ERR'] else ''))
         imu_state['status'] = status
         imu_state['logged_at'] = now
+    status2 = ' '.join(parts[3:5])
+    if status2 and (status2 != imu_state['status2'] or (
+            parts[3:4] == ['ERR'] and now - imu_state['logged_at2'] > IMU_ERR_LOG_S)):
+        log(f'IMU2: {status2}' + ('  (MPU-6050 0x69 não responde no I2C: AD0 em 3V3?)'
+                                  if parts[3:4] == ['ERR'] else ''))
+        imu_state['status2'] = status2
+        imu_state['logged_at2'] = now
 
 
 def open_port():
@@ -400,7 +409,7 @@ def main():
         connected_at = time.time()
         pins = ['']
         accepted = set()
-        imu_state = {'status': '', 'logged_at': 0.0}
+        imu_state = {'status': '', 'logged_at': 0.0, 'status2': '', 'logged_at2': 0.0}
         last_tx = 0.0
         lines = queue.Queue()
         reader = SerialReader(ser, lines)
