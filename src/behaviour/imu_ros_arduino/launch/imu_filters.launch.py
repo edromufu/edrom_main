@@ -13,9 +13,7 @@ def generate_launch_description():
     config = os.path.join(get_package_share_directory('imu_ros_arduino'), 'config', 'imu_filters.yaml')
     return LaunchDescription([
         DeclareLaunchArgument('filter', default_value='ekf',
-                              description='acc, complementary, mahony ou ekf: alimenta TF e tópicos antigos'),
-        DeclareLaunchArgument('record', default_value='false',
-                              description='grava as amostras brutas em CSV para o ipm_filter_eval'),
+                              description='mahony ou ekf: alimenta o TF em /tf e os tópicos antigos'),
         DeclareLaunchArgument('publish_tf', default_value='true'),
         Node(
             package='imu_ros_arduino',
@@ -24,7 +22,6 @@ def generate_launch_description():
             output='screen',
             parameters=[config, {
                 'filter': LaunchConfiguration('filter'),
-                'record': ParameterValue(LaunchConfiguration('record'), value_type=bool),
                 'publish_tf': ParameterValue(LaunchConfiguration('publish_tf'), value_type=bool),
             }],
         ),
