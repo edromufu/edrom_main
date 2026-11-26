@@ -13,9 +13,10 @@ import yaml
 def generate_launch_description():
 
     # Configuração da câmera (mesmo arquivo usado pelo camera_calibrator)
-    usb_cam_params = os.path.join(
-        get_package_share_directory("object_finder"), "config", "usb_cam.yaml"
-    )
+    share = get_package_share_directory("object_finder")
+    usb_cam_params = os.path.join(share, "config", "usb_cam.yaml")
+    # Parâmetros do nó de visão (pipeline do yoeo_ros2: YOLO26n + segmentação clássica)
+    vision_params = os.path.join(share, "config", "yoeo_vision.yaml")
     with open(usb_cam_params) as f:
         usb_cam_cfg = next(iter(yaml.safe_load(f).values()))["ros__parameters"]
 
@@ -49,6 +50,18 @@ def generate_launch_description():
             description="Mostra a janela com a inferência (False no robô sem display)",
         ),
 
+        DeclareLaunchArgument(
+            "model_path",
+            default_value="",
+            description="Modelo .pt ou pasta *_openvino_model (vazio = modelo/yolov26n-edrom.pt)",
+        ),
+
+        DeclareLaunchArgument(
+            "classic_seg",
+            default_value="True",
+            description="Liga a segmentação clássica de campo, borda e linhas",
+        ),
+
         Node(
             package="usb_cam",
             executable="usb_cam_node_exe",
@@ -69,10 +82,15 @@ def generate_launch_description():
             executable='finder', 
             name='vision',
             output='screen',
-            parameters=[{
+            # yoeo_vision.yaml primeiro; o dict abaixo sobrescreve com os argumentos do launch
+            parameters=[vision_params, {
                 "use_sim_time": False,
-                "img_output": ParameterValue(
+                "show_window": ParameterValue(
                     LaunchConfiguration("img_output"), value_type=bool),
+                "model_path": ParameterValue(
+                    LaunchConfiguration("model_path"), value_type=str),
+                "classic_seg": ParameterValue(
+                    LaunchConfiguration("classic_seg"), value_type=bool),
             }],
         ),
         

@@ -39,7 +39,7 @@ setup(
     entry_points={
         'console_scripts': [
             # Certifique-se de que o nome do arquivo aqui é o nome do seu script unificado final.
-            'finder = object_finder.connecting_and_showing:main',
+            'finder = object_finder.vision_node:main',
         ],
     },
     

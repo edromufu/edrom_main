@@ -1,0 +1,26 @@
+# Parâmetros do nó `vision` (object_finder, pipeline do yoeo_ros2).
+/**:
+  ros__parameters:
+    image_topic: "/camera/image_raw"
+
+    # Detecção (YOLO26n, Ultralytics). Vazio = modelo/yolov26n-edrom.pt do pacote.
+    # Também aceita uma pasta *_openvino_model (bem mais rápido em CPU Intel):
+    #   yolo export model=yolov26n-edrom.pt format=openvino imgsz=416
+    model_path: ""
+    imgsz: 416
+    conf: 0.4
+    iou: 0.45
+    max_det: 20
+    device: "cpu"          # "cpu", "cuda:0"; com OpenVINO: "cpu" ou "gpu"
+    threads: 0             # threads do torch (0 = padrão da lib)
+
+    # Segmentação clássica de campo / borda do campo / linhas (field_seg.py)
+    classic_seg: true
+    seg_width: 320         # largura de trabalho (menor = mais rápido)
+    lines:
+      hough_threshold: 15  # votos mínimos do HoughLinesP (pixels da largura de trabalho)
+      min_length: 12
+      max_gap: 4
+
+    show_window: true      # janela do OpenCV (o launch sobrescreve; sem monitor ela se desliga sozinha)
+    print_every: 150       # a cada N frames loga os tempos (0 desliga)
