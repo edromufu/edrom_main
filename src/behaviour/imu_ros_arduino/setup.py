@@ -11,8 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/config', ['config/imu_filters.yaml']),
-        ('share/' + package_name + '/launch', ['launch/imu_filters.launch.py',
-                                                  'launch/ipm_filter_print.launch.py']),
+        ('share/' + package_name + '/launch', ['launch/imu_filters.launch.py']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -24,7 +23,6 @@ setup(
     entry_points={
         'console_scripts': [
             'imu_filters = imu_ros_arduino.imu_filters_node:main',
-            'ipm_filter_print = imu_ros_arduino.ipm_filter_print:main',
         ],
     },
 )

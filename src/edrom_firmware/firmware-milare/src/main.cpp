@@ -108,49 +108,38 @@ static bool imuInit(uint8_t addr, uint8_t* whoAmI) {
 
 static int16_t be16(const uint8_t* p) { return (int16_t)((p[0] << 8) | p[1]); }
 
-// Chamado no tick de 200 Hz, logo depois da leitura da IMU1.
-static void updateImu2(uint32_t nowMs) {
-  if (!imu2Ok) {
-    if (nowMs - imu2LastTry < IMU_RETRY_MS) return;
-    imu2LastTry = nowMs;
-    imu2Ok = imuInit(MPU2_ADDR, &imu2WhoAmI);
+// Lê uma IMU e imprime "<tag> seq t_us ax ay az gx gy gz". Se ela estiver fora,
+// tenta reiniciar no máximo a cada IMU_RETRY_MS. Cada IMU tem estado próprio:
+// uma fora do ar não impede a leitura nem o retry da outra.
+static void pollImu(const char* tag, uint8_t addr, bool& ok, uint8_t& whoAmI,
+                    uint16_t& seq, uint32_t& lastTry, uint32_t nowMs) {
+  if (!ok) {
+    if (nowMs - lastTry < IMU_RETRY_MS) return;
+    lastTry = nowMs;
+    ok = imuInit(addr, &whoAmI);
     return;
   }
   uint8_t b[14];
   uint32_t t = micros();
-  if (!mpuRead(MPU2_ADDR, 0x3B, b, 14)) {
-    imu2Ok = false;
-    imu2LastTry = nowMs;
+  if (!mpuRead(addr, 0x3B, b, 14)) {   // ACCEL_XOUT_H .. GYRO_ZOUT_L (temperatura no meio)
+    ok = false;
+    lastTry = nowMs;
     return;
   }
-  Serial.printf("IMU2 %u %lu %d %d %d %d %d %d\n", imu2Seq++, (unsigned long)t,
+  Serial.printf("%s %u %lu %d %d %d %d %d %d\n", tag, seq++, (unsigned long)t,
                 be16(b), be16(b + 2), be16(b + 4), be16(b + 8), be16(b + 10), be16(b + 12));
 }
 
+// Tick de 200 Hz: lê a IMU1 e, logo em seguida, a IMU2.
 static void updateImu(uint32_t nowMs) {
-  if (!imuOk) {
-    if (nowMs - imuLastTry < IMU_RETRY_MS) return;
-    imuLastTry = nowMs;
-    imuOk = imuInit(MPU_ADDR, &imuWhoAmI);
-    imuNextUs = micros();
-    return;
-  }
   uint32_t nowUs = micros();
   if ((int32_t)(nowUs - imuNextUs) < 0) return;
   // Mantém a grade de 200 Hz; se atrasou muito (ex.: I2C lento), reancora
   imuNextUs += IMU_PERIOD_US;
   if ((int32_t)(nowUs - imuNextUs) > (int32_t)IMU_PERIOD_US) imuNextUs = nowUs + IMU_PERIOD_US;
 
-  uint8_t b[14];
-  uint32_t t = micros();
-  if (!mpuRead(MPU_ADDR, 0x3B, b, 14)) {   // ACCEL_XOUT_H .. GYRO_ZOUT_L (temperatura no meio)
-    imuOk = false;
-    imuLastTry = nowMs;
-    return;
-  }
-  Serial.printf("IMU %u %lu %d %d %d %d %d %d\n", imuSeq++, (unsigned long)t,
-                be16(b), be16(b + 2), be16(b + 4), be16(b + 8), be16(b + 10), be16(b + 12));
-  updateImu2(nowMs);
+  pollImu("IMU", MPU_ADDR, imuOk, imuWhoAmI, imuSeq, imuLastTry, nowMs);
+  pollImu("IMU2", MPU2_ADDR, imu2Ok, imu2WhoAmI, imu2Seq, imu2LastTry, nowMs);
 }
 
 static void handleLine(const char* line) {

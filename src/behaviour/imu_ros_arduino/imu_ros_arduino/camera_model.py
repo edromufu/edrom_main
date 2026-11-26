@@ -2,29 +2,27 @@
 
 Cadeia (REP-103, x frente, y esquerda, z cima):
   base_footprint   no chão, alinhado à gravidade, yaw = yaw do tronco
-  -> pescoço:        (0, 0, pivot_height) + neck_offset (tronco considerado em pé)
-  -> orientação da cabeça: Rz(pan) Ry(pitch) Rx(roll), com roll/pitch da IMU
-     (o tilt já está no pitch; o yaw só vem do pan, a IMU não mede yaw)
-  -> câmera:         camera_offset na cabeça, rotação fixa camera_mount_rpy
-  -> óptico:         z para frente, x para a direita, y para baixo (o que o
-                     camera_info / IPM usam)
+  -> pescoço:      ponto `neck` (cruzamento dos eixos de pan e tilt), tronco em pé
+  -> cabeça:       Rz(pan) Ry(pitch) Rx(roll), roll/pitch da IMU (o tilt já está
+                   no pitch; o yaw só vem do pan, a IMU não mede yaw)
+  -> câmera:       camera_offset na cabeça, rotação fixa camera_mount_rpy
+  -> óptico:       z para frente, x para a direita, y para baixo (camera_info)
 
-A IMU é considerada presa à cabeça (eixos já mapeados por 'axes'). O
+Os eixos da IMU já estão mapeados para os da cabeça por 'axes'. O
 desalinhamento fixo IMU/câmera entra em camera_mount_rpy. Com a câmera montada
-de cabeça para baixo (image_rotation 180 na visão), camera_mount_rpy[0] = pi.
+de cabeça para baixo e as detecções nas coordenadas da imagem original (como o
+object_finder publica), camera_mount_rpy[0] = pi.
 """
 import math
 
 import numpy as np
 
 CAMERA_DEFAULTS = {
-    'camera.pivot_height': 0.30,               # m, altura do ponto em torno do qual o tronco inclina
-    'camera.neck_offset': [0.0, 0.0, 0.20],    # m, pivô -> eixo do pan (no tronco)
-    'camera.camera_offset': [0.03, 0.0, 0.05],  # m, eixo do tilt -> câmera (na cabeça)
+    'camera.neck': [0.0, 0.0, 0.50],            # m, cruzamento pan/tilt em base_footprint
+    'camera.camera_offset': [0.03, 0.0, 0.05],  # m, pescoço -> câmera (na cabeça)
     'camera.camera_mount_rpy': [math.pi, 0.0, 0.0],  # rad
     'camera.pan_sign': 1.0,
     'camera.pan_offset': 0.0,                  # rad
-    'camera.fixed_pan': 0.0,                   # rad, usado sem joint_states
 }
 
 # Eixos do frame óptico escritos no frame da câmera (x frente, y esq., z cima)
@@ -71,33 +69,19 @@ def matrix_to_quaternion(R):
 
 class CameraModel:
     def __init__(self, params):
-        p = dict(CAMERA_DEFAULTS)
-        p.update(params)
-        self.p = p
-        self.pivot = np.array([0.0, 0.0, float(p['camera.pivot_height'])])
-        self.neck = np.asarray(p['camera.neck_offset'], float)
+        p = {**CAMERA_DEFAULTS, **params}
+        self.neck = np.asarray(p['camera.neck'], float)
         self.cam = np.asarray(p['camera.camera_offset'], float)
         self.R_mount = rpy_matrix(*[float(v) for v in p['camera.camera_mount_rpy']])
         self.pan_sign = float(p['camera.pan_sign'])
         self.pan_offset = float(p['camera.pan_offset'])
 
-    def pose(self, roll, pitch, pan=None, tilt=None):
-        """-> (R, t): frame óptico em base_footprint (p_base = R p_opt + t).
-        roll/pitch: IMU da cabeça. tilt é ignorado (já está no roll/pitch)."""
-        if pan is None or not math.isfinite(pan):
-            pan = float(self.p['camera.fixed_pan'])
-        R_head = rot_z(self.pan_sign * pan + self.pan_offset) @ rot_y(pitch) @ rot_x(roll)
-        t = self.pivot + self.neck + R_head @ self.cam   # tronco considerado em pé
-        R = R_head @ self.R_mount @ R_LINK_OPTICAL
-        return R, t
+    def head_yaw(self, pan):
+        """Yaw da cabeça em base_footprint; pan desconhecido (NaN) conta como 0."""
+        return self.pan_sign * (pan if math.isfinite(pan) else 0.0) + self.pan_offset
 
-
-def project_to_ground(R, t, normalized):
-    """Pontos normalizados (sem distorção) Nx2 -> pontos no chão (z=0) Nx2.
-    Raios que não descem até o chão viram NaN."""
-    n = np.asarray(normalized, float).reshape(-1, 2)
-    rays = np.column_stack([n, np.ones(len(n))]) @ R.T
-    with np.errstate(divide='ignore', invalid='ignore'):
-        s = -t[2] / rays[:, 2]
-    s[(rays[:, 2] >= -1e-9) | (s <= 0)] = np.nan
-    return t[:2] + rays[:, :2] * s[:, None]
+    def pose(self, roll, pitch, pan):
+        """-> (R, t): frame óptico em base_footprint (p_base = R p_opt + t)."""
+        R_head = rpy_matrix(roll, pitch, self.head_yaw(pan))
+        t = self.neck + R_head @ self.cam
+        return R_head @ self.R_mount @ R_LINK_OPTICAL, t

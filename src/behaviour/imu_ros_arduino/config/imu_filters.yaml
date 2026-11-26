@@ -1,55 +1,29 @@
-# Parâmetros do nó imu_filters.
-# Números reais precisam de ponto decimal (1.0, não 1): o ROS checa o tipo.
-imu_filters:
+# Uma instância do nó por IMU. Números reais precisam de ponto decimal (1.0, não 1).
+#
+# axes: eixos do corpo (x frente, y esquerda, z cima) em função dos eixos do
+# sensor, ex. ["-y", "x", "z"]. Confira parado: roll/pitch ~ 0; inclinando
+# para frente, pitch > 0; tombando para a direita, roll > 0.
+
+# IMU da cabeça (linhas "IMU", MPU 0x68 -> EDROM_IMU_UDP do edrom_buttond.py)
+imu_head:
   ros__parameters:
-    udp_host: "127.0.0.1"
-    udp_port: 5600                 # mesmo de EDROM_IMU_UDP do edrom_buttond.py
-    filters: ["mahony", "ekf"]
-    filter: "ekf"                 # alimenta /behaviour/imu_* e o TF da câmera
-    publish_rate_hz: 100.0
+    role: "head"
+    udp_port: 5600
+    axes: ["x", "y", "z"]          # com a cabeça reta (pan = tilt = 0)
     stamp_offset_ms: 0.0           # atraso da IMU em relação à câmera (ms)
-    publish_tf: true
-    base_frame: "base_footprint"
-    camera_frame: "camera_optical_frame"   # frame_id do usb_cam.yaml
-    imu_frame: "imu_link"
     joint_states_topic: "/joint_states_feedback"
-    head_pan_joint: "head_pan"
-    head_tilt_joint: "head_tilt"
-
-    # Montagem do MPU-6050 no tronco: eixos do corpo (x frente, y esquerda,
-    # z cima) em função dos eixos do sensor. Confira com o robô em pé e parado:
-    # /imu/acc/rpy deve dar ~0 e, inclinando para frente, pitch > 0;
-    # tombando para a direita, roll > 0.
-    axes: ["x", "y", "z"]
-    imu2_axes: ["x", "y", "z"]     # ajustar conforme a montagem da IMU2
-
-    gyro_calib:
-      samples: 400
-      max_std_dps: 0.5
-      max_accel_dev_g: 0.05
-      timeout_s: 10.0
-    max_dt: 0.05
-
-    mahony:
-      kp: 1.0
-      ki: 0.02
-      integral_limit: 0.1
-      accel_dev_scale: 0.05
-      accel_reject: 0.3
-    ekf:
-      gyro_noise: 0.002
-      bias_noise: 0.0001
-      accel_noise: 0.05
-      accel_dev_scale: 0.05
-      accel_reject: 0.3
-
-    # Cadeia da câmera (veja camera_model.py). VALORES APROXIMADOS: meça no
-    # robô e ajuste pivot_height e camera_mount_rpy com pontos conhecidos no chão.
+    pan_joint: "head_pan"
+    # Cadeia da câmera (camera_model.py). VALORES APROXIMADOS: meça no robô.
     camera:
-      pivot_height: 0.30
-      neck_offset: [0.0, 0.0, 0.20]
+      neck: [0.0, 0.0, 0.50]       # cruzamento dos eixos pan/tilt em base_footprint (m)
       camera_offset: [0.03, 0.0, 0.05]
-      camera_mount_rpy: [3.14159265, 0.0, 0.0]   # câmera de cabeça para baixo (image_rotation 180)
+      camera_mount_rpy: [3.14159265, 0.0, 0.0]   # câmera de cabeça para baixo
       pan_sign: 1.0
       pan_offset: 0.0
-      fixed_pan: 0.0
+
+# IMU do tronco (linhas "IMU2", MPU 0x69 -> EDROM_IMU2_UDP)
+imu_torso:
+  ros__parameters:
+    role: "torso"
+    udp_port: 5601
+    axes: ["x", "y", "z"]          # com o robô em pé
