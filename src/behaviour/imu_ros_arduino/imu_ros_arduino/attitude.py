@@ -1,17 +1,9 @@
-"""Estimação de atitude (roll/pitch) a partir das amostras brutas do MPU-6050.
-
-Usado pelo nó imu_filters_node.
+"""Roll/pitch de um MPU-6050 com EKF, a partir das amostras brutas.
 
 Convenção (REP-103): corpo com x para frente, y para a esquerda, z para cima.
 roll/pitch de Euler ZYX; parado e nivelado o acelerômetro mede +1 g em z e a
 gravidade vista no corpo é [-sin(pitch), sin(roll) cos(pitch), cos(roll) cos(pitch)].
 Yaw não é observável sem magnetômetro e não é estimado.
-
-Filtros (todos recebem o giro já sem o bias da calibração inicial):
-  mahony         Mahony em quaternion, com estimativa de bias (porte do firmware antigo)
-  ekf            EKF [roll, pitch, bias_x, bias_y] (porte do firmware antigo)
-Mahony e EKF descartam / desconfiam do acelerômetro com a mesma regra quando
-|a| se afasta de 1 g (impactos), para uma comparação justa.
 """
 from collections import deque
 import math
@@ -24,29 +16,11 @@ GYRO_LSB_PER_DPS = 65.5        # ±500 °/s
 GRAVITY = 9.80665
 DEG = math.pi / 180.0
 
-FILTER_NAMES = ('mahony', 'ekf')
-
-# Parâmetros padrão (mesmos nomes dos parâmetros ROS do nó e do YAML)
-DEFAULTS = {
-    # Eixos do corpo em função dos eixos do sensor, ex. ['-y', 'x', 'z']:
-    # x_corpo = -y_sensor, y_corpo = x_sensor, z_corpo = z_sensor
-    'axes': ['x', 'y', 'z'],
-    'gyro_calib.samples': 400,            # 2 s parado a 200 Hz
-    'gyro_calib.max_std_dps': 0.5,        # desvio máximo do giro para considerar "parado"
-    'gyro_calib.max_accel_dev_g': 0.05,   # | |a| - 1 g | máximo durante a calibração
-    'gyro_calib.timeout_s': 10.0,         # depois disso usa a janela mais parada vista
-    'max_dt': 0.05,                       # s, limita dt após perdas de amostra
-    'mahony.kp': 1.0,                     # 1/s
-    'mahony.ki': 0.02,
-    'mahony.integral_limit': 0.1,         # rad/s
-    'mahony.accel_dev_scale': 0.05,       # g
-    'mahony.accel_reject': 0.3,           # g
-    'ekf.gyro_noise': 0.002,              # rad/s/sqrt(Hz)
-    'ekf.bias_noise': 0.0001,             # rad/s/sqrt(s)
-    'ekf.accel_noise': 0.05,              # ~rad
-    'ekf.accel_dev_scale': 0.05,          # g
-    'ekf.accel_reject': 0.3,              # g
-}
+CALIB_SAMPLES = 400            # 2 s parado a 200 Hz
+CALIB_MAX_STD = 0.5 * DEG      # rad/s, desvio máximo do giro para considerar "parado"
+CALIB_MAX_ACCEL_DEV = 0.05     # g, | |a| - 1 g | máximo durante a calibração
+CALIB_TIMEOUT_S = 10.0         # depois disso usa a janela mais parada vista
+MAX_DT = 0.05                  # s, limita dt após perdas de amostra
 
 
 def wrap(a):
@@ -72,83 +46,21 @@ def axes_matrix(axes):
     return m
 
 
-def trust_factor(norm_g, dev_scale, reject):
-    """Fator de confiança no acelerômetro (0 = descartado)."""
-    dev = abs(norm_g - 1.0)
-    if norm_g < 1e-6 or dev > reject:
-        return 0.0
-    k = dev / dev_scale
-    return 1.0 / (1.0 + k * k)
-
-
-class Mahony:
-    def __init__(self, p):
-        self.kp = p['mahony.kp']
-        self.ki = p['mahony.ki']
-        self.ilim = p['mahony.integral_limit']
-        self.dev_scale = p['mahony.accel_dev_scale']
-        self.reject = p['mahony.accel_reject']
-        self.q = [1.0, 0.0, 0.0, 0.0]
-        self.i = [0.0, 0.0, 0.0]
-
-    def begin(self, a):
-        roll, pitch = accel_tilt(*a)
-        cr, sr = math.cos(roll / 2), math.sin(roll / 2)
-        cp, sp = math.cos(pitch / 2), math.sin(pitch / 2)
-        self.q = [cr * cp, sr * cp, cr * sp, -sr * sp]
-        self.i = [0.0, 0.0, 0.0]
-
-    def update(self, g, a, dt):
-        q0, q1, q2, q3 = self.q
-        gx, gy, gz = g
-        norm = math.sqrt(a[0] ** 2 + a[1] ** 2 + a[2] ** 2)
-        trust = trust_factor(norm, self.dev_scale, self.reject)
-        used = trust > 0.0
-        if used:
-            ax, ay, az = a[0] / norm, a[1] / norm, a[2] / norm
-            vx = 2.0 * (q1 * q3 - q0 * q2)
-            vy = 2.0 * (q0 * q1 + q2 * q3)
-            vz = q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3
-            e = (ay * vz - az * vy, az * vx - ax * vz, ax * vy - ay * vx)
-            ki = self.ki * trust
-            self.i = [max(-self.ilim, min(self.ilim, self.i[k] + ki * e[k] * dt)) for k in range(3)]
-            kp = self.kp * trust
-            gx += kp * e[0]
-            gy += kp * e[1]
-            gz += kp * e[2]
-        gx += self.i[0]
-        gy += self.i[1]
-        gz += self.i[2]
-        h = 0.5 * dt
-        q0, q1, q2, q3 = (q0 + (-q1 * gx - q2 * gy - q3 * gz) * h,
-                          q1 + (q0 * gx + q2 * gz - q3 * gy) * h,
-                          q2 + (q0 * gy - q1 * gz + q3 * gx) * h,
-                          q3 + (q0 * gz + q1 * gy - q2 * gx) * h)
-        n = math.sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3)
-        if n > 1e-9:
-            self.q = [q0 / n, q1 / n, q2 / n, q3 / n]
-        return used
-
-    @property
-    def roll(self):
-        q0, q1, q2, q3 = self.q
-        return math.atan2(2 * (q0 * q1 + q2 * q3), 1 - 2 * (q1 * q1 + q2 * q2))
-
-    @property
-    def pitch(self):
-        q0, q1, q2, q3 = self.q
-        return math.asin(max(-1.0, min(1.0, 2 * (q0 * q2 - q3 * q1))))
-
-
 class Ekf:
+    """EKF de estado [roll, pitch, bias_gx, bias_gy].
+
+    Predição pela cinemática de Euler com o giro; correção pela direção da
+    gravidade no acelerômetro. Em impactos (|a| longe de 1 g) a confiança no
+    acelerômetro cai e, acima de ACCEL_REJECT, a correção é descartada.
+    """
+    GYRO_NOISE = 0.002         # rad/s/sqrt(Hz)
+    BIAS_NOISE = 0.0001        # rad/s/sqrt(s)
+    ACCEL_NOISE = 0.05         # ~rad
+    ACCEL_DEV_SCALE = 0.05     # g, onde R começa a crescer
+    ACCEL_REJECT = 0.3         # g, acima disso ignora o acelerômetro
     COS_PITCH_MIN = 0.05
 
-    def __init__(self, p):
-        self.gyro_noise = p['ekf.gyro_noise']
-        self.bias_noise = p['ekf.bias_noise']
-        self.accel_noise = p['ekf.accel_noise']
-        self.dev_scale = p['ekf.accel_dev_scale']
-        self.reject = p['ekf.accel_reject']
+    def __init__(self):
         self.x = np.zeros(4)
         self.P = np.zeros((4, 4))
 
@@ -167,6 +79,14 @@ class Ekf:
             x[0] += math.pi
         x[0] = wrap(x[0])
 
+    def _trust(self, norm_g):
+        """Confiança no acelerômetro (0 = descartado)."""
+        dev = abs(norm_g - 1.0)
+        if norm_g < 1e-6 or dev > self.ACCEL_REJECT:
+            return 0.0
+        k = dev / self.ACCEL_DEV_SCALE
+        return 1.0 / (1.0 + k * k)
+
     def update(self, g, a, dt):
         # Predição
         phi, th = self.x[0], self.x[1]
@@ -184,15 +104,15 @@ class Ekf:
                              (sphi * qc + cphi * r) / (cth * cth),
                              -1.0, -sphi * tth]) * dt
         F[1, :] += np.array([-sphi * qc - cphi * r, 0.0, 0.0, -cphi]) * dt
-        qa = self.gyro_noise ** 2 * dt
-        qb = self.bias_noise ** 2 * dt
+        qa = self.GYRO_NOISE ** 2 * dt
+        qb = self.BIAS_NOISE ** 2 * dt
         self.P = F @ self.P @ F.T + np.diag([qa, qa, qb, qb])
 
         # Correção com o acelerômetro
         norm = math.sqrt(a[0] ** 2 + a[1] ** 2 + a[2] ** 2)
-        trust = trust_factor(norm, self.dev_scale, self.reject)
+        trust = self._trust(norm)
         if trust <= 0.0:
-            return False
+            return
         z = np.asarray(a) / norm
         phi, th = self.x[0], self.x[1]
         sphi, cphi, sth, cth = math.sin(phi), math.cos(phi), math.sin(th), math.cos(th)
@@ -200,18 +120,17 @@ class Ekf:
         H = np.array([[0.0, -cth, 0.0, 0.0],
                       [cphi * cth, -sphi * sth, 0.0, 0.0],
                       [-sphi * cth, -cphi * sth, 0.0, 0.0]])
-        r_var = self.accel_noise ** 2 / trust   # = noise² (1 + k²)
+        r_var = self.ACCEL_NOISE ** 2 / trust   # = noise² (1 + k²)
         PHt = self.P @ H.T
         S = H @ PHt + r_var * np.eye(3)
         try:
             K = np.linalg.solve(S, PHt.T).T
         except np.linalg.LinAlgError:
-            return False
+            return
         self.x += K @ (z - h)
         self._normalize()
         self.P = self.P - K @ PHt.T
         self.P = 0.5 * (self.P + self.P.T)
-        return True
 
     @property
     def roll(self):
@@ -223,12 +142,6 @@ class Ekf:
 
     def std(self):
         return math.sqrt(max(self.P[0, 0], 0.0)), math.sqrt(max(self.P[1, 1], 0.0))
-
-
-FILTER_CLASSES = {
-    'mahony': Mahony,
-    'ekf': Ekf,
-}
 
 
 class EspClock:
@@ -273,104 +186,72 @@ class EspClock:
         return t_us, t_us * 1000 + self.mins[0][1], restarted
 
 
-IMU_TAGS = {b'IMU': 0, b'IMU2': 1}   # tag da linha -> índice da IMU
-
-
 def parse_udp_line(line):
-    """b'IMU|IMU2 seq t_us ax ay az gx gy gz pc_ns' -> (idx, seq, ..., pc_ns), ou None.
+    """b'IMU|IMU2 seq t_us ax ay az gx gy gz pc_ns' -> (seq, t_us, ax, ..., gz, pc_ns), ou None.
 
-    idx = 0 para IMU (0x68) e 1 para IMU2 (0x69).
+    Cada IMU chega na sua porta UDP, então a tag só é conferida, não separa nada.
     """
     parts = line.split()
-    if len(parts) != 10 or parts[0] not in IMU_TAGS:
+    if len(parts) != 10 or parts[0] not in (b'IMU', b'IMU2'):
         return None
     try:
-        return (IMU_TAGS[parts[0]],) + tuple(int(v) for v in parts[1:])
+        return tuple(int(v) for v in parts[1:])
     except ValueError:
         return None
 
 
 class ImuPipeline:
-    """Amostras brutas -> unidades físicas no corpo -> calibração do giro -> filtros."""
+    """Amostras brutas -> unidades físicas no corpo -> calibração do giro -> EKF."""
 
-    def __init__(self, params, filters=FILTER_NAMES, log=print):
-        self.p = dict(DEFAULTS)
-        self.p.update(params)
+    def __init__(self, axes, log=print):
+        self.M = axes_matrix(axes)
         self.log = log
-        self.M = axes_matrix(self.p['axes'])
-        self.filter_names = list(filters)
-        self.filters = {n: FILTER_CLASSES[n](self.p) for n in self.filter_names}
-        self.calib_n = int(self.p['gyro_calib.samples'])
-        self.calib_buf = deque(maxlen=self.calib_n)
-        self.calib_best = None      # (std máximo, bias) da janela mais parada vista
+        self.ekf = Ekf()
+        self.calib_buf = deque(maxlen=CALIB_SAMPLES)
+        self.calib_best = None      # (std máximo, bias, a médio) da janela mais parada vista
         self.calib_start_us = None
         self.gyro_bias = None       # rad/s, no corpo
         self.last_t_us = None
-        self.accel_used = {}
 
     @property
     def calibrated(self):
         return self.gyro_bias is not None
 
-    def to_body(self, acc_counts, gyro_counts):
-        a = self.M @ (np.asarray(acc_counts, float) / ACCEL_LSB_PER_G)          # g
-        g = self.M @ (np.asarray(gyro_counts, float) / GYRO_LSB_PER_DPS * DEG)  # rad/s
-        return a, g
-
-    def recalibrate(self):
-        self.calib_buf.clear()
-        self.calib_best = None
-        self.calib_start_us = None
-        self.gyro_bias = None
-
     def _calibrate(self, t_us, a, g):
         if self.calib_start_us is None:
             self.calib_start_us = t_us
         self.calib_buf.append((a, g))
-        if len(self.calib_buf) < self.calib_n:
+        if len(self.calib_buf) < CALIB_SAMPLES:
             return False
         acc = np.array([s[0] for s in self.calib_buf])
         gyr = np.array([s[1] for s in self.calib_buf])
         gstd = float(np.max(np.std(gyr, axis=0)))
         adev = float(np.max(np.abs(np.linalg.norm(acc, axis=1) - 1.0)))
-        bias = gyr.mean(axis=0)
         if self.calib_best is None or gstd < self.calib_best[0]:
-            self.calib_best = (gstd, bias, acc.mean(axis=0))
-        if gstd <= self.p['gyro_calib.max_std_dps'] * DEG and adev <= self.p['gyro_calib.max_accel_dev_g']:
-            self._finish_calib(bias, acc.mean(axis=0), gstd, ok=True)
-            return True
-        if (t_us - self.calib_start_us) * 1e-6 > self.p['gyro_calib.timeout_s']:
-            gstd, bias, a_mean = self.calib_best
-            self._finish_calib(bias, a_mean, gstd, ok=False)
-            return True
-        for _ in range(self.calib_n // 4):      # desliza a janela
-            self.calib_buf.popleft()
-        return False
-
-    def _finish_calib(self, bias, a_mean, gstd, ok):
+            self.calib_best = (gstd, gyr.mean(axis=0), acc.mean(axis=0))
+        ok = gstd <= CALIB_MAX_STD and adev <= CALIB_MAX_ACCEL_DEV
+        if not ok and (t_us - self.calib_start_us) * 1e-6 <= CALIB_TIMEOUT_S:
+            for _ in range(CALIB_SAMPLES // 4):      # desliza a janela
+                self.calib_buf.popleft()
+            return False
+        gstd, bias, a_mean = (gstd, gyr.mean(axis=0), acc.mean(axis=0)) if ok else self.calib_best
         self.gyro_bias = bias
-        for f in self.filters.values():
-            f.begin(a_mean)
-        msg = (f'bias do giro (°/s): {np.round(bias / DEG, 3).tolist()}, '
-               f'desvio na janela {gstd / DEG:.3f} °/s')
+        self.ekf.begin(a_mean)
         self.log(('calibração do giro ok: ' if ok else
-                  'AVISO: robô não ficou parado; calibração com a janela mais parada: ') + msg)
+                  'AVISO: IMU não ficou parada; calibração com a janela mais parada: ')
+                 + f'bias (°/s) {np.round(bias / DEG, 3).tolist()}, desvio {gstd / DEG:.3f} °/s')
+        return True
 
     def process(self, t_us, acc_counts, gyro_counts):
-        """Processa uma amostra. Retorna (a_g, g_rad_s sem bias, dt) depois da
-        calibração, ou None enquanto calibra. Os ângulos ficam em self.filters."""
-        a, g = self.to_body(acc_counts, gyro_counts)
+        """Retorna (a em g, giro em rad/s sem bias) depois da calibração, ou None enquanto calibra."""
+        a = self.M @ (np.asarray(acc_counts, float) / ACCEL_LSB_PER_G)
+        g = self.M @ (np.asarray(gyro_counts, float) / GYRO_LSB_PER_DPS * DEG)
         if not self.calibrated:
             if self._calibrate(t_us, a, g):
                 self.last_t_us = t_us
             return None
         dt = 0.0 if self.last_t_us is None else (t_us - self.last_t_us) * 1e-6
         self.last_t_us = t_us
-        dt = min(max(dt, 0.0), self.p['max_dt'])
         g = g - self.gyro_bias
-        for name, f in self.filters.items():
-            self.accel_used[name] = f.update(g, a, dt)
-        return a, g, dt
-
-    def angles(self):
-        return {n: (f.roll, f.pitch) for n, f in self.filters.items()}
+        self.ekf.update(g, a, min(max(dt, 0.0), MAX_DT))
+        return a, g
