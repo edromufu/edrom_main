@@ -26,6 +26,8 @@ Este daemon é o único dono da serial, então repassa cada linha IMU por UDP
 local (EDROM_IMU_UDP), acrescentando o instante de chegada no PC em ns
 (time.time_ns(), mesmo relógio dos stamps do ROS):
     "IMU <seq> <t_us> <ax> <ay> <az> <gx> <gy> <gz> <pc_ns>"
+As linhas "IMU2 ..." (segundo MPU-6050, 0x69) vão do mesmo jeito para
+EDROM_IMU2_UDP: uma porta por IMU, cada uma com a sua instância do nó.
 O nó imu_filters (pacote imu_ros_arduino) recebe, filtra e publica no ROS.
 Uma thread só lê a serial, para o repasse não parar enquanto um launch
 está sendo parado.
@@ -33,7 +35,8 @@ está sendo parado.
 Configuração por variáveis de ambiente (veja edrom-buttons.service):
   EDROM_BTN_PORT     porta serial do ESP32 (padrão /dev/edrom_buttons)
   EDROM_BTN_BAUD     baud da serial (padrão 460800, igual ao firmware)
-  EDROM_IMU_UDP      destino host:porta das amostras da IMU (padrão 127.0.0.1:5600)
+  EDROM_IMU_UDP      destino host:porta das linhas IMU (padrão 127.0.0.1:5600)
+  EDROM_IMU2_UDP     destino host:porta das linhas IMU2 (padrão 127.0.0.1:5601)
   EDROM_WS           workspace (padrão ~/edrom_main)
   EDROM_LAUNCH       comando ros2 launch do modo JOGO
   EDROM_POSE_LAUNCHES  comandos do modo POSE, separados por ';'
@@ -54,8 +57,15 @@ import serial
 
 PORT = os.environ.get('EDROM_BTN_PORT', '/dev/edrom_buttons')
 BAUD = int(os.environ.get('EDROM_BTN_BAUD', '460800'))
-_imu_host, _imu_port = os.environ.get('EDROM_IMU_UDP', '127.0.0.1:5600').rsplit(':', 1)
-IMU_UDP = (_imu_host, int(_imu_port))
+
+
+def _udp_dest(var, default):
+    host, port = os.environ.get(var, default).rsplit(':', 1)
+    return host, int(port)
+
+
+IMU_UDP = _udp_dest('EDROM_IMU_UDP', '127.0.0.1:5600')
+IMU2_UDP = _udp_dest('EDROM_IMU2_UDP', '127.0.0.1:5601')
 IMU_ERR_LOG_S = 30.0   # repete o aviso de IMU com erro no máximo a cada 30 s
 WS = os.path.expanduser(os.environ.get('EDROM_WS', '~/edrom_main'))
 LAUNCH = os.environ.get(
@@ -393,10 +403,12 @@ class SerialReader(threading.Thread):
                     buf = b''
                 for raw in done:
                     raw = raw.strip()
-                    if raw.startswith(b'IMU '):
+                    dest = (IMU_UDP if raw.startswith(b'IMU ') else
+                            IMU2_UDP if raw.startswith(b'IMU2 ') else None)
+                    if dest:
                         self.n_imu += 1
                         try:
-                            self.udp.sendto(raw + b' %d' % now_ns, IMU_UDP)
+                            self.udp.sendto(raw + b' %d' % now_ns, dest)
                         except OSError:
                             pass   # ninguém escutando ainda: descarta
                     elif raw:
@@ -410,7 +422,8 @@ class SerialReader(threading.Thread):
 
 def handle_imustat(parts, imu_state):
     # "IMUSTAT OK 0x68" / "IMUSTAT ERR 0x00": loga quando muda (erro: no máximo a cada 30 s)
-    status = ' '.join(parts[1:])
+    # Firmware com 2 IMUs: "IMUSTAT OK 0x68 OK 0x68" (os 2 últimos campos são da IMU2, 0x69)
+    status = ' '.join(parts[1:3])
     now = time.time()
     if status != imu_state['status'] or (
             parts[1:2] == ['ERR'] and now - imu_state['logged_at'] > IMU_ERR_LOG_S):
@@ -418,6 +431,13 @@ def handle_imustat(parts, imu_state):
                                 if parts[1:2] == ['ERR'] else ''))
         imu_state['status'] = status
         imu_state['logged_at'] = now
+    status2 = ' '.join(parts[3:5])
+    if status2 and (status2 != imu_state['status2'] or (
+            parts[3:4] == ['ERR'] and now - imu_state['logged_at2'] > IMU_ERR_LOG_S)):
+        log(f'IMU2: {status2}' + ('  (MPU-6050 0x69 não responde no I2C: AD0 em 3V3?)'
+                                  if parts[3:4] == ['ERR'] else ''))
+        imu_state['status2'] = status2
+        imu_state['logged_at2'] = now
 
 
 def open_port():
@@ -469,12 +489,13 @@ def main():
             time.sleep(1.0)
             continue
 
-        log(f'ESP32 conectado ({BAUD} baud); IMU -> udp://{IMU_UDP[0]}:{IMU_UDP[1]}')
+        log(f'ESP32 conectado ({BAUD} baud); IMU -> udp://{IMU_UDP[0]}:{IMU_UDP[1]}, '
+            f'IMU2 -> udp://{IMU2_UDP[0]}:{IMU2_UDP[1]}')
         connected_at = time.time()
         pins = ['']
         accepted = set()
         fw = {'has_up': False}  # vira True no primeiro "UP" (firmware novo)
-        imu_state = {'status': '', 'logged_at': 0.0}
+        imu_state = {'status': '', 'logged_at': 0.0, 'status2': '', 'logged_at2': 0.0}
         last_tx = 0.0
         last_rx = time.time()
         last_reset = 0.0

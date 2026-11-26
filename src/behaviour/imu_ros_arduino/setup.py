@@ -22,9 +22,7 @@ setup(
     #tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'imu_read = imu_ros_arduino.imu_read:main',
             'imu_filters = imu_ros_arduino.imu_filters_node:main',
-            'ipm_filter_eval = imu_ros_arduino.ipm_eval:main',
         ],
     },
 )
