@@ -20,7 +20,14 @@ def generate_launch_description():
         'img_output', default_value='False', description='Whether vision node should display image output'
     )
     imu_connected_arg = DeclareLaunchArgument(
-        "imu_connected", default_value="false", description='Is IMU connected'
+        "imu_connected", default_value="true",
+        description='Sobe as IMUs (cabeça e tronco) via edrom-buttons/UDP'
+    )
+    imu_head_arg = DeclareLaunchArgument(
+        "imu_head", default_value="true", description='IMU da cabeça (TF da câmera)'
+    )
+    imu_torso_arg = DeclareLaunchArgument(
+        "imu_torso", default_value="true", description='IMU do tronco (queda e controlador de torso)'
     )
 
     # --- Obter Caminhos dos Pacotes ---
@@ -58,6 +65,8 @@ def generate_launch_description():
         ),
         launch_arguments={
             'imu_connected': LaunchConfiguration('imu_connected'),
+            'imu_head': LaunchConfiguration('imu_head'),
+            'imu_torso': LaunchConfiguration('imu_torso'),
         }.items()
     )
 
@@ -88,6 +97,8 @@ def generate_launch_description():
     ld.add_action(video_device_arg)
     ld.add_action(img_output_arg)
     ld.add_action(imu_connected_arg)
+    ld.add_action(imu_head_arg)
+    ld.add_action(imu_torso_arg)
     # Argumentos 'simulation' e 'teleop' REMOVIDOS
 
     # Adiciona os launch files incluídos

@@ -27,3 +27,6 @@ imu_torso:
     role: "torso"
     udp_port: 5601
     axes: ["x", "y", "z"]          # com o robô em pé
+    # controlador de torso do aurea_walk (configs/torso_controller.yaml)
+    rpy_topic: "/imu/ekf/rpy"      # Vector3Stamped, graus (x roll, y pitch)
+    imu_topic: "/imu/data_raw"     # sensor_msgs/Imu, giro em rad/s

@@ -8,6 +8,9 @@ Rode uma instância por IMU, cada uma na sua porta (veja imu_filters.yaml):
   role:=torso   tópicos lidos pelo fall_interpreter:
                   /behaviour/imu_accel (m/s²), /behaviour/imu_gyro (°/s),
                   /behaviour/imu_roll (graus: x roll, y pitch)
+                tópicos do controlador de torso do aurea_walk:
+                  /imu/ekf/rpy (Vector3Stamped, graus: x roll, y pitch)
+                  /imu/data_raw (sensor_msgs/Imu, giro em rad/s)
 
 Deixe a IMU parada nos primeiros ~2 s: é quando o bias do giro é calibrado.
 """
@@ -15,10 +18,10 @@ import socket
 import threading
 import time
 
-from geometry_msgs.msg import TransformStamped, Vector3
+from geometry_msgs.msg import TransformStamped, Vector3, Vector3Stamped
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy, qos_profile_sensor_data
 from rclpy.time import Time
 from sensor_msgs.msg import Imu, JointState
 from tf2_ros import TransformBroadcaster
@@ -60,6 +63,11 @@ class ImuNode(Node):
             self.accel_pub = self.create_publisher(Vector3, '/behaviour/imu_accel', qos)
             self.gyro_pub = self.create_publisher(Vector3, '/behaviour/imu_gyro', qos)
             self.roll_pub = self.create_publisher(Vector3, '/behaviour/imu_roll', qos)
+            # controlador de torso (walking_engine_node, SensorDataQoS)
+            self.rpy_pub = self.create_publisher(
+                Vector3Stamped, p('rpy_topic', '/imu/ekf/rpy').value, qos_profile_sensor_data)
+            self.imu_pub = self.create_publisher(
+                Imu, p('imu_topic', '/imu/data_raw').value, qos_profile_sensor_data)
 
         self.stats = {'n': 0, 'lost': 0, 'last_seq': None, 't0': time.time()}
         self.create_timer(10.0, self.log_stats)
@@ -112,7 +120,7 @@ class ImuNode(Node):
         if self.role == 'head':
             self.publish_head(stamp, *out)
         else:
-            self.publish_torso(*out)
+            self.publish_torso(stamp, *out)
 
     def publish_head(self, stamp, a, g):
         ekf = self.pipeline.ekf
@@ -142,12 +150,26 @@ class ImuNode(Node):
         r.x, r.y, r.z, r.w = matrix_to_quaternion(R)
         self.tf_pub.sendTransform(tf)
 
-    def publish_torso(self, a, g):
+    def publish_torso(self, stamp, a, g):
         ekf = self.pipeline.ekf
         acc = a * GRAVITY
+        rpy_deg = Vector3(x=ekf.roll / DEG, y=ekf.pitch / DEG, z=0.0)
         self.accel_pub.publish(Vector3(x=acc[0], y=acc[1], z=acc[2]))
         self.gyro_pub.publish(Vector3(x=g[0] / DEG, y=g[1] / DEG, z=g[2] / DEG))
-        self.roll_pub.publish(Vector3(x=ekf.roll / DEG, y=ekf.pitch / DEG, z=0.0))
+        self.roll_pub.publish(rpy_deg)
+
+        rpy = Vector3Stamped()
+        rpy.header.stamp = stamp
+        rpy.header.frame_id = 'imu_torso_link'
+        rpy.vector = rpy_deg
+        self.rpy_pub.publish(rpy)
+
+        msg = Imu()
+        msg.header = rpy.header
+        msg.orientation_covariance[0] = -1.0          # orientação vai em /imu/ekf/rpy
+        msg.angular_velocity = Vector3(x=g[0], y=g[1], z=g[2])
+        msg.linear_acceleration = Vector3(x=acc[0], y=acc[1], z=acc[2])
+        self.imu_pub.publish(msg)
 
     def log_stats(self):
         st = self.stats
