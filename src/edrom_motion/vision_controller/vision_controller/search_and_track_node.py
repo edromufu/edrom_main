@@ -4,7 +4,7 @@ from rclpy.node import Node
 from std_msgs.msg import String as StringMsg
 from sensor_msgs.msg import JointState
 from soccer_vision_2d_msgs.msg import BallArray
-from object_finder.rotacao import ROTACAO_CAMERA, melhor_bola_em_pe
+from object_finder.bola import melhor_bola
 import numpy as np
 
 class HeadControllerNode(Node):
@@ -14,9 +14,6 @@ class HeadControllerNode(Node):
         # --- Parâmetros ---
         self.declare_parameter('image_width', 640)
         self.declare_parameter('image_height', 480)
-        # Rotação física da câmera: a bola chega na imagem original e o
-        # rastreamento é feito na imagem em pé
-        self.declare_parameter('image_rotation', ROTACAO_CAMERA)
         self.declare_parameter('kp_head_pan', 0.0007)
         self.declare_parameter('kp_head_tilt', 0.0007)
         self.declare_parameter('pan_speed_rad_s', 0.8)
@@ -30,14 +27,8 @@ class HeadControllerNode(Node):
         # Obtém os valores dos parâmetros
         self.image_width = self.get_parameter('image_width').get_parameter_value().integer_value
         self.image_height = self.get_parameter('image_height').get_parameter_value().integer_value
-        self.image_rotation = self.get_parameter('image_rotation').get_parameter_value().integer_value
-        # Centro da imagem em pé (largura e altura trocam em 90/270)
-        if self.image_rotation in (90, 270):
-            self.center_x = self.image_height / 2.0
-            self.center_y = self.image_width / 2.0
-        else:
-            self.center_x = self.image_width / 2.0
-            self.center_y = self.image_height / 2.0
+        self.center_x = self.image_width / 2.0
+        self.center_y = self.image_height / 2.0
         
         self.kp_pan = self.get_parameter('kp_head_pan').get_parameter_value().double_value
         self.kp_tilt = self.get_parameter('kp_head_tilt').get_parameter_value().double_value
@@ -91,8 +82,7 @@ class HeadControllerNode(Node):
                  self.center_head()
     
     def vision_callback(self, msg: BallArray):
-        bola = melhor_bola_em_pe(
-            msg.balls, self.image_rotation, self.image_width, self.image_height)
+        bola = melhor_bola(msg.balls)
         self.ball_is_found = bola is not None
         if self.ball_is_found:
             self.last_ball_x, self.last_ball_y = float(bola[0]), float(bola[1])

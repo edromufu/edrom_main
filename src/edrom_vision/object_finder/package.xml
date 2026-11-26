@@ -3,7 +3,7 @@
 <package format="3">
   <name>object_finder</name>
   <version>0.0.1</version>
-  <description>Pacote de detecção de objetos para a EDROM usando YOLOv8, unificado para simulação e robô real.</description>
+  <description>Pacote de detecção de objetos para a EDROM com o pipeline do yoeo_ros2: YOLO26n (detecção) + segmentação clássica de campo e linhas.</description>
   <maintainer email="edromufu@gmail.com">EDROM</maintainer>
   <license>MIT</license>
 
@@ -12,11 +12,14 @@
   <exec_depend>rclpy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>vision_msgs</exec_depend>
   <exec_depend>launch</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>soccer_vision_2d_msgs</exec_depend>
   <exec_depend>soccer_ipm</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

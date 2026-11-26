@@ -11,7 +11,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from soccer_vision_2d_msgs.msg import BallArray
-from object_finder.rotacao import melhor_bola_em_pe
+from object_finder.bola import melhor_bola
 
 from transitions_and_states.behaviour_parameters import BehaviourParameters
 
@@ -65,18 +65,13 @@ class BallInterpreter(Node):
             * Os dados so sao interpretados, ou seja, a posicao relativa so e atualizada
             * se a bola estiver sendo encontrada (para ter uma especie de 'visto por ultimo')  
         -> Input:
-            - ball_array: soccer_vision_2d_msgs/BallArray (coordenadas da imagem
-            original da camera). Usa a bola de maior confianca, convertida para
-            a imagem em pe, referencial dos limiares do BehaviourParameters.
+            - ball_array: soccer_vision_2d_msgs/BallArray. Usa a bola de maior
+            confianca, nas coordenadas da imagem (referencial dos limiares do
+            BehaviourParameters).
         """
 
-        #Bola de maior confianca, em coordenadas da imagem em pe (ou None)
-        bola = melhor_bola_em_pe(
-            ball_array.balls,
-            self.parameters.imageRotation,
-            self.parameters.cameraWidth,
-            self.parameters.cameraHeight,
-        )
+        #Bola de maior confianca (ou None)
+        bola = melhor_bola(ball_array.balls)
 
         #Contador para informar que a bola foi perdida apos um numero de vezes sem encontra-la
         self.countFound += 1

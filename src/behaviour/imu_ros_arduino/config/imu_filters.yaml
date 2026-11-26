@@ -51,7 +51,7 @@ imu_filters:
       pivot_height: 0.30
       neck_offset: [0.0, 0.0, 0.20]
       camera_offset: [0.03, 0.0, 0.05]
-      camera_mount_rpy: [3.14159265, 0.0, 0.0]   # câmera de cabeça para baixo (image_rotation 180)
+      camera_mount_rpy: [0.0, 0.0, 0.0]   # câmera em pé (a visão não gira a imagem)
       pan_sign: 1.0
       tilt_sign: 1.0
       pan_offset: 0.0
