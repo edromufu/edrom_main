@@ -5,17 +5,21 @@ Roda no boot do PC (systemd), lê o ESP32 pela USB e inicia/para o bringup,
 sem precisar de SSH, teclado ou cabo de rede.
 
 Botões:
-  1         -> ANDAR: /cmd_vel x = WALK_SPEED (0.10 m/s) para frente
-               (só com o modo POSE rodando)
-  2         -> modo POSE: walking.launch.py + direct_control.launch.py
-               (vai para a first pose, sem visão/comportamento)
-  3         -> PARAR DE ANDAR: /cmd_vel = 0 e, HALT_DELAY_S (1.5 s) depois,
-               /stop_walking (volta para a pose inicial)
-  4         -> para o que estiver rodando (mata os launches)
-  5         -> reinicia o modo atual
-  segurar 4 -> para tudo e desliga o PC
+  1         -> FIRST POSE: walking.launch.py + direct_control.launch.py
+  2         -> BRINGUP completo (modo JOGO; desativado até o novo bringup,
+               ligue com EDROM_JOGO_ENABLED=1)
+  3 (toque) -> ANDAR: /cmd_vel x = WALK_SPEED (0.12 m/s) para frente, ao SOLTAR
+               (com o first pose ou o bringup rodando)
+  segurar 3 -> PARAR DE ANDAR (2 s): /cmd_vel = 0 e, HALT_DELAY_S (1.5 s) depois,
+               /stop_walking. Por isso o 3 age ao soltar: segurar não anda antes.
+  4         -> DESLIGA tudo (modos e visão)
+  5         -> VISÃO + SEARCH AND TRACK (object_finder + cabeça), para testar
+               detecção e rastreamento. Sobe o first pose antes se preciso,
+               porque a cabeça é movida pelo direct_controller.
+  segurar 4 -> desliga tudo e desliga o PC
 
-O modo JOGO (bringup completo) existe mas está sem botão até o novo bringup.
+Só um modo (first pose / bringup) roda por vez; a visão do botão 5 roda em
+paralelo ao first pose, como um grupo separado.
 
 IMU: o mesmo ESP32 lê o MPU-6050 e manda amostras brutas ("IMU ...").
 Este daemon é o único dono da serial, então repassa cada linha IMU por UDP
@@ -33,6 +37,7 @@ Configuração por variáveis de ambiente (veja edrom-buttons.service):
   EDROM_WS           workspace (padrão ~/edrom_main)
   EDROM_LAUNCH       comando ros2 launch do modo JOGO
   EDROM_POSE_LAUNCHES  comandos do modo POSE, separados por ';'
+  EDROM_VISION_LAUNCHES  comandos do botão 5 (visão), separados por ';'
   EDROM_LOG_DIR      pasta dos logs do bringup (padrão $EDROM_WS/logs_robot)
 """
 import datetime
@@ -66,9 +71,18 @@ POSE_LAUNCHES = os.environ.get(
 # Modo JOGO desativado até o novo bringup ficar pronto.
 # Para ativar: Environment=EDROM_JOGO_ENABLED=1 no edrom-buttons.service
 JOGO_ENABLED = os.environ.get('EDROM_JOGO_ENABLED', '0') == '1'
+# Botão 5: visão sem janela (o serviço não tem tela) + controle da cabeça
+VISION_LAUNCHES = os.environ.get(
+    'EDROM_VISION_LAUNCHES',
+    'ros2 launch object_finder vision.launch.py img_output:=False;'
+    'ros2 run vision_controller search_and_track_node --ros-args -r __node:=head_controller_node;'
+    # sem o behaviour, alguém precisa mandar SEARCHING/TRACKING para a cabeça
+    'python3 ' + os.path.join(os.path.dirname(os.path.abspath(__file__)), 'head_test_supervisor.py'),
+)
 MODES = {
     'jogo': [LAUNCH] if JOGO_ENABLED else [],
     'pose': [c.strip() for c in POSE_LAUNCHES.split(';') if c.strip()],
+    'visao': [c.strip() for c in VISION_LAUNCHES.split(';') if c.strip()],
 }
 LOG_DIR = os.environ.get('EDROM_LOG_DIR', os.path.join(WS, 'logs_robot'))
 
@@ -78,13 +92,18 @@ CUSTOM_CMDS = {
     3: os.environ.get('EDROM_BTN3_CMD', ''),
 }
 
-WALK_SPEED = float(os.environ.get('EDROM_WALK_SPEED', '0.10'))   # m/s
+WALK_SPEED = float(os.environ.get('EDROM_WALK_SPEED', '0.12'))   # m/s
 HALT_DELAY_S = float(os.environ.get('EDROM_HALT_DELAY', '1.5'))   # s
+BTN3_HOLD_MS = 2000   # igual a HOLD_MS[2] do firmware
 HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ros_cmd_helper.py')
 
 ROS_ENV = f'source /opt/ros/humble/setup.bash && source {WS}/install/setup.bash'
 STOP_TIMEOUT_S = 10.0
 CONNECT_GRACE_S = 3.0      # ignora botões logo após conectar/resetar o ESP32
+# ESP32 mudo (sem HELLO) por esse tempo: reseta pelo EN. No boot do PC algo
+# (ex.: ModemManager) pode mexer em DTR/RTS e deixar o ESP32 no modo gravação.
+SILENT_RESET_S = 3.0
+SILENT_RESET_MIN_GAP_S = 10.0
 POWEROFF_MIN_UPTIME_S = 180  # nunca desliga o PC nos primeiros 3 min (evita loop de boot)
 # Modo de teste: mostra o que cada botão faria, sem subir launches nem desligar o PC
 DRY_RUN = os.environ.get('EDROM_DRY_RUN', '0') == '1'
@@ -198,9 +217,10 @@ class RosBridge:
     def __init__(self):
         self.proc = None
 
-    def send(self, cmd):
+    def ensure_started(self):
+        """Sobe a ponte se ainda não estiver rodando. Chamado ao subir o modo
+        pose, para a descoberta do DDS já estar feita quando o 1 for apertado."""
         if DRY_RUN:
-            log(f'[TESTE] publicaria: {cmd}')
             return
         if self.proc is None or self.proc.poll() is not None:
             os.makedirs(LOG_DIR, exist_ok=True)
@@ -212,6 +232,12 @@ class RosBridge:
                 start_new_session=True)
             logf.close()
             log('ponte ROS iniciada')
+
+    def send(self, cmd):
+        if DRY_RUN:
+            log(f'[TESTE] publicaria: {cmd}')
+            return
+        self.ensure_started()
         try:
             self.proc.stdin.write(cmd + '\n')
             self.proc.stdin.flush()
@@ -232,10 +258,14 @@ class RosBridge:
                     pass
 
 
+# Grupo da visão (botão 5): roda em paralelo ao modo first pose
+VISION = Robot()
+
+
 def walking_ready(robot):
-    if robot.running() and robot.mode == 'pose':
+    if robot.running() and robot.mode in ('pose', 'jogo'):
         return True
-    log('walking não está rodando: aperte 2 (modo pose) antes')
+    log('walking não está rodando: aperte 1 (first pose) antes')
     return False
 
 
@@ -258,7 +288,7 @@ def uptime_s():
         return float(f.read().split()[0])
 
 
-def handle(line, robot, bridge, connected_at, pins, accepted):
+def handle(line, robot, bridge, connected_at, pins, accepted, fw):
     parts = line.split()
     if len(parts) == 3 and parts[0] == 'HELLO':
         # estado bruto dos pinos (1 = solto, 0 = em GND); loga quando muda
@@ -266,13 +296,23 @@ def handle(line, robot, bridge, connected_at, pins, accepted):
             log(f'pinos dos botões 1..5: {parts[2]}  (1=solto, 0=fechado/GND)')
             pins[0] = parts[2]
         return
-    if parts and parts[0] in ('BTN', 'HOLD') and time.time() - connected_at < CONNECT_GRACE_S:
+    if parts and parts[0] in ('BTN', 'HOLD', 'UP') and time.time() - connected_at < CONNECT_GRACE_S:
         log(f'ignorado (ESP32 acabou de conectar): {line}')
         return
     if parts and parts[0] == 'BTN' and parts[-1].isdigit():
         accepted.add(int(parts[-1]))
-    if parts and parts[0] == 'HOLD' and parts[-1].isdigit() and int(parts[-1]) not in accepted:
+    if parts and parts[0] in ('HOLD', 'UP') and len(parts) >= 2 and parts[1].isdigit() \
+            and int(parts[1]) not in accepted:
         log(f'ignorado (aperto inicial não foi aceito): {line}')
+        return
+    if parts and parts[0] == 'UP':
+        fw['has_up'] = True
+    if parts and parts[0] == 'UP' and len(parts) == 3 and parts[1].isdigit() and parts[2].isdigit():
+        n, held_ms = int(parts[1]), int(parts[2])
+        if n == 3 and held_ms < BTN3_HOLD_MS:   # toque curto no 3: anda
+            log(f'botão 3 solto após {held_ms} ms: andar')
+            if walking_ready(robot):
+                bridge.send(f'VEL {WALK_SPEED}')
         return
     if len(parts) != 2 or not parts[1].isdigit():
         return
@@ -280,19 +320,37 @@ def handle(line, robot, bridge, connected_at, pins, accepted):
     if kind == 'BTN':
         log(f'botão {n}')
         if n == 1:
-            if walking_ready(robot):
-                bridge.send(f'VEL {WALK_SPEED}')
-        elif n == 3:
-            if walking_ready(robot):
-                bridge.send(f'HALT {HALT_DELAY_S}')
-        elif n == 2:
+            if VISION.running() and robot.mode != 'pose':
+                VISION.stop()
             robot.start('pose')
+            if robot.running():
+                bridge.ensure_started()
+        elif n == 2:
+            if MODES['jogo']:
+                VISION.stop()  # o bringup já sobe a visão e a cabeça
+            robot.start('jogo')
+            if robot.running():
+                bridge.ensure_started()
+        elif n == 3:
+            # firmware novo: age ao soltar (toque = anda) ou ao segurar 2 s (para).
+            # firmware antigo (sem "UP"): anda já no aperto, como antes.
+            if not fw['has_up'] and walking_ready(robot):
+                bridge.send(f'VEL {WALK_SPEED}')
         elif n == 4:
+            VISION.stop()
             robot.stop()
         elif n == 5:
-            robot.restart()
-        else:
-            run_custom(n)
+            if robot.running() and robot.mode == 'jogo':
+                log('o bringup já inclui visão e search and track')
+            else:
+                if not (robot.running() and robot.mode == 'pose'):
+                    robot.start('pose')  # a cabeça precisa do direct_controller
+                    bridge.ensure_started()
+                VISION.start('visao')
+    elif kind == 'HOLD' and n == 3:
+        log('botão 3 segurado: parar de andar')
+        if walking_ready(robot):
+            bridge.send(f'HALT {HALT_DELAY_S}')
     elif kind == 'HOLD' and n == 4:
         if not ALLOW_POWEROFF:
             log('botão 4 segurado: desligar o PC está desativado')
@@ -304,6 +362,7 @@ def handle(line, robot, bridge, connected_at, pins, accepted):
             log('[TESTE] botão 4 segurado: desligaria o PC')
             return
         log('botão 4 segurado: desligando o PC')
+        VISION.stop()
         robot.stop()
         subprocess.call(['sudo', '-n', '/usr/bin/systemctl', 'poweroff'])
 
@@ -373,12 +432,25 @@ def open_port():
     return ser
 
 
+def reset_esp(ser):
+    """Pulso no EN com GPIO0 solto (DTR=0): boot normal, não modo gravação."""
+    try:
+        ser.dtr = False
+        ser.rts = True
+        time.sleep(0.1)
+        ser.rts = False
+        ser.reset_input_buffer()
+    except (serial.SerialException, OSError) as e:
+        log(f'não consegui resetar o ESP32 ({e})')
+
+
 def main():
     robot = Robot()
     bridge = RosBridge()
 
     def on_exit(*_):
         bridge.close()
+        VISION.stop()
         robot.stop()
         sys.exit(0)
 
@@ -393,6 +465,7 @@ def main():
             ser = open_port()
         except (serial.SerialException, OSError):
             robot.state()  # mantém o estado do bringup atualizado
+            VISION.state()
             time.sleep(1.0)
             continue
 
@@ -400,8 +473,11 @@ def main():
         connected_at = time.time()
         pins = ['']
         accepted = set()
+        fw = {'has_up': False}  # vira True no primeiro "UP" (firmware novo)
         imu_state = {'status': '', 'logged_at': 0.0}
         last_tx = 0.0
+        last_rx = time.time()
+        last_reset = 0.0
         lines = queue.Queue()
         reader = SerialReader(ser, lines)
         reader.start()
@@ -416,10 +492,20 @@ def main():
                 if line.startswith('IMUSTAT'):
                     handle_imustat(line.split(), imu_state)
                 elif line:
-                    handle(line, robot, bridge, connected_at, pins, accepted)
+                    handle(line, robot, bridge, connected_at, pins, accepted, fw)
                 now = time.time()
+                if line:
+                    last_rx = now
+                elif now - last_rx > SILENT_RESET_S and now - last_reset > SILENT_RESET_MIN_GAP_S:
+                    log(f'ESP32 sem responder há {now - last_rx:.0f} s: resetando pelo EN')
+                    reset_esp(ser)
+                    last_reset = last_rx = connected_at = time.time()
+                    accepted.clear()  # botões só depois do novo período de graça
                 if now - last_tx > 0.5:
-                    ser.write(f'S {robot.state()}\n'.encode())
+                    st = robot.state()
+                    if VISION.state() == 'ERR':
+                        st = 'ERR'  # visão caiu: LED pisca rápido
+                    ser.write(f'S {st}\n'.encode())
                     last_tx = now
         except (serial.SerialException, OSError) as e:
             log(f'ESP32 desconectado ({e}); bringup continua como estava')

@@ -24,12 +24,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument(
-            'image_rotation',
-            default_value='180',
-            description='Rotação (graus, sentido horário: 0, 90, 180 ou 270) da janela, '
-                        'para compensar a câmera montada girada (mesmo do vision.launch)',
-        ),
-        DeclareLaunchArgument(
             'varredura', default_value='False',
             description='Comanda a cabeça por uma grade pan x tilt e grava em cada pose'),
         DeclareLaunchArgument(
@@ -51,8 +45,6 @@ def generate_launch_description():
             executable='aruco_record',
             output='screen',
             parameters=[{
-                'image_rotation': ParameterValue(
-                    LaunchConfiguration('image_rotation'), value_type=int),
                 'varredura': ParameterValue(LaunchConfiguration('varredura'), value_type=bool),
                 'imu_topic': LaunchConfiguration('imu_topic'),
             }],

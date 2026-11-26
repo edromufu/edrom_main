@@ -8,7 +8,7 @@ from std_msgs.msg import String
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import JointState
 from soccer_vision_2d_msgs.msg import BallArray
-from object_finder.rotacao import ROTACAO_CAMERA, melhor_bola_em_pe
+from object_finder.bola import melhor_bola
 
 from nav_msgs.msg import Path
 from std_msgs.msg import Float64MultiArray
@@ -36,10 +36,6 @@ class WalkingRoutine(Node):
         self.declare_parameter('kp_foot_forward', 0.001,)
         self.declare_parameter('kicking_hotspot_x', 320.0, )
         self.declare_parameter('kicking_hotspot_y', 400.0, )
-        # Imagem original da câmera e sua rotação física (o hotspot é na imagem em pé)
-        self.declare_parameter('image_width', 640)
-        self.declare_parameter('image_height', 480)
-        self.declare_parameter('image_rotation', ROTACAO_CAMERA)
 
         # Obtém os valores dos parâmetros
         self.walk_speed_x = self.get_parameter('walk_speed_x').get_parameter_value().double_value
@@ -48,9 +44,6 @@ class WalkingRoutine(Node):
         self.kp_foot_forward = self.get_parameter('kp_foot_forward').get_parameter_value().double_value
         self.kicking_hotspot_x = self.get_parameter('kicking_hotspot_x').get_parameter_value().double_value
         self.kicking_hotspot_y = self.get_parameter('kicking_hotspot_y').get_parameter_value().double_value
-        self.image_width = self.get_parameter('image_width').get_parameter_value().integer_value
-        self.image_height = self.get_parameter('image_height').get_parameter_value().integer_value
-        self.image_rotation = self.get_parameter('image_rotation').get_parameter_value().integer_value
         
         # --- Variáveis de Sensores ---
         self.head_pan_angle = 0.0
@@ -122,9 +115,8 @@ class WalkingRoutine(Node):
             pass
 
     def vision_callback(self, msg: BallArray):
-        """Armazena a posição da bola na imagem em pé (bola de maior confiança)."""
-        bola = melhor_bola_em_pe(
-            msg.balls, self.image_rotation, self.image_width, self.image_height)
+        """Armazena a posição da bola na imagem (bola de maior confiança)."""
+        bola = melhor_bola(msg.balls)
         if bola is not None:
             self.ball_x, self.ball_y = float(bola[0]), float(bola[1])
 

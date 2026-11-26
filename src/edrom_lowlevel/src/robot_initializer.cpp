@@ -46,7 +46,7 @@ private: // <--- SEÇÃO QUE FALTAVA
     {
         init_timer_->cancel();
 
-        if (!ik_client_ptr_->wait_for_service(3s)) {
+        if (!ik_client_ptr_->wait_for_service(10s)) {
             RCLCPP_ERROR(this->get_logger(), "Serviço de IK '/solve_ik' não disponível. Desligando.");
             rclcpp::shutdown();
             return;
@@ -96,8 +96,31 @@ private: // <--- SEÇÃO QUE FALTAVA
                 }
             }
 
-                joint_pub_->publish(final_joints);
-                std::this_thread::sleep_for(500ms);
+                // Espera o direct_controller assinar o tópico: ele só assina
+                // depois de pingar todos os motores, o que pode levar mais de 1 s.
+                // Publicar antes disso faz a pose se perder.
+                const auto deadline = std::chrono::steady_clock::now() + 15s;
+                bool controller_ready = false;
+                while (rclcpp::ok() && std::chrono::steady_clock::now() < deadline) {
+                    for (const auto & info : this->get_subscriptions_info_by_topic("/goal_joint_states")) {
+                        if (info.node_name() == "direct_controller") {controller_ready = true;}
+                    }
+                    if (controller_ready) {break;}
+                    std::this_thread::sleep_for(50ms);
+                }
+                if (controller_ready) {
+                    RCLCPP_INFO(this->get_logger(), "direct_controller pronto; enviando a pose inicial.");
+                } else {
+                    RCLCPP_WARN(this->get_logger(),
+                        "direct_controller não apareceu em 15 s; enviando a pose assim mesmo.");
+                }
+
+                // Repete por ~1 s: uma mensagem isolada pode se perder na descoberta do DDS
+                for (int i = 0; i < 10 && rclcpp::ok(); ++i) {
+                    final_joints.header.stamp = this->now();
+                    joint_pub_->publish(final_joints);
+                    std::this_thread::sleep_for(100ms);
+                }
             } else {
                 RCLCPP_ERROR(this->get_logger(), "Falha ao resolver IK para a pose inicial.");
             }

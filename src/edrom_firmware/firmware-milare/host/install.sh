@@ -36,7 +36,11 @@ echo "ESP32 em $DEV  (vid=$VID pid=$PID serial=${SER:-?})"
 
 RULE="SUBSYSTEM==\"tty\", ATTRS{idVendor}==\"$VID\", ATTRS{idProduct}==\"$PID\""
 [[ -n "$SER" ]] && RULE+=", ATTRS{serial}==\"$SER\""
-RULE+=", SYMLINK+=\"edrom_buttons\", MODE=\"0666\""
+# ID_MM_DEVICE_IGNORE: o ModemManager não sonda a porta no boot (ele mexe em
+# DTR/RTS e pode deixar o ESP32 preso no modo gravação)
+RULE+=", SYMLINK+=\"edrom_buttons\", MODE=\"0666\", ENV{ID_MM_DEVICE_IGNORE}=\"1\""
+# U2D2 (FTDI) dos Dynamixel: o ModemManager também não deve abrir
+RULE+=$'\nSUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ENV{ID_MM_DEVICE_IGNORE}="1"'
 
 # --- 2. udev: nome fixo /dev/edrom_buttons ---
 echo "$RULE" | sudo tee /etc/udev/rules.d/99-edrom-buttons.rules >/dev/null

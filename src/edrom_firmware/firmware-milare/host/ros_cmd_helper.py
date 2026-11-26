@@ -68,14 +68,36 @@ class Helper(Node):
         self.stop()
 
 
+def _spin_quiet(executor):
+    try:
+        executor.spin()
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        pass
+
+
 def main():
     rclpy.init()
     node = Helper()
     executor = rclpy.executors.SingleThreadedExecutor()
     executor.add_node(node)
-    spin = threading.Thread(target=executor.spin, daemon=True)
+    spin = threading.Thread(target=_spin_quiet, args=(executor,), daemon=True)
     spin.start()
     print('READY', flush=True)
+    try:
+        serve(node)
+    except KeyboardInterrupt:
+        pass  # o daemon encerra a ponte com SIGINT ao sair
+    with node.lock:
+        if node.pending_stop:
+            node.pending_stop.cancel()
+    executor.shutdown()
+    spin.join(timeout=2)
+    node.destroy_node()
+    if rclpy.ok():
+        rclpy.shutdown()
+
+
+def serve(node):
     for line in sys.stdin:
         parts = line.split()
         if not parts:
@@ -89,13 +111,6 @@ def main():
                 node.stop()
         except Exception as e:  # comando malformado não derruba a ponte
             node.get_logger().error(f'comando inválido {line.strip()!r}: {e}')
-    with node.lock:
-        if node.pending_stop:
-            node.pending_stop.cancel()
-    executor.shutdown()
-    spin.join(timeout=2)
-    node.destroy_node()
-    rclpy.shutdown()
 
 
 if __name__ == '__main__':

@@ -7,7 +7,8 @@
 //   "HELLO EDROM_BTN <p1p2p3p4p5>"  a cada 1 s (heartbeat + estado bruto dos
 //                       pinos: 1 = solto, 0 = em GND), p.ex. "HELLO EDROM_BTN 11111"
 //   "BTN <n>"           botão n (1..5) pressionado
-//   "HOLD <n>"          botão n segurado por HOLD_MS
+//   "HOLD <n>"          botão n segurado por HOLD_MS[n] (enviado ainda segurando)
+//   "UP <n> <ms>"       botão n solto, depois de ficar <ms> apertado
 //   "IMU <seq> <t_us> <ax> <ay> <az> <gx> <gy> <gz>"   a cada IMU_PERIOD_US
 //                       amostra BRUTA do MPU-6050 (contagens int16, ±2 g e
 //                       ±500 °/s). seq vai de 0 a 65535 (detecta perdas) e
@@ -42,7 +43,9 @@ static const bool PRESSED = NORMALLY_CLOSED ? HIGH : LOW;
 // Botões 1-3: D25, D26, D27. Botão 4: TX2 (GPIO17). Botão 5: RX2 (GPIO16).
 static const uint8_t BTN_PINS[5] = {25, 26, 27, 17, 16};
 static const uint32_t DEBOUNCE_MS = 40;
-static const uint32_t HOLD_MS = 3000;
+// Tempo de "segurar" por botão (1..5). Botão 3: 2 s (parar a caminhada);
+// botão 4: 3 s (desligar o PC).
+static const uint32_t HOLD_MS[5] = {3000, 3000, 2000, 3000, 3000};
 static const uint32_t HELLO_MS = 1000;
 static const uint32_t HOST_TIMEOUT_MS = 3000;
 // Após ligar, não gera eventos: só aprende o estado dos pinos (evita
@@ -54,6 +57,7 @@ enum HostState { NO_HOST, IDLE, STARTING, RUNNING, ERROR_ST };
 
 bool lastState[5];
 uint32_t lastChange[5];
+uint32_t pressStart[5];
 bool holdSent[5];
 
 HostState hostState = NO_HOST;
@@ -200,9 +204,14 @@ void loop() {
       lastChange[i] = now;
       lastState[i] = s;
       holdSent[i] = false;
-      if (s == PRESSED) Serial.printf("BTN %d\n", i + 1);
+      if (s == PRESSED) {
+        pressStart[i] = now;
+        Serial.printf("BTN %d\n", i + 1);
+      } else {
+        Serial.printf("UP %d %lu\n", i + 1, (unsigned long)(now - pressStart[i]));
+      }
     }
-    if (lastState[i] == PRESSED && !holdSent[i] && now - lastChange[i] > HOLD_MS) {
+    if (lastState[i] == PRESSED && !holdSent[i] && now - lastChange[i] > HOLD_MS[i]) {
       holdSent[i] = true;
       Serial.printf("HOLD %d\n", i + 1);
     }

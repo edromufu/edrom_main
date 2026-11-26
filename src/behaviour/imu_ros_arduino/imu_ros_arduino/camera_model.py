@@ -11,8 +11,6 @@ Cadeia (REP-103, x frente, y esquerda, z cima):
 
 A IMU é considerada presa ao tronco (o eixo do corpo já mapeado por 'axes').
 Qualquer desalinhamento fixo IMU/câmera entra em camera_mount_rpy.
-Com a câmera montada de cabeça para baixo (image_rotation 180 na visão),
-camera_mount_rpy[0] = pi.
 """
 import math
 
@@ -22,7 +20,7 @@ CAMERA_DEFAULTS = {
     'camera.pivot_height': 0.30,               # m, altura do ponto em torno do qual o tronco inclina
     'camera.neck_offset': [0.0, 0.0, 0.20],    # m, pivô -> eixo do pan (no tronco)
     'camera.camera_offset': [0.03, 0.0, 0.05],  # m, eixo do tilt -> câmera (na cabeça)
-    'camera.camera_mount_rpy': [math.pi, 0.0, 0.0],  # rad
+    'camera.camera_mount_rpy': [0.0, 0.0, 0.0],  # rad
     'camera.pan_sign': 1.0,
     'camera.tilt_sign': 1.0,
     'camera.pan_offset': 0.0,                  # rad

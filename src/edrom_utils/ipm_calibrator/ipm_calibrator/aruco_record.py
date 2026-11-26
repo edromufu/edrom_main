@@ -30,13 +30,6 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image, Imu, JointState
 
-# Rotação da janela (graus, sentido horário) -> código do cv2.rotate
-ROTACOES = {
-    90: cv2.ROTATE_90_CLOCKWISE,
-    180: cv2.ROTATE_180,
-    270: cv2.ROTATE_90_COUNTERCLOCKWISE,
-}
-
 
 class ArucoRecord(Node):
 
@@ -45,13 +38,6 @@ class ArucoRecord(Node):
         dicionario = self.declare_parameter('dicionario', 'DICT_5X5_250').value
         pasta = self.declare_parameter('pasta_saida', '').value
         self.mostrar = self.declare_parameter('mostrar', True).value
-        # Só gira a janela (câmera montada girada). Os cantos gravados ficam
-        # sempre em pixels da imagem crua, que é o que K e D descrevem.
-        self.rotacao = int(self.declare_parameter('image_rotation', 0).value) % 360
-        if self.rotacao not in (0, *ROTACOES):
-            self.get_logger().error(
-                f'image_rotation={self.rotacao} inválido (use 0, 90, 180 ou 270); usando 0')
-            self.rotacao = 0
         imu_topic = self.declare_parameter('imu_topic', '/imu/data_raw').value
 
         dic = cv2.aruco.getPredefinedDictionary(getattr(cv2.aruco, dicionario))
@@ -175,8 +161,6 @@ class ArucoRecord(Node):
         if self.mostrar:
             if ids is not None:
                 cv2.aruco.drawDetectedMarkers(imagem, cantos, ids)
-            if self.rotacao:
-                imagem = cv2.rotate(imagem, ROTACOES[self.rotacao])
             texto = f'frames gravados: {self.n_gravados}' + ('' if self.acc else ' | SEM IMU')
             cv2.putText(imagem, texto, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
             cv2.imshow('aruco_record', imagem)

@@ -31,9 +31,6 @@ ros2 launch object_finder vision.launch.py camera_name:=milare
 |---|---|
 | `--size 8x6` | Número de **cantos internos** do tabuleiro (colunas x linhas). Um tabuleiro de 9×7 quadrados tem 8×6 cantos internos. |
 | `--square 0.025` | Lado de um quadrado do tabuleiro, em **metros** (0.025 = 25 mm). Meça depois de imprimir. |
-| `--rotation 180` | Gira a imagem mostrada no calibrador (a câmera está montada de cabeça para baixo). Padrão `180`; use `0` para a imagem crua. |
-
-Com `--rotation 180`, o calibrador recebe a imagem girada (nó `image_rotate`, tópico `/camera/image_rotated`) e o resultado é convertido de volta para a imagem crua da câmera antes de salvar (`cx`, `cy` espelhados e `p1`, `p2` com sinal trocado). Assim o arquivo salvo vale para o `usb_cam` e o IPM, que usam a imagem crua.
 
 As configurações da câmera (nome, dispositivo, resolução, formato) ficam em `src/edrom_vision/object_finder/config/usb_cam.yaml`.
 

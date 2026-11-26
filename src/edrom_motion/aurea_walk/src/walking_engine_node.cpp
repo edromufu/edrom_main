@@ -18,9 +18,9 @@ WalkingEngineNode::WalkingEngineNode()
 : Node("walking_engine_node")
 {
   // Declara e carrega os parâmetros
-  this->declare_parameter<double>("step_period", 0.3);
+  this->declare_parameter<double>("step_period", 0.35);
   this->declare_parameter<double>("com_height", 0.24);
-  this->declare_parameter<double>("step_height", 0.048);
+  this->declare_parameter<double>("step_height", 0.045);
   this->declare_parameter<double>("double_support_ratio", 0.1);
   this->declare_parameter<double>("feet_separation", 0.0425);
   this->declare_parameter<std::string>("ik_service_name", "/solve_ik");
@@ -31,7 +31,7 @@ WalkingEngineNode::WalkingEngineNode()
   this->declare_parameter<double>("idle_arm_pose.shoulder_pitch", 0.7);
   this->declare_parameter<double>("idle_arm_pose.shoulder_roll", -1.4);
   this->declare_parameter<double>("idle_arm_pose.elbow", -1.6);
-  this->declare_parameter<double>("backlash_offset_hp", -0.0); //-0.32
+  this->declare_parameter<double>("backlash_offset_hp", -0.22); //-0.32
   //this->declare_parameter<double>("servo_kp_gain", 5.0);
   this->declare_parameter<double>("kp_gain_hip_roll", 5.0);
   this->declare_parameter<double>("kp_gain_hip_pitch", -5.0);

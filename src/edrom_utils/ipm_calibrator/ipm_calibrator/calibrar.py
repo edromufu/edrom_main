@@ -105,10 +105,9 @@ def residuos(x, poses, K, s_pan, s_tilt):
     return np.concatenate(r).ravel()
 
 
-def ajustar_cabeca(poses, K, roll_cam0):
+def ajustar_cabeca(poses, K):
     """Ajusta o modelo para os 4 sentidos possíveis das juntas e fica com o melhor."""
     x0 = np.zeros(11)
-    x0[4] = roll_cam0
     x0[5:8] = np.mean([p['centro'] for p in poses], axis=0)
     melhor = None
     for s_pan in (1, -1):
@@ -180,8 +179,6 @@ def main():
     ap.add_argument('jsonl', type=Path)
     ap.add_argument('--tapete', type=Path, default=Path(
         get_package_share_directory('ipm_calibrator')) / 'config' / 'tapete_a0.yaml')
-    ap.add_argument('--rotacao', type=int, default=180,
-                    help='rotação da câmera montada (image_rotation do vision.launch)')
     ap.add_argument('--salvar', action='store_true', help='grava os offsets no motors_direct.yaml')
     ap.add_argument('--motors-yaml', type=Path,
                     default=ws / 'src' / 'edrom_lowlevel' / 'config' / 'motors_direct.yaml')
@@ -195,7 +192,7 @@ def main():
     if len(poses) < 6:
         raise SystemExit('Poses insuficientes (mínimo 6, varrendo pan e tilt).')
 
-    x, desvio, s_pan, s_tilt, rms = ajustar_cabeca(poses, K, np.radians(args.rotacao))
+    x, desvio, s_pan, s_tilt, rms = ajustar_cabeca(poses, K)
     graus = np.degrees
     print('\nCabeça (convenção: junta real = comando + sinal * offset)')
     print(f'  offset pan : {graus(x[0]):+.2f}° ± {graus(desvio[0]):.2f}°  (sinal {s_pan:+d})')

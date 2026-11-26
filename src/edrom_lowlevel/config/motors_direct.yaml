@@ -16,14 +16,8 @@ direct_controller:
 
     # --- Parâmetros individuais para cada junta ---
     # protocol: 1.0 para AX, 2.0 para MX
-    head_pan:
-      id: 19
-      protocol: 1.0
-      inverted: false
-    head_tilt:
-      id: 18
-      protocol: 1.0
-      inverted: false
+    head_pan:     {id: 18, protocol: 1.0, inverted: false, calibration_offset: -0.0}
+    head_tilt:    {id: 19, protocol: 1.0, inverted: false, calibration_offset: -1.0}
 
 
     l_sho_pitch:    {id: 12, protocol: 2.0, inverted: false, calibration_offset: 0.0}
@@ -35,16 +29,16 @@ direct_controller:
     r_el:  {id: 17, protocol: 2.0, inverted: false, calibration_offset: 0.0} 
 
 
-    r_hip_yaw:    {id: 11, protocol: 2.0, inverted: false, calibration_offset: -0.0}
-    r_hip_roll:   {id: 9,  protocol: 2.0, inverted: false, calibration_offset: 0.06} # 0.02
-    r_hip_pitch:  {id: 7,  protocol: 2.0, inverted: true,  calibration_offset: 0.1}
+    r_hip_yaw:    {id: 11, protocol: 2.0, inverted: false, calibration_offset: -0.00}
+    r_hip_roll:   {id: 9,  protocol: 2.0, inverted: false, calibration_offset: 0.1600} # 0.02
+    r_hip_pitch:  {id: 7,  protocol: 2.0, inverted: true,  calibration_offset: 0.1500}
     r_knee:       {id: 5,  protocol: 2.0, inverted: false,  calibration_offset: 0.0}
-    r_ank_roll:   {id: 3,  protocol: 2.0, inverted: false, calibration_offset: 0.0}
-    r_ank_pitch:  {id: 1,  protocol: 2.0, inverted: true,  calibration_offset: 0.0}
+    r_ank_roll:   {id: 3,  protocol: 2.0, inverted: false, calibration_offset: 0.0500}
+    r_ank_pitch:  {id: 1,  protocol: 2.0, inverted: true,  calibration_offset: 0.2100}
 
-    l_hip_yaw:    {id: 10, protocol: 2.0, inverted: false, calibration_offset: -0.0}
-    l_hip_roll:   {id: 8,  protocol: 2.0, inverted: false, calibration_offset: -0.04}
-    l_hip_pitch:  {id: 6,  protocol: 2.0, inverted: false, calibration_offset: -0.04} # 0.04
-    l_knee:       {id: 4,  protocol: 2.0, inverted: true,  calibration_offset: -0.0} # -0.15
-    l_ank_roll:   {id: 2,  protocol: 2.0, inverted: false, calibration_offset: -0.0}
+    l_hip_yaw:    {id: 10, protocol: 2.0, inverted: false, calibration_offset: -0.0100}
+    l_hip_roll:   {id: 8,  protocol: 2.0, inverted: false, calibration_offset: -0.1300}
+    l_hip_pitch:  {id: 6,  protocol: 2.0, inverted: false, calibration_offset: -0.0200} # 0.04
+    l_knee:       {id: 4,  protocol: 2.0, inverted: true,  calibration_offset: -0.1000} # -0.15
+    l_ank_roll:   {id: 2,  protocol: 2.0, inverted: false, calibration_offset: -0.0400}
     l_ank_pitch:  {id: 0,  protocol: 2.0, inverted: true,  calibration_offset: -0.0500}
