@@ -7,7 +7,7 @@ atualiza a StateMachine e publica o estado atual no tópico correspondente.
 
 import rclpy
 from rclpy.node import Node
-from modularized_bhv_msgs.msg import StateMachineMsg, CurrentStateMsg, GameControllerMsg
+from modularized_bhv_msgs.msg import StateMachineMsg, CurrentStateMsg
 from std_msgs.msg import Bool
 from .state_machine import StateMachine
 from .behaviour_parameters import BehaviourParameters
@@ -30,10 +30,6 @@ class StateMachineReceiver(Node):
         # Inicializa variáveis internas
         self.last_state_machine_msg = None
         self.kick_done = False
-        self.gc_connected = False
-        self.gc_state = 'PLAYING'
-        self.gc_penalty = 0
-        self.gc_player_found = False
 
         # Publisher do estado atual
         self.state_publisher = self.create_publisher(
@@ -48,19 +44,11 @@ class StateMachineReceiver(Node):
         self.create_subscription(
             Bool, "/kick_done", self.kick_done_callback, 10
         )
-        self.create_subscription(GameControllerMsg, '/gc/state', self.game_controller_callback, 10)
 
         self.get_logger().info("StateMachineReceiver iniciado e aguardando mensagens...")
-        # O ros_packer só publica quando alguma variável muda. Sem este timer,
-        # estados temporizados (idle_march/idle) nunca expirariam sozinhos.
-        self.create_timer(0.1, self.update_state)  # 10 Hz
+        # Timer para tentar atualizar o estado periodicamente
 
 
-    def game_controller_callback(self, msg):
-        self.gc_connected = msg.connected
-        self.gc_state = msg.state
-        self.gc_penalty = msg.penalty
-        self.gc_player_found = msg.player_found
 
     # Recebe mensagem principal da máquina (com variáveis de percepção e estado)
     def state_machine_callback(self, msg):
@@ -86,11 +74,7 @@ class StateMachineReceiver(Node):
             stateMachineVars.fall_state,
             stateMachineVars.hor_motor_out_of_center,
             stateMachineVars.head_kick_check,
-            self.kick_done,
-            gc_connected=self.gc_connected,
-            gc_state=self.gc_state,
-            gc_penalty=self.gc_penalty,
-            gc_player_found=self.gc_player_found,
+            self.kick_done
         )
 
         # Publica o estado atual
